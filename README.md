@@ -1,7 +1,9 @@
 # AcousTools
 
-[![PyPI - Version](https://img.shields.io/pypi/v/acoustools.svg)](https://pypi.org/project/acoustools)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/acoustools.svg)](https://pypi.org/project/acoustools)
+<!-- [![PyPI - Version](https://img.shields.io/pypi/v/acoustools.svg)](https://pypi.org/project/acoustools)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/acoustools.svg)](https://pypi.org/project/acoustools) -->
+
+My set of code for working with acoustic fields for levitation etc 
 
 -----
 
@@ -11,6 +13,8 @@
 - [License](#license)
 
 ## Installation
+
+Clone the repo and then run
 
 ```console
 pip install -e <path-to-clone> --config-settings editable_mode=strict
