@@ -386,8 +386,8 @@ def return_matrix(x,y,mat=None):
     return mat
 
 if __name__ == "__main__":
-    from Solvers import wgs,wgs_batch
-    from Gorkov import gorkov_fin_diff, gorkov_analytical
+    from acoustools.Solvers import wgs,wgs_batch
+    from acoustools.Gorkov import gorkov_fin_diff, gorkov_analytical
 
     
     points = create_points(4,2)
