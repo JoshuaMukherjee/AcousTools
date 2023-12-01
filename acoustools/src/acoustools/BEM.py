@@ -186,29 +186,34 @@ def compute_H(scatterer, board):
 
     return H
 
-def compute_E(scatterer, points, board=TOP_BOARD, use_cache_H=True, print_lines=False, H=None):
+def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print_lines=False):
+
+    if use_cache_H:
+        
+        f_name = scatterer_file_name(scatterer, board)
+        f_name = path+"/BEMCache/"  +  f_name + ".bin"
+
+        try:
+            if print_lines: print("Trying to load H...")
+            H = pickle.load(open(f_name,"rb")).to(device)
+        except FileNotFoundError:
+            if print_lines: print("Not found, computing H...")
+            H = compute_H(scatterer,board)
+            f = open(f_name,"wb")
+            pickle.dump(H,f)
+            f.close()
+    else:
+        if print_lines: print("Computing H...")
+        H = compute_H(scatterer,board)
+
+    return H
+
+def compute_E(scatterer, points, board=TOP_BOARD, use_cache_H=True, print_lines=False, H=None,path="Media"):
     if print_lines: print("H...")
     
     if H is None:
-        if use_cache_H:
-            
-            f_name = scatterer_file_name(scatterer, board)
-            f_name = "Media/BEMCache/"  +  f_name + ".bin"
-
-            try:
-                if print_lines: print("Trying to load H...")
-                H = pickle.load(open(f_name,"rb")).to(device)
-            except FileNotFoundError:
-                if print_lines: print("Not found, computing H...")
-                H = compute_H(scatterer,board)
-                f = open(f_name,"wb")
-                pickle.dump(H,f)
-                f.close()
-        else:
-            if print_lines: print("Computing H...")
-            H = compute_H(scatterer,board)
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines)
         
-    
     if print_lines: print("G...")
     G = compute_G(points, scatterer).to(torch.complex64)
     
@@ -294,26 +299,10 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
     else:
         return Ga[:,:,:,0], Ga[:,:,:,1], Ga[:,:,:,2]
 
-def BEM_forward_model_grad(points, scatterer, board=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None, return_components=False):
+def BEM_forward_model_grad(points, scatterer, board=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None, return_components=False,path="Media"):
     B = points.shape[0]
     if H is None:
-        if use_cache_H:
-            
-            f_name = scatterer_file_name(scatterer, board)
-            f_name = "Media/BEMCache/"  +  f_name + ".bin"
-
-            try:
-                if print_lines: print("Trying to load H...")
-                H = pickle.load(open(f_name,"rb")).to(device)
-            except FileNotFoundError:
-                if print_lines: print("Not found, computing H...")
-                H = compute_H(scatterer,board)
-                f = open(f_name,"wb")
-                pickle.dump(H,f)
-                f.close()
-        else:
-            if print_lines: print("Computing H...")
-            H = compute_H(scatterer,board)
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines)
     
     Fx, Fy, Fz  = forward_model_grad(points, board)
     Gx, Gy, Gz = get_G_partial(points, scatterer, board)
@@ -329,32 +318,16 @@ def BEM_forward_model_grad(points, scatterer, board=TRANSDUCERS, use_cache_H=Tru
     Ez = Fz + Gz@H
 
     if return_components:
-        return Ex, Ey, Ez, Fx, Fy, Fz, Gx, Gy, Gz, H, 
+        return Ex.to(torch.complex64), Ey.to(torch.complex64), Ez.to(torch.complex64), Fx, Fy, Fz, Gx, Gy, Gz, H, 
     else:
-        return Ex, Ey, Ez
+        return Ex.to(torch.complex64), Ey.to(torch.complex64), Ez.to(torch.complex64)
     
-def BEM_forward_model_second_derivative_unmixed(points, scatterer, board=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None, return_components=False):
+def BEM_forward_model_second_derivative_unmixed(points, scatterer, board=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None, return_components=False,path="Media"):
     B = points.shape[0]
     N = points.shape[2]
 
     if H is None:
-        if use_cache_H:
-            
-            f_name = scatterer_file_name(scatterer, board)
-            f_name = "Media/BEMCache/"  +  f_name + ".bin"
-
-            try:
-                if print_lines: print("Trying to load H...")
-                H = pickle.load(open(f_name,"rb")).to(device)
-            except FileNotFoundError:
-                if print_lines: print("Not found, computing H...")
-                H = compute_H(scatterer,board)
-                f = open(f_name,"wb")
-                pickle.dump(H,f)
-                f.close()
-        else:
-            if print_lines: print("Computing H...")
-            H = compute_H(scatterer,board)
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines)
     
     centres = torch.tensor(scatterer.cell_centers).to(device)
     M = centres.shape[0]
@@ -422,26 +395,9 @@ def BEM_forward_model_second_derivative_unmixed(points, scatterer, board=TRANSDU
     else:    
         return Exx, Eyy, Ezz
 
-def BEM_forward_model_second_derivative_mixed(points, scatterer, board=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None):
+def BEM_forward_model_second_derivative_mixed(points, scatterer, board=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None,path="Media"):
     if H is None:
-        if use_cache_H:
-            
-            f_name = scatterer_file_name(scatterer, board)
-            f_name = "Media/BEMCache/"  +  f_name + ".bin"
-
-            try:
-                if print_lines: print("Trying to load H...")
-                H = pickle.load(open(f_name,"rb")).to(device)
-            except FileNotFoundError:
-                if print_lines: print("Not found, computing H...")
-                H = compute_H(scatterer,board)
-                f = open(f_name,"wb")
-                pickle.dump(H,f)
-                f.close()
-        else:
-            if print_lines: print("Computing H...")
-            H = compute_H(scatterer,board)
-    
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines)
     
     Batch = points.shape[0]
     N = points.shape[2]
@@ -598,13 +554,15 @@ def BEM_force_analytical(activations,points,scatterer=None,board=TRANSDUCERS,H=N
     else:
         return force
 
+    
+
 
 
 if __name__ == "__main__":
-    from Solvers import wgs_batch
-    from Gorkov import gorkov_fin_diff, gorkov_analytical
-    from Utilities import add_lev_sig
-    from Visualiser import Visualise
+    from acoustools.Solvers import wgs_batch
+    from acoustools.Gorkov import gorkov_fin_diff, gorkov_analytical
+    from acoustools.Utilities import add_lev_sig
+    from acoustools.Visualiser import Visualise
 
 
     paths = ["Media/flat-lam1.stl","Media/flat-lam1.stl"]
