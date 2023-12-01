@@ -211,11 +211,11 @@ if __name__ == "__main__":
     B = torch.tensor((X,0.07, 0.07))
     C = torch.tensor((X,-0.07, -0.07))
     
-    from Utilities import create_points, forward_model, device, TOP_BOARD, forward_model_batched, TRANSDUCERS
-    from Solvers import wgs_batch
-    from Gorkov import gorkov_autograd, gorkov_fin_diff, get_force_axis,compute_force
+    from acoustools.Utilities import create_points, forward_model, device, TOP_BOARD, forward_model_batched, TRANSDUCERS
+    from acoustools.Solvers import wgs_batch
+    from acoustools.Gorkov import gorkov_autograd, gorkov_fin_diff, get_force_axis,compute_force
 
-    from BEM import propagate_BEM_pressure, load_scatterer,compute_E, compute_H, get_lines_from_plane, load_multiple_scatterers,propagate_BEM,BEM_gorkov_analytical
+    from acoustools.BEM import propagate_BEM_pressure, load_scatterer,compute_E, compute_H, get_lines_from_plane, load_multiple_scatterers,propagate_BEM,BEM_gorkov_analytical
     
     N = 4
     points=  create_points(N,x=X)
