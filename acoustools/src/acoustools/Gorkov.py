@@ -181,10 +181,10 @@ def get_force_axis(activations, points,board=TRANSDUCERS, axis=2):
     return force
 
 if __name__ == "__main__":
-    from Utilities import create_points, forward_model
-    from Solvers import wgs_wrapper, wgs
+    from acoustools.Utilities import create_points, forward_model
+    from acoustools.Solvers import wgs_wrapper, wgs
 
-    from Visualiser import Visualise
+    from acoustools.Visualiser import Visualise
 
 
     points = create_points(4,1,x=0)
