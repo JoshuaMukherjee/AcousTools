@@ -203,7 +203,7 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
         if log:
             print(epoch, loss)
         
-        loss.backward()
+        loss.backward(torch.Tensor([B,1]))
         optim.step()
         
         if constrains is not None:
