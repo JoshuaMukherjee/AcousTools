@@ -176,12 +176,13 @@ def temporal_wgs(A, y, K,ref_in, ref_out,T_in,T_out):
 
 def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torch.optim.Adam, lr=0.01, 
                             objective_params={}, start=None, iters=200, 
-                            maximise=False, targets=None, constrains=None, log=False):
+                            maximise=False, targets=None, constrains=None, log=False, return_loss=False):
     '''
     Solves phases using gradient descent\\
     `Objective` must take have an input of (`transducer_phases, points, board, targets, **objective_params`), `targets` may be `None` for unsupervised
     '''
 
+    losses = []
     B = points.shape[0]
     N = points.shape[1]
     M = board.shape[0]
@@ -203,12 +204,19 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
         if log:
             print(epoch, loss)
         
-        loss.backward(torch.Tensor([B,1]))
+        if return_loss:
+            losses.append(loss)
+        
+
+        loss.backward(torch.tensor([1]*B))
         optim.step()
         
         if constrains is not None:
             param.data = constrains(param)
 
+    if return_loss:
+        return param, losses
+    
     return param
     
     

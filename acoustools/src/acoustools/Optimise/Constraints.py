@@ -7,3 +7,6 @@ import torch
 
 def constrain_phase_only(phases, **params):
     return phases / torch.abs(phases)
+
+def constrant_normalise_amplitude(phases, **params):
+    return phases / torch.max(torch.abs(phases))

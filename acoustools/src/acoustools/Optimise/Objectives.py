@@ -35,4 +35,22 @@ def gorkov_trapping_stiffness_objective(transducer_phases, points, board, target
     return torch.sum(U + w*(torch.mean(U) - U)**2,dim=1).squeeze_(1)
 
 
+def pressure_abs_gorkov_trapping_stiffness_objective(transducer_phases, points, board, targets, **objective_params):
+    Ul = gorkov_trapping_stiffness_objective(transducer_phases, points, board, targets, **objective_params)
+    pl = propagate_abs_sum_objective(transducer_phases, points, board, targets, **objective_params)
 
+    alpha = objective_params["alpha"] if "alpha" in objective_params else 1
+
+    return Ul + alpha*pl
+
+def target_pressure_mse_objective(transducer_phases, points, board, targets, **objective_params):
+    p = propagate_abs(transducer_phases, points)
+    l = torch.sum((p-targets)**2,dim=1)
+    return l
+
+def target_gorkov_mse_objective(transducer_phases, points, board, targets, **objective_params):
+    t2 = add_lev_sig(transducer_phases)
+    axis = objective_params["axis"] if "axis" in objective_params else "XYZ"
+    U = gorkov_analytical(t2, points, board, axis)
+    l = torch.sum((U-targets)**2,dim=1).squeeze_(1)
+    return l
