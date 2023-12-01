@@ -7,3 +7,6 @@ import acoustools.BEM
 import acoustools.Gorkov
 import acoustools.Visualiser
 from acoustools.Constants import *
+
+import acoustools.Optimise.Objectives 
+import acoustools.Optimise.Constraints 
