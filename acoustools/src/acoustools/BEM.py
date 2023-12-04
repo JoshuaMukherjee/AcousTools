@@ -18,8 +18,8 @@ def scatterer_file_name(scatterer,board):
     f_name = f_name + "".join(bounds) +"--" + "-".join(rots) +"--" + str(M)
     return f_name
 
-def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,dz=0, rotx=0, roty=0, rotz=0):
-    scatterer = vedo.load(path)
+def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,dz=0, rotx=0, roty=0, rotz=0, root_path=""):
+    scatterer = vedo.load(root_path+path)
     if compute_areas: scatterer.compute_cell_size()
     if compute_normals: scatterer.compute_normals()
     scatterer.metadata["rotX"] = 0
@@ -37,7 +37,7 @@ def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,d
 
     return scatterer
 
-def load_multiple_scatterers(paths,board,  compute_areas = True, compute_normals=True, dxs=[],dys=[],dzs=[], rotxs=[], rotys=[], rotzs=[]):
+def load_multiple_scatterers(paths,board,  compute_areas = True, compute_normals=True, dxs=[],dys=[],dzs=[], rotxs=[], rotys=[], rotzs=[], root_path=""):
     dxs += [0] * (len(paths) - len(dxs))
     dys += [0] * (len(paths) - len(dys))
     dzs += [0] * (len(paths) - len(dzs))
@@ -49,7 +49,7 @@ def load_multiple_scatterers(paths,board,  compute_areas = True, compute_normals
     scatterers = []
     names= []
     for i,path in enumerate(paths):
-        scatterer = load_scatterer(path, compute_areas, compute_normals, dxs[i],dys[i],dzs[i],rotxs[i],rotys[i],rotzs[i])
+        scatterer = load_scatterer(path, compute_areas, compute_normals, dxs[i],dys[i],dzs[i],rotxs[i],rotys[i],rotzs[i],root_path)
         f_name = scatterer_file_name(scatterer, board)
         scatterers.append(scatterer)
         names.append(f_name)
@@ -89,6 +89,41 @@ def plot_plane(connections):
     plt.xlim((-0.06,0.06))
     plt.ylim((-0.06,0.06))
     plt.show()
+
+def get_normals_as_points(*scatterers, permute_to_points=True):
+    norm_list = []
+    for scatterer in scatterers:
+        norm =  torch.tensor(scatterer.cell_normals).to(device)
+
+        if permute_to_points:
+            norm = torch.permute(norm,(1,0))
+        
+        norm_list.append(norm.to(torch.complex64))
+    
+    return torch.stack(norm_list)
+
+def get_centres_as_points(*scatterers, permute_to_points=True):
+    centre_list = []
+    for scatterer in scatterers:
+        centres =  torch.tensor(scatterer.cell_centers).to(device)
+
+        if permute_to_points:
+            centres = torch.permute(centres,(1,0))
+        
+        centre_list.append(centres.to(torch.complex64))
+    
+    return torch.stack(centre_list)
+
+def get_areas(*scatterers):
+    area_list = []
+    for scatterer in scatterers:
+        area_list.append(torch.Tensor(scatterer.celldata["Area"]).to(device))
+    
+    return torch.stack(area_list)
+
+def get_weight(scatterer, density, g=9.81):
+    mass = scatterer.volume() * density
+    return g * mass
 
 def translate(scatterer, dx=0,dy=0,dz=0):
     scatterer.shift(np.array([dx,dy,dz]))

@@ -180,6 +180,27 @@ def get_force_axis(activations, points,board=TRANSDUCERS, axis=2):
 
     return force
 
+def force_mesh(activations, points, norms, areas, board):
+    p = propagate(activations,points,board)
+    pressure = torch.abs(p)**2
+    
+    Ax, Ay, Az = forward_model_grad(points, board)
+    px = (Ax@activations).squeeze_(2).unsqueeze_(0)
+    py = (Ay@activations).squeeze_(2).unsqueeze_(0)
+    pz = (Az@activations).squeeze_(2).unsqueeze_(0)
+
+    grad = torch.cat((px,py,pz),dim=1)
+    grad_norm = torch.norm(grad,2,dim=1)**2
+    
+    k1 = 1/ (2*c.p_0*(c.c_0**2))
+    k2 = 1/ (c.k**2)
+
+
+    force = (k1 * (pressure * norms - k2*grad_norm*norms)) * areas
+    
+    return force
+
+
 if __name__ == "__main__":
     from acoustools.Utilities import create_points, forward_model
     from acoustools.Solvers import wgs_wrapper, wgs
