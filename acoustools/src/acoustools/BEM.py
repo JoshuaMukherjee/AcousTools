@@ -57,6 +57,11 @@ def load_multiple_scatterers(paths,board,  compute_areas = True, compute_normals
     combined.filename = "--".join(names)
     return combined
 
+def scale_to_radius(scatterer, radius):
+    x1,x2,_,_,_,_ = scatterer.bounds()
+    diameter_sphere = (x2 - x1)
+    scatterer.scale(radius/diameter_sphere)
+
 def get_plane(scatterer, origin=(0,0,0), normal=(1,0,0)):
     intersection = scatterer.clone().intersect_with_plane(origin,normal)
     return intersection
@@ -110,7 +115,7 @@ def get_centres_as_points(*scatterers, permute_to_points=True):
         if permute_to_points:
             centres = torch.permute(centres,(1,0))
         
-        centre_list.append(centres.to(torch.complex64))
+        centre_list.append(centres.to(torch.float32))
     
     return torch.stack(centre_list)
 
@@ -121,7 +126,7 @@ def get_areas(*scatterers):
     
     return torch.stack(area_list)
 
-def get_weight(scatterer, density, g=9.81):
+def get_weight(scatterer, density=Constants.p_p, g=9.81):
     mass = scatterer.volume() * density
     return g * mass
 

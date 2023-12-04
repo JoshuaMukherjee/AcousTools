@@ -195,6 +195,7 @@ def force_mesh(activations, points, norms, areas, board):
     k1 = 1/ (2*c.p_0*(c.c_0**2))
     k2 = 1/ (c.k**2)
 
+    pressure = torch.unsqueeze(pressure,1).expand(-1,3,-1)
 
     force = (k1 * (pressure * norms - k2*grad_norm*norms)) * areas
     

@@ -22,6 +22,7 @@ if __name__ == "__main__":
     norms = get_normals_as_points(scatterer)
 
     areas = get_areas(scatterer)
+    print(areas.shape)
 
     force = force_mesh(x,p,norms,areas,board)
 
