@@ -197,12 +197,12 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
         optim.zero_grad()       
 
         loss = objective(param, points, board, targets, **objective_params)
-        
-        if maximise:
-            loss *= -1
 
         if log:
             print(epoch, loss)
+
+        if maximise:
+            loss *= -1
         
         if return_loss:
             losses.append(loss)
