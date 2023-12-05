@@ -208,7 +208,7 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
             losses.append(loss)
         
 
-        loss.backward(torch.tensor([1]*B))
+        loss.backward(torch.tensor([1]*B).to(device))
         optim.step()
         
         if constrains is not None:
