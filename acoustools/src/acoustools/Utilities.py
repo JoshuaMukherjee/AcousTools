@@ -322,20 +322,14 @@ def convert_to_complex(matrix):
     matrix = torch.view_as_complex(matrix.contiguous())
     return torch.permute(matrix,(0,2,1))
 
-def convert_pats(board):
-    raise Exception("DO NOT USE")
-    board[512//2+1:,0] = torch.flipud(board[512//2+1:,0]);
-    board[:,1] = torch.flipud(board[:,1]);
-    board[:,2] = torch.flipud(board[:,2]);
-    return board
 
 def get_convert_indexes():
-     #Invert with _,INVIDX = torch.sort(IDX)
+    '''Invert with _,INVIDX = torch.sort(IDX)'''
     
     board = transducers()
-    board[512//2:,0] = torch.flipud(board[512//2:,0]);
-    board[:,1] = torch.flipud(board[:,1]);
-    board[:,2] = torch.flipud(board[:,2]);
+    board[512//2:,0] = torch.flipud(board[512//2:,0])
+    board[:,1] = torch.flipud(board[:,1])
+    board[:,2] = torch.flipud(board[:,2])
     indexes = []
 
     for t,row in enumerate(board):
