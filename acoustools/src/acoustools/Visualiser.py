@@ -104,10 +104,10 @@ def Visualise_single(A,B,C,activation,colour_function=propagate_abs, colour_func
         for j in range(res[1]):
             positions[:,:,i*res[0]+j] = A + step_x * i + step_y * j
     
-    print(positions.shape)
+    # print(positions.shape)
     # print(colour_function_args)
     field_val = colour_function(activation,positions,**colour_function_args)
-    print(field_val.shape)
+    # print(field_val.shape)
     result = torch.reshape(field_val, res)
 
     if flip:
@@ -192,9 +192,9 @@ def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colou
                 ys = [con[0][1]/AC + res[1]/2, con[1][1]/AC + res[1]/2] #Add res/2 as 0,0,0 in middle of real coordinates not corner of image
                 # print(xs,ys)
                 plt.plot(xs,ys,color = "blue")
-
         
-        plt.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
+        if len(points) >0:
+            plt.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
         
     plt.show()
 
