@@ -57,10 +57,10 @@ def load_multiple_scatterers(paths,board,  compute_areas = True, compute_normals
     combined.filename = "--".join(names)
     return combined
 
-def scale_to_radius(scatterer, radius):
+def scale_to_diameter(scatterer, diameter):
     x1,x2,y1,y2,z1,z2 = scatterer.bounds()
     diameter_sphere = x2 - x1
-    scatterer.scale(radius/diameter_sphere,reset=True)
+    scatterer.scale(diameter/diameter_sphere,reset=True)
 
 def get_plane(scatterer, origin=(0,0,0), normal=(1,0,0)):
     intersection = scatterer.clone().intersect_with_plane(origin,normal)
