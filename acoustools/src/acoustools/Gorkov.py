@@ -201,6 +201,17 @@ def force_mesh(activations, points, norms, areas, board):
     
     return force
 
+def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=None):
+    
+    if force is None:
+        force = force_mesh(activations, points, norms, areas, board)
+    
+    displacement = points - centre_of_mass
+
+    torque = torch.linalg.cross(displacement,force,dim=1)
+
+    return torch.real(torque)
+
 
 if __name__ == "__main__":
     from acoustools.Utilities import create_points, forward_model
