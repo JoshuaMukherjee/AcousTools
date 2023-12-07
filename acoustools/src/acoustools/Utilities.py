@@ -59,7 +59,7 @@ def forward_model(points, transducers = TRANSDUCERS):
     p = 1j*k*distance
     phase = torch.e**(p)
     
-    trans_matrix=2*8.02*torch.multiply(torch.divide(phase,distance),directivity)
+    trans_matrix=2*Constants.P_ref*torch.multiply(torch.divide(phase,distance),directivity)
     return trans_matrix
 
 def compute_gradients(points, transducers = TRANSDUCERS):
