@@ -180,16 +180,24 @@ def get_force_axis(activations, points,board=TRANSDUCERS, axis=2):
 
     return force
 
-def force_mesh(activations, points, norms, areas, board):
-    p = propagate(activations,points,board)
+def force_mesh(activations, points, norms, areas, board, grad_function=forward_model_grad, grad_function_args={},F=None, Ax=None, Ay=None,Az=None):
+    
+    p = propagate(activations,points,board,A=F)
     pressure = torch.abs(p)**2
     
-    Ax, Ay, Az = forward_model_grad(points, board)
+    if Ax is None or Ay is None or Az is None:
+        Ax, Ay, Az = grad_function(points=points, transducers=board, **grad_function_args)
+    
     px = (Ax@activations).squeeze_(2).unsqueeze_(0)
     py = (Ay@activations).squeeze_(2).unsqueeze_(0)
     pz = (Az@activations).squeeze_(2).unsqueeze_(0)
 
-    grad = torch.cat((px,py,pz),dim=1)
+    px[px.isnan()] = 0
+    py[py.isnan()] = 0
+    pz[pz.isnan()] = 0
+
+
+    grad = torch.cat((px,py,pz),dim=1).to(torch.complex128)
     grad_norm = torch.norm(grad,2,dim=1)**2
     
     k1 = 1/ (2*c.p_0*(c.c_0**2))
@@ -197,16 +205,21 @@ def force_mesh(activations, points, norms, areas, board):
 
     pressure = torch.unsqueeze(pressure,1).expand(-1,3,-1)
 
-    force = (k1 * (pressure * norms - k2*grad_norm*norms)) * areas
-    
-    return force
 
-def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=None):
+    force = (k1 * (pressure * norms - k2*grad_norm*norms)) * areas
+
+
+    return torch.real(force)
+
+def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=None, grad_function=forward_model_grad,grad_function_args={}):
     
     if force is None:
-        force = force_mesh(activations, points, norms, areas, board)
+        force = force_mesh(activations, points, norms, areas, board,grad_function,grad_function_args)
     
+
     displacement = points - centre_of_mass
+    displacement = displacement.to(torch.float64)
+
 
     torque = torch.linalg.cross(displacement,force,dim=1)
 

@@ -94,6 +94,53 @@ def compute_H(scatterer, board):
 
     return H
 
+def grad_H(points, scatterer, transducers):
+    '''
+    Ignores `points` - for compatability with other gradient functions, takes centres of the scatterers
+    '''
+    centres = torch.tensor(scatterer.cell_centers).to(device).T.unsqueeze_(0)
+
+    M = centres.shape[2]
+
+    B = compute_bs(scatterer,transducers)
+    A = compute_A(scatterer)
+    A_inv = torch.inverse(A)
+    
+    Bx, By, Bz = forward_model_grad(centres, transducers)
+    Bx = Bx.to(torch.complex64)
+    By = By.to(torch.complex64)
+    Bz = Bz.to(torch.complex64)
+
+
+    Ax, Ay, Az = get_G_partial(centres,scatterer,transducers)
+    
+    Ax = (-1* Ax).to(torch.complex64)
+    Ay = (-1* Ay).to(torch.complex64)
+    Az = (-1* Az).to(torch.complex64)
+
+
+    eye = torch.eye(M).to(bool)
+    Ax[:,eye] = 0
+    Ay[:,eye] = 0
+    Az[:,eye] = 0
+
+    
+
+    A_inv_x = (-1*A_inv @ Ax @ A_inv).to(torch.complex64)
+    A_inv_y = (-1*A_inv @ Ay @ A_inv).to(torch.complex64)
+    A_inv_z = (-1*A_inv @ Az @ A_inv).to(torch.complex64)
+
+
+    Hx = (B.mT@A_inv_x).mT + (A_inv@Bx)
+    Hy = (B.mT@A_inv_y).mT + (A_inv@By)
+    Hz = (B.mT@A_inv_z).mT + (A_inv@By)
+
+
+
+    return Hx, Hy, Hz
+
+
+
 def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print_lines=False):
 
     if use_cache_H:
@@ -102,9 +149,9 @@ def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print
         f_name = path+"/BEMCache/"  +  f_name + ".bin"
 
         try:
-            if print_lines: print("Trying to load H...")
+            if print_lines: print("Trying to load H at", f_name ,"...")
             H = pickle.load(open(f_name,"rb")).to(device)
-        except FileNotFoundError:
+        except FileNotFoundError: 
             if print_lines: print("Not found, computing H...")
             H = compute_H(scatterer,board)
             f = open(f_name,"wb")
@@ -207,26 +254,32 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
     else:
         return Ga[:,:,:,0], Ga[:,:,:,1], Ga[:,:,:,2]
 
-def BEM_forward_model_grad(points, scatterer, board=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None, return_components=False,path="Media"):
+def BEM_forward_model_grad(points, scatterer, transducers=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None, return_components=False,path="Media"):
     B = points.shape[0]
     if H is None:
-        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines)
+        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines)
     
-    Fx, Fy, Fz  = forward_model_grad(points, board)
-    Gx, Gy, Gz = get_G_partial(points, scatterer, board)
-    
-    Gx = Gx.to(torch.complex64)
-    Gy = Gy.to(torch.complex64)
-    Gz = Gz.to(torch.complex64)
+    Fx, Fy, Fz  = forward_model_grad(points, transducers)
+    Gx, Gy, Gz = get_G_partial(points, scatterer, transducers)
 
-    H = H.expand(B, -1, -1)
+
+    # Gx[Gx.isnan()] = 0
+    # Gy[Gy.isnan()] = 0
+    # Gz[Gz.isnan()] = 0
+
+    Fx = Fx.to(torch.complex128)
+    Fy = Fy.to(torch.complex128)
+    Fz = Fz.to(torch.complex128)
+
+    H = H.expand(B, -1, -1).to(torch.complex128)
 
     Ex = Fx + Gx@H
     Ey = Fy + Gy@H
     Ez = Fz + Gz@H
 
+
     if return_components:
-        return Ex.to(torch.complex64), Ey.to(torch.complex64), Ez.to(torch.complex64), Fx, Fy, Fz, Gx, Gy, Gz, H, 
+        return Ex.to(torch.complex64), Ey.to(torch.complex64), Ez.to(torch.complex64), Fx, Fy, Fz, Gx, Gy, Gz, H
     else:
         return Ex.to(torch.complex64), Ey.to(torch.complex64), Ez.to(torch.complex64)
     
