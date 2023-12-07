@@ -32,8 +32,9 @@ def wgs_batch(A, b, iterations):
                     
     return y, p, x
 
-def wgs_wrapper(points,iter = 200, board = TRANSDUCERS):
-    A = forward_model_batched(points, board)
+def wgs_wrapper(points,iter = 200, board = TRANSDUCERS, A = None):
+    if A is None:
+        A = forward_model_batched(points, board)
     _,_,act = wgs_batch(A,torch.ones(points.shape[2],1).to(device)+0j,iter)
     return act
 
@@ -199,7 +200,7 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
         loss = objective(param, points, board, targets, **objective_params)
 
         if log:
-            print(epoch, loss)
+            print(epoch, loss.data)
 
         if maximise:
             loss *= -1
@@ -207,7 +208,6 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
         if return_loss:
             losses.append(loss)
         
-
         loss.backward(torch.tensor([1]*B).to(device))
         optim.step()
         
