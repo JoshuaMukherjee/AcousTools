@@ -115,7 +115,7 @@ def get_centre_of_mass_as_points(*scatterers, permute_to_points=True):
         
         centres_list.append(centre_of_mass.to(torch.complex64))
     
-    return torch.stack(centres_list)
+    return torch.real(torch.stack(centres_list))
 
 
 def get_centres_as_points(*scatterers, permute_to_points=True):
@@ -154,9 +154,3 @@ def rotate(scatterer, axis, rot):
     scatterer.rotate(rot, axis)
 
 
-def filter_transducers_forward_model(points,board,F=None):
-    if F is None:
-        F = forward_model_batched(points,board)
-    
-    for transducer in board:
-        print(transducer)
