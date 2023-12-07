@@ -52,5 +52,6 @@ def target_gorkov_mse_objective(transducer_phases, points, board, targets, **obj
     t2 = add_lev_sig(transducer_phases)
     axis = objective_params["axis"] if "axis" in objective_params else "XYZ"
     U = gorkov_analytical(t2, points, board, axis)
-    l = torch.sum((U-targets)**2,dim=1).squeeze_(1)
+    l = torch.mean((U-targets)**2,dim=1).squeeze_(1)
+    
     return l
