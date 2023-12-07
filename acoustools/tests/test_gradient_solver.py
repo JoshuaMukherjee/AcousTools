@@ -79,8 +79,10 @@ if __name__ == "__main__":
         plt.scatter(xs,ys)
         plt.xlim((-1e-4, -1e-6))
         plt.ylim((-1e-4, 0))
+        plt.xlabel("Target")
+        plt.ylabel("Output")
         plt.plot([np.min(xs),np.max(xs)],[np.min(xs),np.max(xs)])
         plt.show()
 
-    test_pressure_target()
+    test_gorkov_target()
     
