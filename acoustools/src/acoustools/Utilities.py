@@ -323,7 +323,6 @@ def convert_to_complex(matrix):
     matrix = torch.view_as_complex(matrix.contiguous())
     return torch.permute(matrix,(0,2,1))
 
-
 def get_convert_indexes():
     '''Invert with _,INVIDX = torch.sort(IDX)'''
     
@@ -341,7 +340,6 @@ def get_convert_indexes():
 
 
     return indexes
-
 
 def create_points(N,B=1,x=None,y=None,z=None, min_pos=-0.06, max_pos = 0.06):
     points = torch.FloatTensor(B, 3, N).uniform_(min_pos,max_pos).to(device)
