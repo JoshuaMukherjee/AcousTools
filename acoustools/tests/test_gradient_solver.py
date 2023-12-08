@@ -66,9 +66,10 @@ if __name__ == "__main__":
         p = create_points(N,B)
         targets_u = generate_gorkov_targets(N,B,min_val=-9e-5,max_val=-1e-5)
         x5 = gradient_descent_solver(p,target_gorkov_mse_objective, 
-                                     constrains=constrain_phase_only, lr=1e4, iters=1000, targets=targets_u, log=True)
+                                     constrains=constrain_phase_only, lr=1e2, iters=800, targets=targets_u,log=True,
+                                     objective_params={"no_sig":True})
 
-        x5 = add_lev_sig(x5)
+        # x5 = add_lev_sig(x5)
         
         xs = targets_u.squeeze_().cpu().flatten().detach().numpy()
         ys = gorkov_analytical(x5, p).squeeze_().cpu().flatten().detach().numpy()
