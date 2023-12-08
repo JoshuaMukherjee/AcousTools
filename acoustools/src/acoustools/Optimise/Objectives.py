@@ -49,7 +49,10 @@ def target_pressure_mse_objective(transducer_phases, points, board, targets, **o
     return l
 
 def target_gorkov_mse_objective(transducer_phases, points, board, targets, **objective_params):
-    t2 = add_lev_sig(transducer_phases)
+    if "no_sig" not in objective_params:
+        t2 = add_lev_sig(transducer_phases)
+    else:
+        t2 = transducer_phases
     axis = objective_params["axis"] if "axis" in objective_params else "XYZ"
     U = gorkov_analytical(t2, points, board, axis)
     l = torch.mean((U-targets)**2,dim=1).squeeze_(1)
