@@ -19,12 +19,14 @@ def scatterer_file_name(scatterer,board):
 def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,dz=0, rotx=0, roty=0, rotz=0, root_path=""):
     scatterer = vedo.load(root_path+path)
     if compute_areas: scatterer.compute_cell_size()
-    if compute_normals: scatterer.compute_normals()
+    if compute_normals: 
+        scatterer.compute_normals()
+
     scatterer.metadata["rotX"] = 0
     scatterer.metadata["rotY"] = 0
     scatterer.metadata["rotZ"] = 0
 
-    scatterer.filename = scatterer.filename.split("/")[1]
+    scatterer.filename = scatterer.filename.split("/")[-1]
 
     rotate(scatterer,(1,0,0),rotx)
     rotate(scatterer,(0,1,0),roty)
@@ -59,6 +61,7 @@ def scale_to_diameter(scatterer, diameter):
     x1,x2,y1,y2,z1,z2 = scatterer.bounds()
     diameter_sphere = x2 - x1
     scatterer.scale(diameter/diameter_sphere,reset=True)
+    scatterer.filename = scatterer.filename + str(diameter/diameter_sphere)
 
 def get_plane(scatterer, origin=(0,0,0), normal=(1,0,0)):
     intersection = scatterer.clone().intersect_with_plane(origin,normal)
@@ -154,3 +157,19 @@ def rotate(scatterer, axis, rot):
     scatterer.rotate(rot, axis)
 
 
+def downsample(scatterer, factor=2, n=None, method='quadric', boundaries=False, compute_areas=True, compute_normals=True):
+    scatterer_small =  scatterer.decimate(1/factor, n, method, boundaries)
+    
+    scatterer_small.metadata["rotX"] = scatterer.metadata["rotX"]
+    scatterer_small.metadata["rotY"] = scatterer.metadata["rotY"]
+    scatterer_small.metadata["rotZ"] = scatterer.metadata["rotZ"]
+
+    if compute_areas: scatterer_small.compute_cell_size()
+    if compute_normals: 
+        scatterer_small.compute_normals()
+
+    
+    scatterer_small.filename = scatterer.filename.split("/")[-1] + "-" + str(factor)
+
+
+    return scatterer_small
