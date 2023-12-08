@@ -177,7 +177,8 @@ def temporal_wgs(A, y, K,ref_in, ref_out,T_in,T_out):
 
 def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torch.optim.Adam, lr=0.01, 
                             objective_params={}, start=None, iters=200, 
-                            maximise=False, targets=None, constrains=None, log=False, return_loss=False):
+                            maximise=False, targets=None, constrains=None, log=False, return_loss=False,
+                            scheduler=None, scheduler_args=None):
     '''
     Solves phases using gradient descent\\
     `Objective` must take have an input of (`transducer_phases, points, board, targets, **objective_params`), `targets` may be `None` for unsupervised
@@ -193,6 +194,8 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
     # param = torch.nn.Parameter(start).to(device)
     param = start.requires_grad_()
     optim = optimiser([param],lr)
+    if scheduler is not None:
+        scheduler = scheduler(optim,**scheduler_args)
 
     for epoch in range(iters):
         optim.zero_grad()       
@@ -210,6 +213,8 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
         
         loss.backward(torch.tensor([1]*B).to(device))
         optim.step()
+        if scheduler is not None:
+            scheduler.step()
         
         if constrains is not None:
             param.data = constrains(param)
