@@ -20,5 +20,6 @@ k = 2*pi / wavelength
 '''Wavenumber of 40KHz sound'''
 radius=0.005 
 '''Radius of transducer'''
-P_ref = 8.02
+# P_ref = 8.02
+P_ref = 0.17*18
 '''Reference pressure for transducers'''
