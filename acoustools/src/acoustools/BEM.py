@@ -139,7 +139,29 @@ def grad_H(points, scatterer, transducers):
 
     return Hx, Hy, Hz
 
+def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path="Media", print_lines=False):
+    if use_cache_H_grad:
+        
+        f_name = scatterer_file_name(scatterer, board)
+        f_name = path+"/BEMCache/"  +  f_name +"_grad"+ ".bin"
 
+        try:
+            if print_lines: print("Trying to load H grads at", f_name ,"...")
+            Hx, Hy, Hz = pickle.load(open(f_name,"rb"))
+            Hx = Hx.to(device)
+            Hy = Hy.to(device)
+            Hz = Hz.to(device)
+        except FileNotFoundError: 
+            if print_lines: print("Not found, computing H...")
+            Hx, Hy, Hz = grad_H(None, transducers=board, **{"scatterer":scatterer })
+            f = open(f_name,"wb")
+            pickle.dump((Hx, Hy, Hz),f)
+            f.close()
+    else:
+        if print_lines: print("Computing H...")
+        Hx, Hy, Hz = grad_H(None, transducers=board, **{"scatterer":scatterer })
+
+    return Hx, Hy, Hz
 
 def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print_lines=False):
 
