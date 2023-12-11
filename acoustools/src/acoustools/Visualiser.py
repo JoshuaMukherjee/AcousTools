@@ -16,7 +16,7 @@ def get_point_pos(A,B,C, points, res=(200,200),flip=True):
     if points.shape[2] > 1:
         points = torch.split(points.squeeze_().T,1)
         points = [pt.squeeze_() for pt in points]
-    print(points)
+    # print(points)
 
     pts_norm = []
 
@@ -197,6 +197,47 @@ def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colou
             plt.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
         
     plt.show()
+
+def force_quiver(points, U,V,norm, ylims=None, xlims=None,log=False):
+
+    B = points.shape[0]
+    N = points.shape[2]
+    
+    # if len(points) > 0:
+    #     pts_pos = get_point_pos(A,B,C,points,res)
+    
+    mask  = ~(torch.tensor(norm).to(bool))
+    points = points[:,mask,:]
+    # points=torch.reshape(points,(B,2,-1))
+    
+
+    xs = points[:,0,:].cpu().detach().numpy()[0]
+    ys = points[:,1,:].cpu().detach().numpy()[0]
+
+
+    if log:
+        U = torch.sign(U) * torch.log(torch.abs(U))   
+        V = torch.sign(V) * torch.log(torch.abs(V))   
+    
+
+    plt.quiver(xs, ys, U.cpu().detach().numpy(),V.cpu().detach().numpy())
+    plt.axis('equal')
+
+
+    if ylims is not None:
+        plt.ylim(ylims[0],ylims[1])
+    
+    if xlims is not None:
+        plt.xlim(xlims[0],xlims[1])
+    
+
+    plt.show()
+
+
+
+
+
+
 
 if __name__ == "__main__":
     # A = torch.tensor((-0.06, 0.06, 0))
