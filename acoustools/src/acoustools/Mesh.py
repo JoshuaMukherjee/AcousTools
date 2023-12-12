@@ -8,12 +8,16 @@ import numpy as np
 
 def scatterer_file_name(scatterer,board):
     M = board.shape[0]
+    # print(torch.sign(board[:,2]))
+    top = "TOP" if 1 in torch.sign(board[:,2]) else ""
+    bottom = "BOTTOM" if -1 in torch.sign(board[:,2]) else ""
+    # print(top,bottom)
     f_name = scatterer.filename 
     bounds = [str(round(i,2)) for i in scatterer.bounds()]
     rots = str(scatterer.metadata["rotX"][0]) + str(scatterer.metadata["rotY"][0]) + str(scatterer.metadata["rotZ"][0])
     # if "\\" in f_name:
         # f_name = f_name.split("/")[1].split(".")[0]
-    f_name = f_name + "".join(bounds) +"--" + "-".join(rots) +"--" + str(M)
+    f_name = f_name + "".join(bounds) +"--" + "-".join(rots) +"--" + str(M) + "-" + top + bottom
     return f_name
 
 def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,dz=0, rotx=0, roty=0, rotz=0, root_path=""):
@@ -169,7 +173,7 @@ def downsample(scatterer, factor=2, n=None, method='quadric', boundaries=False, 
         scatterer_small.compute_normals()
 
     
-    scatterer_small.filename = scatterer.filename.split("/")[-1] + "-" + str(factor)
+    scatterer_small.filename = scatterer.filename.split("/")[-1] + "-scale-" + str(factor)
 
 
     return scatterer_small
