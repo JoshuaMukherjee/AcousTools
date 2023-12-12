@@ -135,7 +135,10 @@ def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colou
             results.append(result)
         
             if add_lines_functions is not None:
-                lines.append(add_lines_functions[i](**add_line_args[i]))
+                if add_lines_functions[i] is not None:
+                    lines.append(add_lines_functions[i](**add_line_args[i]))
+                else:
+                    lines.append(None)
     
     else:
         for i,mat in enumerate(matricies):
@@ -144,7 +147,10 @@ def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colou
             results.append(result)
         
             if add_lines_functions is not None:
-                lines.append(add_lines_functions[i](**add_line_args[i]))
+                if add_lines_functions[i] is not None:
+                    lines.append(add_lines_functions[i](**add_line_args[i]))
+                else:
+                    lines.append(None)
 
 
     for i in range(len(results)):
@@ -187,11 +193,12 @@ def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colou
             AC = AC[AC!=0] / res[1]
             # AC = AC / torch.abs(AC)
             # print(AB,AC)
-            for con in lines[i]:
-                xs = [con[0][0]/AB + res[0]/2, con[1][0]/AB + res[0]/2] #Convert real coordinates to pixels - number of steps in each direction
-                ys = [con[0][1]/AC + res[1]/2, con[1][1]/AC + res[1]/2] #Add res/2 as 0,0,0 in middle of real coordinates not corner of image
-                # print(xs,ys)
-                plt.plot(xs,ys,color = "blue")
+            if lines[i] is not None:
+                for con in lines[i]:
+                    xs = [con[0][0]/AB + res[0]/2, con[1][0]/AB + res[0]/2] #Convert real coordinates to pixels - number of steps in each direction
+                    ys = [con[0][1]/AC + res[1]/2, con[1][1]/AC + res[1]/2] #Add res/2 as 0,0,0 in middle of real coordinates not corner of image
+                    # print(xs,ys)
+                    plt.plot(xs,ys,color = "blue")
         
         if len(points) >0:
             plt.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
