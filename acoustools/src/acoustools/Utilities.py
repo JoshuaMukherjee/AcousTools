@@ -381,6 +381,29 @@ def generate_pressure_targets(N,B=1, max_val=10000, min_val=7000):
 def return_matrix(x,y,mat=None):
     return mat
 
+def write_to_file(activations,fname,num_frames, num_transducers=512, flip=True):
+    
+    row = torch.angle(activations).squeeze_()
+    
+    if flip:
+        FLIP_INDEXES = get_convert_indexes()
+        row = row[FLIP_INDEXES]
+        
+
+    output_f = open(fname,"w")
+    output_f.write(str(num_frames)+","+str(num_transducers)+"\n")
+    for i,phase in enumerate(row):
+                output_f.write(str(phase.item()))
+                if i < num_transducers-1:
+                    output_f.write(",")
+                else:
+                    output_f.write("\n")
+
+    output_f.close()
+
+
+
+
 if __name__ == "__main__":
     from acoustools.Solvers import wgs,wgs_batch
     from acoustools.Gorkov import gorkov_fin_diff, gorkov_analytical
