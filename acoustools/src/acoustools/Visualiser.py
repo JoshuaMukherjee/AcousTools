@@ -205,7 +205,7 @@ def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colou
         
     plt.show()
 
-def force_quiver(points, U,V,norm, ylims=None, xlims=None,log=False):
+def force_quiver(points, U,V,norm, ylims=None, xlims=None,log=False,show=True,colour=None, reciprocal = False):
 
     B = points.shape[0]
     N = points.shape[2]
@@ -223,11 +223,15 @@ def force_quiver(points, U,V,norm, ylims=None, xlims=None,log=False):
 
 
     if log:
-        U = torch.sign(U) * torch.log(torch.abs(U))   
-        V = torch.sign(V) * torch.log(torch.abs(V))   
+        U = torch.sign(U) * torch.abs(torch.log(torch.abs(U)))   
+        V = torch.sign(V) * torch.abs(torch.log(torch.abs(V))) 
+    
+    if reciprocal:
+        U = 1/U
+        V = 1/V
     
 
-    plt.quiver(xs, ys, U.cpu().detach().numpy(),V.cpu().detach().numpy())
+    plt.quiver(xs, ys, U.cpu().detach().numpy(),V.cpu().detach().numpy(),color = colour)
     plt.axis('equal')
 
 
@@ -237,8 +241,9 @@ def force_quiver(points, U,V,norm, ylims=None, xlims=None,log=False):
     if xlims is not None:
         plt.xlim(xlims[0],xlims[1])
     
-
-    plt.show()
+    if show:
+        plt.show()
+    
 
 
 
