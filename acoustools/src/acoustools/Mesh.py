@@ -69,6 +69,7 @@ def scale_to_diameter(scatterer, diameter):
 
 def get_plane(scatterer, origin=(0,0,0), normal=(1,0,0)):
     intersection = scatterer.clone().intersect_with_plane(origin,normal)
+    intersection.filename = scatterer.filename + "plane" + str(origin)+str(normal)
     return intersection
 
 def get_lines_from_plane(scatterer, origin=(0,0,0), normal=(1,0,0)):
