@@ -189,7 +189,11 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
     N = points.shape[1]
     M = board.shape[0]
     if start is None:
-        start = torch.ones((B,M,1)).to(device) +0j
+        # start = torch.ones((B,M,1)).to(device) +0j
+        start = torch.e**(1j*torch.rand((B,M,1))*torch.pi)
+
+        start=start.to(device)
+    
     
     # param = torch.nn.Parameter(start).to(device)
     param = start.requires_grad_()
