@@ -199,6 +199,7 @@ def force_mesh(activations, points, norms, areas, board, grad_function=forward_m
 
     grad = torch.cat((px,py,pz),dim=1).to(torch.complex128)
     grad_norm = torch.norm(grad,2,dim=1)**2
+
     
     k1 = 1/ (2*c.p_0*(c.c_0**2))
     k2 = 1/ (c.k**2)
@@ -207,9 +208,12 @@ def force_mesh(activations, points, norms, areas, board, grad_function=forward_m
 
 
     force = (k1 * (pressure * norms - k2*grad_norm*norms)) * areas
+    force = torch.real(force)
+
+    # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))
 
 
-    return torch.real(force)
+    return force
 
 def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=None, grad_function=forward_model_grad,grad_function_args={}):
     
