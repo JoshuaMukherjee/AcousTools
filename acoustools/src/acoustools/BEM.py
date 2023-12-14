@@ -131,9 +131,13 @@ def grad_H(points, scatterer, transducers):
     A_inv_z = (-1*A_inv @ Az @ A_inv).to(torch.complex64)
 
 
-    Hx = (B.mT@A_inv_x).mT + (A_inv@Bx)
-    Hy = (B.mT@A_inv_y).mT + (A_inv@By)
-    Hz = (B.mT@A_inv_z).mT + (A_inv@By)
+    # Hx = (B.mT@A_inv_x).mT + (A_inv@Bx)
+    # Hy = (B.mT@A_inv_y).mT + (A_inv@By)
+    # Hz = (B.mT@A_inv_z).mT + (A_inv@By)
+
+    Hx = (A_inv_x@B) + (A_inv@Bx)
+    Hy = (A_inv_y@B) + (A_inv@By)
+    Hz = (A_inv_z@B) + (A_inv@By)
 
 
 
