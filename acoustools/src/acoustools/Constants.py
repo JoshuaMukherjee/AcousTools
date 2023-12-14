@@ -18,7 +18,8 @@ wavelength = 0.00865
 '''Wavelength of 40KHz sound'''
 k = 2*pi / wavelength
 '''Wavenumber of 40KHz sound'''
-radius=0.005 
+# radius=0.005 
+radius = 0.0045
 '''Radius of transducer'''
 # P_ref = 8.02 #old value
 P_ref = 0.17*18
