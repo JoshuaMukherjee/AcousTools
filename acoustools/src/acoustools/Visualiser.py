@@ -231,7 +231,7 @@ def force_quiver(points, U,V,norm, ylims=None, xlims=None,log=False,show=True,co
         V = 1/V
     
 
-    plt.quiver(xs, ys, U.cpu().detach().numpy(),V.cpu().detach().numpy(),color = colour)
+    plt.quiver(xs, ys, U.cpu().detach().numpy(),V.cpu().detach().numpy(),color = colour,linewidths=0.01)
     plt.axis('equal')
 
 
