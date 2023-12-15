@@ -5,6 +5,8 @@ import vedo, torch
 import matplotlib.pyplot as plt
 import numpy as np
 
+import hashlib
+
 
 def scatterer_file_name(scatterer,board):
     M = board.shape[0]
@@ -60,6 +62,18 @@ def load_multiple_scatterers(paths,board,  compute_areas = True, compute_normals
     combined = vedo.merge(scatterers)
     combined.filename = "--".join(names)
     return combined
+
+def merge_scatterers(*scatterers, flag=False):
+    names = []
+    for scatterer in scatterers:
+        names.append(scatterer.filename)
+    if flag:
+        combined = vedo.merge(scatterers, flag=True)
+    else:
+        combined = vedo.merge(scatterers)
+    combined.filename = "--".join(names)
+    return combined
+
 
 def scale_to_diameter(scatterer, diameter):
     x1,x2,y1,y2,z1,z2 = scatterer.bounds()
@@ -178,3 +192,33 @@ def downsample(scatterer, factor=2, n=None, method='quadric', boundaries=False, 
 
 
     return scatterer_small
+
+def get_mesh_subset_mask(scatter_a_centres, scatterer_b_centres):
+
+    print(scatter_a_centres.shape, scatterer_b_centres.shape)
+
+    B = scatter_a_centres.shape[0]
+    N_a = scatter_a_centres.shape[2]
+    N_b = scatterer_b_centres.shape[2]
+    a_cells_hash = torch.zeros((B,N_a))
+    b_cells_hash = torch.zeros((B,N_b))
+
+    m = hashlib.sha256()
+
+    for i,batch in enumerate(scatter_a_centres.mT):
+        for j, row in enumerate(batch):
+            # a_cells_hash[i,j] = hashlib.sha256("".join([str(x) for x in row.tolist()]).encode(),usedforsecurity=False).hexdigest()
+            a_cells_hash[i,j] = hash("".join([str(x) for x in row.tolist()]).encode())
+
+   
+    print(torch.numel(torch.unique(a_cells_hash)) )
+    
+    for i,batch in enumerate(scatterer_b_centres.mT):
+        for j, row in enumerate(batch):
+            # b_cells_hash[i,j] = hashlib.sha256("".join([str(x) for x in row.tolist()]).encode(),usedforsecurity=False).hexdigest()
+            b_cells_hash[i,j] = hash("".join([str(x) for x in row.tolist()]).encode())
+
+
+    mask = torch.isin(b_cells_hash,a_cells_hash)
+    print(mask)
+    return mask
