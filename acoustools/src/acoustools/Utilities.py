@@ -401,6 +401,26 @@ def write_to_file(activations,fname,num_frames, num_transducers=512, flip=True):
 
     output_f.close()
 
+def get_rows_in(a_centres, b_centres, expand = True):
+    '''
+    Takes two tensors and returns a mask for ```a_centres``` where a value of true means that row exists in ```b_centres``` \\
+    Asssumes in form 1x3xN -> returns mask over dim 1 
+
+    '''
+
+    M = a_centres.shape[2] #Number of total elements
+    R = b_centres.shape[2] #Number of elements in b
+
+    a_reshape = torch.unsqueeze(a_centres,3).expand(-1, -1, -1, R)
+    b_reshape = torch.unsqueeze(b_centres,2).expand(-1, -1, M, -1)
+
+    mask = b_reshape == a_reshape
+    mask = mask.all(dim=1).any(dim=2)
+
+    if expand:
+        return mask.unsqueeze(1).expand(-1,3,-1)
+    else:
+        return mask
 
 
 
