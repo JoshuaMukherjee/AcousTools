@@ -1,7 +1,7 @@
 import torch
 from acoustools.Utilities import device, propagate, propagate_abs, add_lev_sig, forward_model_batched, forward_model_grad, TRANSDUCERS, forward_model_second_derivative_unmixed,forward_model_second_derivative_mixed, return_matrix
 import acoustools.Constants as c
-
+from acoustools.BEM import grad_2_H, grad_H
 
 def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False):
 
@@ -212,7 +212,6 @@ def force_mesh(activations, points, norms, areas, board, grad_function=forward_m
 
     # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))
 
-
     return force
 
 def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=None, grad_function=forward_model_grad,grad_function_args={}):
@@ -228,6 +227,31 @@ def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=N
     torque = torch.linalg.cross(displacement,force,dim=1)
 
     return torch.real(torque)
+
+def force_mesh_derivative(activations, points, norms, areas, board, scatterer,Hx = None, Hy=None, Hz=None, Haa=None):
+    if Hx is None or Hy is None or Hz is None:
+        Hx, Hy, Hz, A, A_inv, Ax, Ay, Az = grad_H(points, scatterer, board, True)
+    else:
+        A, A_inv, Ax, Ay, Az = None
+
+    if Haa is None:
+        Haa = grad_2_H(points, scatterer, board, A, A_inv, Ax, Ay, Az)
+    
+    Ha = torch.stack([Hx,Hy,Hz],dim=1)
+
+    Pa = Ha@activations
+    Paa = Haa@activations
+
+    Pa = Pa.squeeze(3)
+    Paa = Paa.squeeze(3)
+
+    k1 = 1/ (2*c.p_0*(c.c_0**2))
+    k2 = 1/ (c.k**2)
+
+
+    Faa =areas * k1 * (Pa * norms - 2*k2*norms*Pa*Paa)
+
+    return Faa
 
 
 if __name__ == "__main__":

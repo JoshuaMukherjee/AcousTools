@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from acoustools.Utilities import device, TOP_BOARD, TRANSDUCERS, forward_model_batched, create_points, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed
 import acoustools.Constants as Constants
-from acoustools.Mesh import scatterer_file_name, load_scatterer, load_multiple_scatterers
+from acoustools.Mesh import scatterer_file_name, load_scatterer, load_multiple_scatterers, get_centres_as_points
 
 
 def compute_green_derivative(y,x,norms,B,N,M, return_components=False):
@@ -94,7 +94,7 @@ def compute_H(scatterer, board):
 
     return H
 
-def grad_H(points, scatterer, transducers):
+def grad_H(points, scatterer, transducers, return_components = False):
     '''
     Ignores `points` - for compatability with other gradient functions, takes centres of the scatterers
     '''
@@ -140,8 +140,137 @@ def grad_H(points, scatterer, transducers):
     Hz = (A_inv_z@B) + (A_inv@By)
 
 
+    if return_components:
+        return Hx, Hy, Hz, A, A_inv, Ax, Ay, Az
+    else:
+        return Hx, Hy, Hz
 
-    return Hx, Hy, Hz
+def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, Ay = None, Az = None):
+    '''
+    Ignores `points` - for compatability with other gradient functions, takes centres of the scatterers
+    '''
+
+    centres = get_centres_as_points(scatterer)
+    M = centres.shape[2]
+
+    B = compute_bs(scatterer,transducers)
+
+    Fx, Fy, Fz = forward_model_grad(centres, transducers)
+    Fx = Fx.to(torch.complex64)
+    Fy = Fy.to(torch.complex64)
+    Fz = Fz.to(torch.complex64)
+    Fa = torch.stack([Fx,Fy,Fz],dim=3)
+
+    Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(centres, transducers)
+    Faa = torch.stack([Fxx,Fyy,Fzz],dim=3)
+
+    F = forward_model_batched(centres, transducers)
+    
+    if A is None:
+        A = compute_A(scatterer)
+    
+    if A_inv is None:
+        A_inv = torch.inverse(A)
+    
+    if Ax is None or Ay is None or Az is None:
+        Ax, Ay, Az = get_G_partial(centres,scatterer,transducers)
+        eye = torch.eye(M).to(bool)
+        Ax[:,eye] = 0
+        Ay[:,eye] = 0
+        Az[:,eye] = 0
+        Ax = Ax.to(torch.complex64)
+        Ay = Ay.to(torch.complex64)
+        Az = Az.to(torch.complex64)
+    Aa = torch.stack([Ax,Ay,Az],dim=3)
+
+    
+    A_inv_x = (-1*A_inv @ Ax @ A_inv).to(torch.complex64)
+    A_inv_y = (-1*A_inv @ Ay @ A_inv).to(torch.complex64)
+    A_inv_z = (-1*A_inv @ Az @ A_inv).to(torch.complex64)
+
+
+    A_inv_a = torch.stack([A_inv_x,A_inv_y,A_inv_z],dim=3)
+
+    m = centres.permute(0,2,1)
+    m = m.expand((M,M,3))
+
+    m_prime = m.clone()
+    m_prime = m_prime.permute((1,0,2))
+
+    vecs = m - m_prime
+    vecs = vecs.unsqueeze(0)
+    
+
+    norms = torch.tensor(scatterer.cell_normals).to(device)
+    norms = norms.expand(1,M,-1,-1)
+
+    norm_norms = torch.norm(norms,2,dim=3)
+    vec_norms = torch.norm(vecs,2,dim=3)
+    vec_norms_cube = vec_norms**3
+    vec_norms_five = vec_norms**5
+
+    distance = torch.sqrt(torch.sum(vecs**2,dim=3))
+    vecs_square = vecs **2
+    distance_exp = torch.unsqueeze(distance,3)
+    distance_exp = distance_exp.expand(-1,-1,-1,3)
+    
+    distance_exp_cube = distance_exp**3
+
+    distaa = torch.zeros_like(distance_exp)
+    distaa[:,:,:,0] = (vecs_square[:,:,:,1] + vecs_square[:,:,:,2]) 
+    distaa[:,:,:,1] = (vecs_square[:,:,:,0] + vecs_square[:,:,:,2]) 
+    distaa[:,:,:,2] = (vecs_square[:,:,:,1] + vecs_square[:,:,:,0])
+    distaa = distaa / distance_exp_cube
+
+    dista = vecs / distance_exp
+
+
+    Aaa = (-1 * torch.exp(1j*Constants.k * distance_exp) * (distance_exp*(1-1j*Constants.k*distance_exp))*distaa + dista*(Constants.k**2 * distance_exp**2 + 2*1j*Constants.k * distance_exp -2)) / (4*torch.pi * distance_exp_cube)
+    
+    Baa = (distance_exp * distaa - 2*dista**2) / distance_exp_cube
+
+    Caa = torch.zeros_like(distance_exp).to(device)
+
+    vec_dot_norm = vecs[:,:,:,0]*norms[:,:,:,0]+vecs[:,:,:,1]*norms[:,:,:,1]+vecs[:,:,:,2]*norms[:,:,:,2]
+
+    Caa[:,:,:,0] = ((( (3 * vecs[:,:,:,0]**2) / (vec_norms_five) - (1)/(vec_norms_cube))*(vec_dot_norm)) / norm_norms) - ((2*vecs[:,:,:,0]*norms[:,:,:,0]) / (norm_norms*vec_norms_cube**3))
+    Caa[:,:,:,1] = ((( (3 * vecs[:,:,:,1]**2) / (vec_norms_five) - (1)/(vec_norms_cube))*(vec_dot_norm)) / norm_norms) - ((2*vecs[:,:,:,1]*norms[:,:,:,1]) / (norm_norms*vec_norms_cube**3))
+    Caa[:,:,:,2] = ((( (3 * vecs[:,:,:,2]**2) / (vec_norms_five) - (1)/(vec_norms_cube))*(vec_dot_norm)) / norm_norms) - ((2*vecs[:,:,:,2]*norms[:,:,:,2]) / (norm_norms*vec_norms_cube**3))
+    
+    Gx, Gy, Gz, A_green, B_green, C_green, Aa_green, Ba_green, Ca_green = get_G_partial(centres, scatterer, transducers, return_components=True)
+
+    Gaa = 2*Ca_green*(B_green*Aa_green + A_green*Ba_green) + C_green*(B_green*Aaa + 2*Aa_green*Ba_green + A_green*Baa)+ A_green*B_green*Caa
+    Gaa = Gaa.to(torch.complex64)
+
+    areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
+    areas = torch.unsqueeze(areas,0)
+    areas = torch.unsqueeze(areas,0)
+    areas = torch.unsqueeze(areas,3)
+
+    Gaa = Gaa * areas
+    Gaa = torch.nan_to_num(Gaa)
+    
+    A_inv_a = A_inv_a.permute(0,3,2,1)
+    Fa = Fa.permute(0,3,1,2)
+
+    A_inv = A_inv.unsqueeze(1).expand(-1,3,-1,-1)
+    Faa = Faa.permute(0,3,1,2)
+
+    Fa = Fa.to(torch.complex64)
+    Faa = Faa.to(torch.complex64)
+
+    Gaa = Gaa.permute(0,3,2,1)
+    Aa = Aa.permute(0,3,2,1)
+    Aa = Aa.to(torch.complex64)
+
+    X1 = A_inv_a @ Fa + A_inv @ Faa
+    X2 = (A_inv @ (Aa @ A_inv @ Aa - Gaa)@A_inv) @ F
+    X3 = A_inv_a@Fa
+
+
+    Haa = X1 + X2 + X3
+    
+    return Haa
 
 def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path="Media", print_lines=False):
     if use_cache_H_grad:
