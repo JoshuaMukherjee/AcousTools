@@ -1,7 +1,7 @@
 import torch
 from acoustools.Utilities import device, propagate, propagate_abs, add_lev_sig, forward_model_batched, forward_model_grad, TRANSDUCERS, forward_model_second_derivative_unmixed,forward_model_second_derivative_mixed, return_matrix
 import acoustools.Constants as c
-from acoustools.BEM import grad_2_H, grad_H
+from acoustools.BEM import grad_2_H, grad_H, get_cache_or_compute_H, get_cache_or_compute_H_gradients
 from acoustools.Mesh import translate, get_centre_of_mass_as_points, get_centres_as_points, get_normals_as_points, get_areas
 
 def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False):
@@ -254,27 +254,34 @@ def force_mesh_derivative(activations, points, norms, areas, board, scatterer,Hx
 
     return Faa
 
-def get_force_mesh_along_axis(start,end, activations, scatterer, board, grad_function=forward_model_grad, grad_function_args={},F=None, Ax=None, Ay=None,Az=None, steps=200):
+def get_force_mesh_along_axis(start,end, activations, scatterer, board, mask=None, grad_function=forward_model_grad, grad_function_args={},F=None, Ax=None, Ay=None,Az=None, steps=200, path="Media",print_lines=False):
 
     # if Ax is None or Ay is None or Az is None:
     #     Ax, Ay, Az = grad_function(points=points, transducers=board, **grad_function_args)
     direction = (end - start) / steps
     translate(scatterer, start[0].item(), start[1].item(), start[2].item())
 
+    points = get_centres_as_points(scatterer)
+    if mask is None:
+        mask = torch.ones(points.shape[2]).to(bool)
+
     Fxs = []
     Fys = []
     Fzs = []
 
     for i in range(steps+1):
-        d = i*direction
-        translate(scatterer, d[0].item(), d[1].item(), d[2].item())
+        translate(scatterer, direction[0].item(), direction[1].item(), direction[2].item())
         points = get_centres_as_points(scatterer)
         areas = get_areas(scatterer)
         norms = get_normals_as_points(scatterer)
+        
 
-        force = force_mesh(activations, points, norms, areas, board, grad_function, grad_function_args, F, Ax, Ay, Az)
+        H = get_cache_or_compute_H(scatterer, board, path=path, print_lines=print_lines)
+        Hx, Hy, Hz = get_cache_or_compute_H_gradients(scatterer, board, path=path, print_lines=print_lines)
 
-        force = torch.sum(force,dim=2).squeeze()
+        force = force_mesh(activations, points, norms, areas, board, grad_function, grad_function_args, H, Hx, Hy, Hz)
+
+        force = torch.sum(force[:,:,mask],dim=2).squeeze()
         Fxs.append(force[0])
         Fys.append(force[1])
         Fzs.append(force[2])
