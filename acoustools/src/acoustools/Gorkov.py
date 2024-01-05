@@ -2,6 +2,7 @@ import torch
 from acoustools.Utilities import device, propagate, propagate_abs, add_lev_sig, forward_model_batched, forward_model_grad, TRANSDUCERS, forward_model_second_derivative_unmixed,forward_model_second_derivative_mixed, return_matrix
 import acoustools.Constants as c
 from acoustools.BEM import grad_2_H, grad_H
+from acoustools.Mesh import translate, get_centre_of_mass_as_points, get_centres_as_points, get_normals_as_points, get_areas
 
 def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False):
 
@@ -232,7 +233,7 @@ def force_mesh_derivative(activations, points, norms, areas, board, scatterer,Hx
     if Hx is None or Hy is None or Hz is None:
         Hx, Hy, Hz, A, A_inv, Ax, Ay, Az = grad_H(points, scatterer, board, True)
     else:
-        A, A_inv, Ax, Ay, Az = None
+        A, A_inv, Ax, Ay, Az = None, None, None, None, None
 
     if Haa is None:
         Haa = grad_2_H(points, scatterer, board, A, A_inv, Ax, Ay, Az)
@@ -252,6 +253,33 @@ def force_mesh_derivative(activations, points, norms, areas, board, scatterer,Hx
     Faa =areas * k1 * (Pa * norms - 2*k2*norms*Pa*Paa)
 
     return Faa
+
+def get_force_mesh_along_axis(start,end, activations, scatterer, board, grad_function=forward_model_grad, grad_function_args={},F=None, Ax=None, Ay=None,Az=None, steps=200):
+
+    # if Ax is None or Ay is None or Az is None:
+    #     Ax, Ay, Az = grad_function(points=points, transducers=board, **grad_function_args)
+    direction = (end - start) / steps
+    translate(scatterer, start[0].item(), start[1].item(), start[2].item())
+
+    Fxs = []
+    Fys = []
+    Fzs = []
+
+    for i in range(steps+1):
+        d = i*direction
+        translate(scatterer, d[0].item(), d[1].item(), d[2].item())
+        points = get_centres_as_points(scatterer)
+        areas = get_areas(scatterer)
+        norms = get_normals_as_points(scatterer)
+
+        force = force_mesh(activations, points, norms, areas, board, grad_function, grad_function_args, F, Ax, Ay, Az)
+
+        force = torch.sum(force,dim=2).squeeze()
+        Fxs.append(force[0])
+        Fys.append(force[1])
+        Fzs.append(force[2])
+    
+    return Fxs, Fys, Fzs
 
 
 if __name__ == "__main__":
