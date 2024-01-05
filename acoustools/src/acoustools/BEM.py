@@ -224,7 +224,6 @@ def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, 
 
     dista = vecs / distance_exp
 
-
     Aaa = (-1 * torch.exp(1j*Constants.k * distance_exp) * (distance_exp*(1-1j*Constants.k*distance_exp))*distaa + dista*(Constants.k**2 * distance_exp**2 + 2*1j*Constants.k * distance_exp -2)) / (4*torch.pi * distance_exp_cube)
     
     Baa = (distance_exp * distaa - 2*dista**2) / distance_exp_cube
@@ -272,6 +271,30 @@ def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, 
     
     return Haa
 
+def get_cache_or_compute_H_2_gradients(scatterer,board,use_cache_H_grad=True, path="Media", print_lines=False):
+    if use_cache_H_grad:
+        
+        f_name = scatterer_file_name(scatterer, board)
+        f_name = path+"/BEMCache/"  +  f_name +"__2grad"+ ".bin"
+
+        try:
+            if print_lines: print("Trying to load H 2 grads at", f_name ,"...")
+            Haa = pickle.load(open(f_name,"rb"))
+            Haa = Haa.to(device)
+        except FileNotFoundError: 
+            if print_lines: print("Not found, computing H...")
+            Haa = grad_2_H(None, transducers=board, **{"scatterer":scatterer })
+            f = open(f_name,"wb")
+            pickle.dump(Haa,f)
+            f.close()
+    else:
+        if print_lines: print("Computing H grad 2...")
+        Haa = grad_2_H(None, transducers=board, **{"scatterer":scatterer })
+
+    return Haa
+
+
+
 def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path="Media", print_lines=False):
     if use_cache_H_grad:
         
@@ -291,7 +314,7 @@ def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path
             pickle.dump((Hx, Hy, Hz),f)
             f.close()
     else:
-        if print_lines: print("Computing H...")
+        if print_lines: print("Computing H grad...")
         Hx, Hy, Hz = grad_H(None, transducers=board, **{"scatterer":scatterer })
 
     return Hx, Hy, Hz
