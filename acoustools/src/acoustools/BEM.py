@@ -248,7 +248,10 @@ def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, 
     areas = torch.unsqueeze(areas,3)
 
     Gaa = Gaa * areas
-    Gaa = torch.nan_to_num(Gaa)
+    # Gaa = torch.nan_to_num(Gaa)
+    eye = torch.eye(Gaa.shape[2]).to(bool)
+    Gaa[:,eye] = 0
+    
     
     A_inv_a = A_inv_a.permute(0,3,2,1)
     Fa = Fa.permute(0,3,1,2)
