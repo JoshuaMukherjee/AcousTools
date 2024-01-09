@@ -16,8 +16,10 @@ def board_name(board):
 def scatterer_file_name(scatterer):
     # print(torch.sign(board[:,2]))
     # print(top,bottom)
-    f_name = scatterer.filename 
-    bounds = [str(round(i,2)) for i in scatterer.bounds()]
+    f_name = scatterer.metadata["FILE"][0]
+    bounds = [str(round(i,8)) for i in scatterer.bounds()]
+    # centre_of_mass = get_centre_of_mass_as_points(scatterer)
+    # centre_of_mass = str(centre_of_mass[0,0].item()) +  "-" + str(centre_of_mass[0,1].item()) + "-" + str(centre_of_mass[0,2].item())
     rots = str(scatterer.metadata["rotX"][0]) + str(scatterer.metadata["rotY"][0]) + str(scatterer.metadata["rotZ"][0])
     # if "\\" in f_name:
         # f_name = f_name.split("/")[1].split(".")[0]
@@ -36,13 +38,15 @@ def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,d
 
     scatterer.filename = scatterer.filename.split("/")[-1]
 
+    scatterer.metadata["FILE"] = scatterer.filename.split(".")[0]
+
+
     rotate(scatterer,(1,0,0),rotx)
     rotate(scatterer,(0,1,0),roty)
     rotate(scatterer,(0,0,1),rotz)
 
     translate(scatterer,dx,dy,dz)
 
-    
 
     return scatterer
 
@@ -56,25 +60,25 @@ def load_multiple_scatterers(paths,  compute_areas = True, compute_normals=True,
     rotzs += [0] * (len(paths) - len(rotzs))
 
     scatterers = []
-    names= []
     for i,path in enumerate(paths):
         scatterer = load_scatterer(path, compute_areas, compute_normals, dxs[i],dys[i],dzs[i],rotxs[i],rotys[i],rotzs[i],root_path)
-        f_name = scatterer_file_name(scatterer)
         scatterers.append(scatterer)
-        names.append(f_name)
-    combined = vedo.merge(scatterers)
-    combined.filename = "--".join(names)
+    combined = merge_scatterers(*scatterers)
     return combined
 
 def merge_scatterers(*scatterers, flag=False):
     names = []
+    Fnames = []
     for scatterer in scatterers:
-        names.append(scatterer.filename)
+        names.append(scatterer_file_name(scatterer))
+        Fnames.append(scatterer.metadata["FILE"][0])
+    
     if flag:
         combined = vedo.merge(scatterers, flag=True)
     else:
         combined = vedo.merge(scatterers)
-    combined.filename = "--".join(names)
+    combined.filename = "".join(names)
+    combined.metadata["FILE"] = "".join(Fnames)
     return combined
 
 
