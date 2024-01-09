@@ -8,7 +8,7 @@ from acoustools.Solvers import wgs_wrapper
 
 if __name__ == "__main__":
     wall_paths = ["../BEMMedia/flat-lam1.stl","../BEMMedia/flat-lam1.stl"]
-    walls = load_multiple_scatterers(wall_paths,dxs=[-0.06,0.06],rotys=[90,-90], board=TRANSDUCERS) #Make mesh at 0,0,0
+    walls = load_multiple_scatterers(wall_paths,dxs=[-0.06,0.06],rotys=[90,-90]) #Make mesh at 0,0,0
     
     ball_path = "../BEMMedia/Sphere-lam2.stl"
     ball = load_scatterer(ball_path,dy=-0.06) #Make mesh at 0,0,0

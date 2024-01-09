@@ -5,21 +5,23 @@ import vedo, torch
 import matplotlib.pyplot as plt
 import numpy as np
 
-import hashlib
 
-
-def scatterer_file_name(scatterer,board):
+def board_name(board):
     M = board.shape[0]
-    # print(torch.sign(board[:,2]))
+
     top = "TOP" if 1 in torch.sign(board[:,2]) else ""
     bottom = "BOTTOM" if -1 in torch.sign(board[:,2]) else ""
+    return top+bottom+str(M)
+
+def scatterer_file_name(scatterer):
+    # print(torch.sign(board[:,2]))
     # print(top,bottom)
     f_name = scatterer.filename 
     bounds = [str(round(i,2)) for i in scatterer.bounds()]
     rots = str(scatterer.metadata["rotX"][0]) + str(scatterer.metadata["rotY"][0]) + str(scatterer.metadata["rotZ"][0])
     # if "\\" in f_name:
         # f_name = f_name.split("/")[1].split(".")[0]
-    f_name = f_name + "".join(bounds) +"--" + "-".join(rots) +"--" + str(M) + "-" + top + bottom
+    f_name = f_name + "".join(bounds) +"--" + "-".join(rots)
     return f_name
 
 def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,dz=0, rotx=0, roty=0, rotz=0, root_path=""):
@@ -39,11 +41,12 @@ def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,d
     rotate(scatterer,(0,0,1),rotz)
 
     translate(scatterer,dx,dy,dz)
+
     
 
     return scatterer
 
-def load_multiple_scatterers(paths,board,  compute_areas = True, compute_normals=True, dxs=[],dys=[],dzs=[], rotxs=[], rotys=[], rotzs=[], root_path=""):
+def load_multiple_scatterers(paths,  compute_areas = True, compute_normals=True, dxs=[],dys=[],dzs=[], rotxs=[], rotys=[], rotzs=[], root_path=""):
     dxs += [0] * (len(paths) - len(dxs))
     dys += [0] * (len(paths) - len(dys))
     dzs += [0] * (len(paths) - len(dzs))
@@ -56,7 +59,7 @@ def load_multiple_scatterers(paths,board,  compute_areas = True, compute_normals
     names= []
     for i,path in enumerate(paths):
         scatterer = load_scatterer(path, compute_areas, compute_normals, dxs[i],dys[i],dzs[i],rotxs[i],rotys[i],rotzs[i],root_path)
-        f_name = scatterer_file_name(scatterer, board)
+        f_name = scatterer_file_name(scatterer)
         scatterers.append(scatterer)
         names.append(f_name)
     combined = vedo.merge(scatterers)
@@ -79,7 +82,8 @@ def scale_to_diameter(scatterer, diameter):
     x1,x2,y1,y2,z1,z2 = scatterer.bounds()
     diameter_sphere = x2 - x1
     scatterer.scale(diameter/diameter_sphere,reset=True)
-    scatterer.filename = scatterer.filename + str(diameter/diameter_sphere)
+    scatterer.filename = scatterer_file_name(scatterer)
+    
 
 def get_plane(scatterer, origin=(0,0,0), normal=(1,0,0)):
     intersection = scatterer.clone().intersect_with_plane(origin,normal)
@@ -165,6 +169,7 @@ def get_weight(scatterer, density=Constants.p_p, g=9.81):
 
 def translate(scatterer, dx=0,dy=0,dz=0):
     scatterer.shift(np.array([dx,dy,dz]))
+    scatterer.filename = scatterer_file_name(scatterer)
 
 def rotate(scatterer, axis, rot):
     if axis[0]:
@@ -174,6 +179,7 @@ def rotate(scatterer, axis, rot):
     if axis[2]:
         scatterer.metadata["rotZ"] = scatterer.metadata["rotZ"] + rot
     scatterer.rotate(rot, axis)
+    scatterer.filename = scatterer_file_name(scatterer)
 
 
 def downsample(scatterer, factor=2, n=None, method='quadric', boundaries=False, compute_areas=True, compute_normals=True):
@@ -187,8 +193,7 @@ def downsample(scatterer, factor=2, n=None, method='quadric', boundaries=False, 
     if compute_normals: 
         scatterer_small.compute_normals()
 
-    
-    scatterer_small.filename = scatterer.filename.split("/")[-1] + "-scale-" + str(factor)
+    scatterer_small.filename = scatterer_file_name(scatterer_small)  + "-scale-" + str(factor)
 
 
     return scatterer_small

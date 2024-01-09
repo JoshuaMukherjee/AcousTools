@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 
 from acoustools.Utilities import device, TOP_BOARD, TRANSDUCERS, forward_model_batched, create_points, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed
 import acoustools.Constants as Constants
-from acoustools.Mesh import scatterer_file_name, load_scatterer, load_multiple_scatterers, get_centres_as_points
+from acoustools.Mesh import scatterer_file_name, load_scatterer, load_multiple_scatterers, get_centres_as_points, board_name
 
+import hashlib
 
 def compute_green_derivative(y,x,norms,B,N,M, return_components=False):
     distance = torch.sqrt(torch.sum((x - y)**2,dim=3))
@@ -274,7 +275,8 @@ def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, 
 def get_cache_or_compute_H_2_gradients(scatterer,board,use_cache_H_grad=True, path="Media", print_lines=False):
     if use_cache_H_grad:
         
-        f_name = scatterer_file_name(scatterer, board)
+        f_name = scatterer_file_name(scatterer)+"--"+ board_name(board)
+        f_name = hashlib.md5(f_name.encode()).hexdigest()
         f_name = path+"/BEMCache/"  +  f_name +"__2grad"+ ".bin"
 
         try:
@@ -282,7 +284,7 @@ def get_cache_or_compute_H_2_gradients(scatterer,board,use_cache_H_grad=True, pa
             Haa = pickle.load(open(f_name,"rb"))
             Haa = Haa.to(device)
         except FileNotFoundError: 
-            if print_lines: print("Not found, computing H...")
+            if print_lines: print("Not found, computing H grad 2...")
             Haa = grad_2_H(None, transducers=board, **{"scatterer":scatterer })
             f = open(f_name,"wb")
             pickle.dump(Haa,f)
@@ -294,11 +296,11 @@ def get_cache_or_compute_H_2_gradients(scatterer,board,use_cache_H_grad=True, pa
     return Haa
 
 
-
 def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path="Media", print_lines=False):
     if use_cache_H_grad:
         
-        f_name = scatterer_file_name(scatterer, board)
+        f_name = scatterer_file_name(scatterer) +"--"+ board_name(board)
+        f_name = hashlib.md5(f_name.encode()).hexdigest()
         f_name = path+"/BEMCache/"  +  f_name +"_grad"+ ".bin"
 
         try:
@@ -308,13 +310,13 @@ def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path
             Hy = Hy.to(device)
             Hz = Hz.to(device)
         except FileNotFoundError: 
-            if print_lines: print("Not found, computing H...")
+            if print_lines: print("Not found, computing H Grads...")
             Hx, Hy, Hz = grad_H(None, transducers=board, **{"scatterer":scatterer })
             f = open(f_name,"wb")
             pickle.dump((Hx, Hy, Hz),f)
             f.close()
     else:
-        if print_lines: print("Computing H grad...")
+        if print_lines: print("Computing H Grad...")
         Hx, Hy, Hz = grad_H(None, transducers=board, **{"scatterer":scatterer })
 
     return Hx, Hy, Hz
@@ -323,7 +325,8 @@ def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print
 
     if use_cache_H:
         
-        f_name = scatterer_file_name(scatterer, board)
+        f_name = scatterer_file_name(scatterer)+"--"+ board_name(board)
+        f_name = hashlib.md5(f_name.encode()).hexdigest()
         f_name = path+"/BEMCache/"  +  f_name + ".bin"
 
         try:

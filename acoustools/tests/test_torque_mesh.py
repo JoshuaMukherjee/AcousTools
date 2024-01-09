@@ -10,7 +10,7 @@ if __name__ == "__main__":
     board = TRANSDUCERS
 
     paths = ["Sphere-lam1.stl"]
-    scatterer = load_multiple_scatterers(paths,board, root_path="../BEMMedia/")
+    scatterer = load_multiple_scatterers(paths, root_path="../BEMMedia/")
 
     p = get_centres_as_points(scatterer)
 
