@@ -209,7 +209,7 @@ def force_mesh(activations, points, norms, areas, board, grad_function=forward_m
 
 
     force = (k1 * (pressure * norms - k2*grad_norm*norms)) * areas
-    force = torch.real(force)
+    force = torch.real(force) #Im(F) == 0
 
     # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))
 
@@ -230,6 +230,7 @@ def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=N
     return torch.real(torque)
 
 def force_mesh_derivative(activations, points, norms, areas, board, scatterer,Hx = None, Hy=None, Hz=None, Haa=None):
+    print("Warning probably not correct...")
     if Hx is None or Hy is None or Hz is None:
         Hx, Hy, Hz, A, A_inv, Ax, Ay, Az = grad_H(points, scatterer, board, True)
     else:
