@@ -262,7 +262,6 @@ def get_force_mesh_along_axis(start,end, activations, scatterers, board, mask=No
     # if Ax is None or Ay is None or Az is None:
     #     Ax, Ay, Az = grad_function(points=points, transducers=board, **grad_function_args)
     direction = (end - start) / steps
-    print(direction)
 
     translate(scatterers[0], start[0].item(), start[1].item(), start[2].item())
     scatterer = merge_scatterers(*scatterers)
