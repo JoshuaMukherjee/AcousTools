@@ -255,7 +255,7 @@ def force_mesh_derivative(activations, points, norms, areas, board, scatterer,Hx
 
     return Faa
 
-def get_force_mesh_along_axis(start,end, activations, scatterers, board, mask=None, steps=200, path="Media",print_lines=False, use_cache=True):
+def get_force_mesh_along_axis(start,end, activations, scatterers, board, mask=None, steps=200, path="Media",print_lines=False, use_cache=True, Hs = None, Hxs=None, Hys=None, Hzs=None):
     '''
     First element in scatterers is the mesh to levitate, rest is considered reflectors
     '''
@@ -263,7 +263,7 @@ def get_force_mesh_along_axis(start,end, activations, scatterers, board, mask=No
     #     Ax, Ay, Az = grad_function(points=points, transducers=board, **grad_function_args)
     direction = (end - start) / steps
 
-    translate(scatterers[0], start[0].item(), start[1].item(), start[2].item())
+    translate(scatterers[0], start[0].item() - direction[0].item(), start[1].item() - direction[1].item(), start[2].item() - direction[2].item())
     scatterer = merge_scatterers(*scatterers)
 
     points = get_centres_as_points(scatterer)
@@ -278,6 +278,7 @@ def get_force_mesh_along_axis(start,end, activations, scatterers, board, mask=No
         if print_lines:
             print(i)
         
+        
         translate(scatterers[0], direction[0].item(), direction[1].item(), direction[2].item())
         scatterer = merge_scatterers(*scatterers)
 
@@ -285,8 +286,18 @@ def get_force_mesh_along_axis(start,end, activations, scatterers, board, mask=No
         areas = get_areas(scatterer)
         norms = get_normals_as_points(scatterer)
 
-        H = get_cache_or_compute_H(scatterer, board, path=path, print_lines=print_lines, use_cache_H=use_cache)
-        Hx, Hy, Hz = get_cache_or_compute_H_gradients(scatterer, board, path=path, print_lines=print_lines, use_cache_H_grad=use_cache)
+        if Hs is None:
+            H = get_cache_or_compute_H(scatterer, board, path=path, print_lines=print_lines, use_cache_H=use_cache)
+        else:
+            H = Hs[i]
+        
+        if Hxs is None or Hys is None or Hzs is None:
+            Hx, Hy, Hz = get_cache_or_compute_H_gradients(scatterer, board, path=path, print_lines=print_lines, use_cache_H_grad=use_cache)
+        else:
+            Hx = Hxs[i]
+            Hy = Hys[i]
+            Hz = Hzs[i]
+        
 
         force = force_mesh(activations, points, norms, areas, board, F=H, Ax=Hx, Ay=Hy, Az=Hz)
 
@@ -296,7 +307,6 @@ def get_force_mesh_along_axis(start,end, activations, scatterers, board, mask=No
         Fzs.append(force[2])
         
         # print(i, force[0].item(), force[1].item(),force[2].item())
-    
     return Fxs, Fys, Fzs
 
 
