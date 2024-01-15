@@ -278,7 +278,7 @@ def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, 
 def get_cache_or_compute_H_2_gradients(scatterer,board,use_cache_H_grad=True, path="Media", print_lines=False):
     if use_cache_H_grad:
         
-        f_name = scatterer_file_name(scatterer)+"--"+ board_name(board)
+        f_name = scatterer.filename+"--"+ board_name(board)
         f_name = hashlib.md5(f_name.encode()).hexdigest()
         f_name = path+"/BEMCache/"  +  f_name +"_2grad"+ ".bin"
 
@@ -327,7 +327,7 @@ def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print
 
     if use_cache_H:
         
-        f_name = scatterer_file_name(scatterer)+"--"+ board_name(board)
+        f_name = scatterer.filename+"--"+ board_name(board)
         f_name = hashlib.md5(f_name.encode()).hexdigest()
         f_name = path+"/BEMCache/"  +  f_name + ".bin"
 
