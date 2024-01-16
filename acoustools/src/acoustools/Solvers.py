@@ -2,6 +2,13 @@ from acoustools.Utilities import *
 import torch
 
 def wgs(A, b, K):
+    '''
+    unbatched WGS solver for transducer phases, better to use `wgs_batch` \\
+    `A` Forward model matrix to use \\ 
+    `b` initial guess - normally use `torch.ones(self.N,1).to(device)+0j`\\
+    `k` number of iterations to run for \\
+    returns (hologram image, point phases, hologram)
+    '''
     #Written by Giorgos Christopoulos 2022
     AT = torch.conj(A).T.to(device)
     b0 = b.to(device)
@@ -18,6 +25,13 @@ def wgs(A, b, K):
     return y, p, x
 
 def wgs_batch(A, b, iterations):
+    '''
+    batched WGS solver for transducer phases\\
+    `A` Forward model matrix to use \\ 
+    `b` initial guess - normally use `torch.ones(self.N,1).to(device)+0j`\\
+    `iterations` number of iterations to run for \\
+    returns (hologram image, point phases, hologram)
+    '''
     AT = torch.conj(A).mT.to(device)
     b0 = b.to(device)
     x = torch.ones(A.shape[2],1).to(device) + 0j
@@ -33,12 +47,29 @@ def wgs_batch(A, b, iterations):
     return y, p, x
 
 def wgs_wrapper(points,iter = 200, board = TRANSDUCERS, A = None):
+    '''
+    Simple WGS interface\\
+    Wrapper for wgs_batch, creates forward model within itself\\
+    `points` Points to use\\
+    `iter` Number of iterations for WGS, default:`200`\\
+    `board` The Transducer array, default two 16x16 arrays\\
+    returns hologram
+    '''
     if A is None:
         A = forward_model_batched(points, board)
     _,_,act = wgs_batch(A,torch.ones(points.shape[2],1).to(device)+0j,iter)
     return act
 
 def gspat(R,forward, backward, target, iterations):
+    '''
+    GS-PAT Solver for transducer phases\\
+    `R` R Matrix\\
+    `forward` forward propagation matrix\\
+    `backward` backward propagation matrix\\
+    `target` initial guess - can use `torch.ones(N,1).to(device)+0j`
+    `iterations` Number of iterations to use\\
+    returns (hologram, point activations)
+    '''
     #Written by Giorgos Christopoulos 2022
     field = target 
 
@@ -60,6 +91,11 @@ def gspat(R,forward, backward, target, iterations):
     return phase_hologram, points
 
 def gspat_wrapper(points):
+    '''
+    Wrapper for GSPAT Solver only needing points as input\\
+    `points` Target point positions\\
+    returns hologram
+    '''
     A = forward_model_batched(points)
     backward = torch.conj(A).mT
     R = A@backward
@@ -67,6 +103,11 @@ def gspat_wrapper(points):
     return phase_hologram
 
 def naive(points):
+    '''
+    Naive (backpropagation) algorithm for phase retrieval\\
+    `points` Target point positions\\
+    returns (point activations, point pressure)
+    '''
     activation = torch.ones(points.shape[1]) +0j
     activation = activation.to(device)
     forward = forward_model(points.T).to(device)
@@ -79,6 +120,12 @@ def naive(points):
     return out, pressure
 
 def naive_solver_batch(points,board=TRANSDUCERS):
+    '''
+    Batched naive (backpropagation) algorithm for phase retrieval\\
+    `points` Target point positions\\
+    `board` The Transducer array, default two 16x16 arrays\\
+    returns (point activations, hologram)
+    '''
     activation = torch.ones(points.shape[2],1) +0j
     activation = activation.to(device)
     forward = forward_model_batched(points,board)
@@ -90,6 +137,12 @@ def naive_solver_batch(points,board=TRANSDUCERS):
     return out, trans_phase
 
 def naive_solver(points,transd=TRANSDUCERS):
+    '''
+    Unbatched naive (backpropagation) algorithm for phase retrieval\\
+    `points` Target point positions\\
+    `board` The Transducer array, default two 16x16 arrays\\
+    returns (point activations, hologram)
+    '''
 
     activation = torch.ones(points.shape[1]) +0j
     activation = activation.to(device)
@@ -103,28 +156,31 @@ def naive_solver(points,transd=TRANSDUCERS):
     return out, trans_phase
 
 def naive_solver_wrapper(points):
+    '''
+    Wrapper for naive solver\\
+    `points` Target point positions\\
+    returns hologram
+    '''
     out,act = naive_solver_batch(points)
     return act
 
 def ph_thresh(z_last,z,threshold):
+    '''
+    Phase threshhold between two timesteps point phases, clamps phase changes above `threshold` to be `threshold`\\
+    `z_last` point activation at timestep t-1\\
+    `z` point activation at timestep t\\
+    `threshold` maximum allowed phase change\\
+    returns constrained point activations
+    '''
 
-    pi = torch.pi
     ph1 = torch.angle(z_last)
     ph2 = torch.angle(z)
     dph = ph2 - ph1
     
-    dph = torch.atan2(torch.sin(dph),torch.cos(dph))    
-    # print()
-    # dph[dph>pi] = dph[dph>pi] - 2*pi
-    # print((dph<-1*pi).any())
-    # dph[dph<-1*pi] = dph[dph<-1*pi] + 2*pi
-    # print((dph<-1*pi).any())
+    dph = torch.atan2(torch.sin(dph),torch.cos(dph)) 
     
     dph[dph>threshold] = threshold
     dph[dph<-1*threshold] = -1*threshold
-    
-    # dph = torch.clamp(dph, -1*threshold, threshold)
-    
     
     ph2 = ph1 + dph
     z = abs(z)*torch.exp(1j*ph2)
@@ -132,11 +188,24 @@ def ph_thresh(z_last,z,threshold):
     return z
 
 def soft(x,threshold):
+    '''
+    Soft threshold for a set of phase changes, will return the change - threshold if change > threshold else 0\\
+    `x` phase changes\\
+    `threshold` Maximum allowed hologram phase change\\
+    returns new phase changes
+    '''
     y = torch.max(torch.abs(x) - threshold,0).values
     y = y * torch.sign(x)
     return y
 
 def ph_soft(x_last,x,threshold):
+    '''
+    Soft thresholding for holograms \\
+    `x_last` Hologram from timestep t-1\\
+    `x` Hologram from timestep t \\
+    `threshold` Maximum allowed phase change\\
+    returns constrained hologram
+    '''
     pi = torch.pi
     ph1 = torch.angle(x_last)
     ph2 = torch.angle(x)
@@ -152,10 +221,19 @@ def ph_soft(x_last,x,threshold):
 
 def temporal_wgs(A, y, K,ref_in, ref_out,T_in,T_out):
     '''
-    Based off 
+    Based off `
     Giorgos Christopoulos, Lei Gao, Diego Martinez Plasencia, Marta Betcke, 
     Ryuji Hirayama, and Sriram Subramanian. 2023. 
-    Temporal acoustic point holography.(under submission) (2023)
+    Temporal acoustic point holography.(under submission) (2023)` \\
+    WGS solver for hologram where the phase change between frames is constrained\\
+    `A` Forward model  to use\\
+    `y` initial guess to use normally use `torch.ones(self.N,1).to(device)+0j`\\
+    `K` Number of iterations to use\\
+    `ref_in` Previous timesteps hologram\\
+    `ref_out` Previous timesteps point activations\\
+    `T_in` Hologram phase change threshold\\
+    `T_out` Point activations phase change threshold\\
+    returns (hologram image, point phases, hologram)
     '''
     #ref_out -> points
     #ref_in-> transducers
@@ -181,8 +259,23 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
                             scheduler=None, scheduler_args=None):
     '''
     Solves phases using gradient descent\\
-    `Objective` must take have an input of (`transducer_phases, points, board, targets, **objective_params`), `targets` may be `None` for unsupervised
-    '''
+    `points` Target point positions \\
+    `objective` Objective function - must take have an input of (`transducer_phases, points, board, targets, **objective_params`), `targets` may be `None` for unsupervised\\
+    `board` The Transducer array, default two 16x16 arrays\\
+    `optimiser` Optimiser to use (should be compatable with the interface from from `torch.optim`). Default: `torch.optim.Adam`\\
+    `lr` Learning Rate to use. Default `0.01`\\
+    `objective_params` Any parameters to be passed to `objective` as a dictionary of `{parameter_name:parameter_value}` pairs. Default: `{}`\\
+    `start` Initial guess. If None will default to a random initilsation of phases \\
+    `iters`: Number of optimisation Iterations. Default: 200\\
+    `maximise` Set to `True` to maximise the objective, else minimise. Default: `False`\\
+    `targets` Targets to optimise towards for supervised optimisation, unsupervised if set to `None`. Default `None`\\
+    `constrains` Constraints to apply to result \\
+    `log` If `True` prints the objective values at each step. Default: `False`\\
+    `return_loss`: If `True` save and return objective values for each step as well as the optimised result \\
+    `scheduler` Learning rate scheduler to use, if `None` no scheduler is used. Default: `None` \\
+    `scheduler_args`: Parameters to pass to `scheduler`\\
+    Returns optimised result and optionally the objective values (see `return_loss`)
+    ''' 
 
     losses = []
     B = points.shape[0]
