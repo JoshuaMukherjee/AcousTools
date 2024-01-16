@@ -208,7 +208,7 @@ def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colou
     else:
         return plt
 
-def force_quiver(points, U,V,norm, ylims=None, xlims=None,log=False,show=True,colour=None, reciprocal = False):
+def force_quiver(points, U,V,norm, ylims=None, xlims=None,log=False,show=True,colour=None, reciprocal = False, block=True):
 
     B = points.shape[0]
     N = points.shape[2]
@@ -245,7 +245,7 @@ def force_quiver(points, U,V,norm, ylims=None, xlims=None,log=False,show=True,co
         plt.xlim(xlims[0],xlims[1])
     
     if show:
-        plt.show()
+        plt.show(block=block)
     
 
 
