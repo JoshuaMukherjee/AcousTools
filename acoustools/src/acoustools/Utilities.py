@@ -2,12 +2,20 @@ import torch, math, sys
 import acoustools.Constants as Constants
 
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cuda' if torch.cuda.is_available() else 'cpu' 
+'''Constant storing device to use, `cuda` if cuda is available else cpu. \\ 
+Use -cpu when running python to force cpu use'''
 device = device if '-cpu' not in sys.argv else 'cpu'
 
 
-def create_board(N, z):  
-    #Written by Giorgos Christopoulos, 2022
+def create_board(N, z): 
+    '''
+    Create a single transducer array \\
+    `N` Number of transducers + 1 per side eg for 16 transducers `N=17`\\
+    `z` z-coordinate of board\\
+    Returns tensor of transducer positions\\
+    Written by Giorgos Christopoulos, 2022
+    '''
     pitch=0.0105
     grid_vec=pitch*(torch.arange(-N/2+1, N/2, 1)).to(device)
     x, y = torch.meshgrid(grid_vec,grid_vec,indexing="ij")
@@ -20,17 +28,34 @@ def create_board(N, z):
     return trans_pos
   
 def transducers():
-    #Written by Giorgos Christopoulos, 2022
+  '''
+  Returns the 'standard' transducer arrays with 2 16x16 boards at `z = +-234/2 `\\
+  Written by Giorgos Christopoulos, 2022
+  '''
   return torch.cat((create_board(17,.234/2),create_board(17,-.234/2)),axis=0).to(device)
 
 TRANSDUCERS = transducers()
+'''
+Static variable for `transducers()` result
+'''
 TOP_BOARD = create_board(17,.234/2)
+'''
+Static variable for a 16x16 array at `z=.234/2` - top board of a 2 array setup
+'''
 BOTTOM_BOARD = create_board(17,-.234/2)
-
+'''
+Static variable for a 16x16 array at `z=-.234/2` - bottom board of a 2 array setup
+'''
 
 def forward_model(points, transducers = TRANSDUCERS):
+    '''
+    Compute the piston model for acoustic wave propagation NOTE: Unbatched, use `forward_model_batched` for batched computation \\
+    `points` Point position to compute propagation to \\
+    `transducers` The Transducer array, default two 16x16 arrays \\
+    Returns forward propagation matrix \\
+    Written by Giorgos Christopoulos, 2022
+    '''
     
-    #Written by Giorgos Christopoulos, 2022
     m=points.size()[1]
     n=transducers.size()[0]
     k=2*math.pi/0.00865
@@ -63,6 +88,12 @@ def forward_model(points, transducers = TRANSDUCERS):
     return trans_matrix
 
 def compute_gradients(points, transducers = TRANSDUCERS):
+    '''
+    Computes the components to be used in the analytical gradient of the piston model, shouldnt be useed use `forward_model_grad` to get the gradient \\
+    `points` Point position to compute propagation to \\
+    `transducers` The Transducer array, default two 16x16 arrays \\
+    Returns (F,G,H, partialFpartialX, partialGpartialX, partialHpartialX, partialFpartialU, partialUpartiala)
+    '''
     B = points.shape[0]
     N = points.shape[2]
     M = transducers.shape[0]
@@ -115,12 +146,24 @@ def compute_gradients(points, transducers = TRANSDUCERS):
     return F,G,H, partialFpartialX, partialGpartialX, partialHpartialX, partialFpartialU, partialUpartiala
 
 def forward_model_grad(points, transducers = TRANSDUCERS):
+    '''
+    Computes the analytical gradient of the piston model\\
+    `points` Point position to compute propagation to \\
+    `transducers` The Transducer array, default two 16x16 arrays \\
+    Returns derivative of forward model wrt x,y,z position
+    '''
     F,G,H, partialFpartialX, partialGpartialX, partialHpartialX,_,_ = compute_gradients(points, transducers)
     derivative = G*(H*partialFpartialX + F*partialHpartialX) + F*H*partialGpartialX
 
     return derivative[:,:,0,:].permute((0,2,1)), derivative[:,:,1,:].permute((0,2,1)), derivative[:,:,2,:].permute((0,2,1))
 
 def forward_model_second_derivative_unmixed(points, transducers = TRANSDUCERS):
+    '''
+    Computes the second degree unmixed analytical gradient of the piston model\\
+    `points` Point position to compute propagation to \\
+    `transducers` The Transducer array, default two 16x16 arrays \\
+    Returns second degree unmixed derivatives of forward model wrt x,y,z position Pxx, Pyy, Pzz
+    '''
     F,G,H, partialFpartialX, partialGpartialX, partialHpartialX , partialFpartialU, partialUpartialX= compute_gradients(points, transducers)
 
     B = points.shape[0]
@@ -171,6 +214,12 @@ def forward_model_second_derivative_unmixed(points, transducers = TRANSDUCERS):
     return derivative[:,:,0,:].permute((0,2,1)), derivative[:,:,1,:].permute((0,2,1)), derivative[:,:,2,:].permute((0,2,1))
 
 def forward_model_second_derivative_mixed(points, transducers = TRANSDUCERS):
+    '''
+    Computes the second degree mixed analytical gradient of the piston model\\
+    `points` Point position to compute propagation to \\
+    `transducers` The Transducer array, default two 16x16 arrays \\
+    Returns second degree mixed derivatives of forward model wrt x,y,z position - Pxy, Pxz, Pyz
+    '''
     
     F,G,H, Fa, Ga, Ha , Fu, Ua = compute_gradients(points, transducers)
 
@@ -259,6 +308,12 @@ def forward_model_second_derivative_mixed(points, transducers = TRANSDUCERS):
     return Pxy.permute(0,2,1), Pxz.permute(0,2,1), Pyz.permute(0,2,1)
 
 def forward_model_batched(points, transducers = TRANSDUCERS):
+    '''
+    computed batched piston model for acoustic wave propagation
+    `points` Point position to compute propagation to \\
+    `transducers` The Transducer array, default two 16x16 arrays \\
+    Returns forward propagation matrix \\
+    '''
     B = points.shape[0]
     N = points.shape[2]
     M = transducers.shape[0]
@@ -284,6 +339,14 @@ def forward_model_batched(points, transducers = TRANSDUCERS):
     return trans_matrix.permute((0,2,1))
     
 def propagate(activations, points,board=TRANSDUCERS, A=None):
+    '''
+    Propagates a hologram to target points\\
+    `activations` Hologram to use\\
+    `points` Points to propagate to\\
+    `board` The Transducer array, default two 16x16 arrays\\
+    `A` The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`\\
+    Returns point activations
+    '''
     if A is None:
         A = forward_model_batched(points,board).to(device)
     prop = A@activations
@@ -291,10 +354,25 @@ def propagate(activations, points,board=TRANSDUCERS, A=None):
     return prop
 
 def propagate_abs(activations, points,board=TRANSDUCERS, A=None):
+    '''
+    Propagates a hologram to target points and returns pressure - Same as `torch.abs(propagate(activations, points,board, A))`\\
+    `activations` Hologram to use\\
+    `points` Points to propagate to\\
+    `board` The Transducer array, default two 16x16 arrays\\
+    `A` The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`\\
+    Returns point pressure
+    '''
     out = propagate(activations, points,board,A=A)
     return torch.abs(out)
 
 def permute_points(points,index,axis=0):
+    '''
+    Permutes axis a tensor\\
+    'points' Tensor to permute\\
+    'index' Indexes describing order to perumte to \\
+    'axis' Axis to permute. Default `0`\\
+    Returns permuted points
+    '''
     if axis == 0:
         return points[index,:,:,:]
     if axis == 1:
@@ -317,6 +395,11 @@ def swap_output_to_activations(out_mat,points):
     return acts
 
 def convert_to_complex(matrix):
+    '''
+    Comverts a real tensor of shape `B x M x N` to a complex tensor of shape `B x M/2 x N` \\
+    `matrix` Matrix to convert\\
+    Returns converted complex tensor
+    '''
     # B x 1024 x N (real) -> B x N x 512 x 2 -> B x 512 x N (complex)
     matrix = torch.permute(matrix,(0,2,1))
     matrix = matrix.view((matrix.shape[0],matrix.shape[1],-1,2))
@@ -324,7 +407,11 @@ def convert_to_complex(matrix):
     return torch.permute(matrix,(0,2,1))
 
 def get_convert_indexes():
-    '''Invert with _,INVIDX = torch.sort(IDX)'''
+    '''
+    Gets indexes to swap between transducer order for acoustools and OpenMPD\\
+    Use: `row = row[FLIP_INDEXES]` and invert with `_,INVIDX = torch.sort(IDX)` \\
+    Returns Indexes
+    '''
     
     board = transducers()
     board[512//2:,0] = torch.flipud(board[512//2:,0])
@@ -342,6 +429,14 @@ def get_convert_indexes():
     return indexes
 
 def create_points(N,B=1,x=None,y=None,z=None, min_pos=-0.06, max_pos = 0.06):
+    '''
+    Creates a random set of N points in B batches in shape `Bx3xN`\\
+    `N` Number of points per batch\\
+    `B` Number of Batches\\
+    `x` if not None all points will have this as their x position. Default: `None`\\
+    `y` if not None all points will have this as their y position. Default: `None`\\
+    `z` if not None all points will have this as their z position. Default: `None`\\
+    '''
     points = torch.FloatTensor(B, 3, N).uniform_(min_pos,max_pos).to(device)
     if x is not None:
         points[:,0,:] = x
@@ -355,6 +450,12 @@ def create_points(N,B=1,x=None,y=None,z=None, min_pos=-0.06, max_pos = 0.06):
     return points
     
 def add_lev_sig(activation, sig=torch.pi):
+    '''
+    Adds pi to the top board of a 2x16x16 board setup - converts focal points to traps\\
+    `activation` Hologram input for 2x16x16 board\\
+    `sig` signature to add to top board. Default: `pi`\\
+    Returns hologram with signature added
+    '''
     act = activation.clone().to(device)
 
     s = act.shape
@@ -368,6 +469,15 @@ def add_lev_sig(activation, sig=torch.pi):
     return act
 
 def generate_gorkov_targets(N,B=1, max_val=0, min_val=-1e-4):
+    '''
+    Generates a tensor of random Gor'kov potential values\\
+    If `B=0` will return tensor with shape of `Nx1` else  will have shape `BxNx1`\\
+    `N` Number of values per batch\\
+    `B` Number of batches to produce\\
+    `max_val` Maximum value that can be generated. Default: `0`\\
+    `max_val` Minimum value that can be generated. Default: `-1e-4`\\
+    Returns tensor of values
+    '''
     if B > 0:
         targets = torch.FloatTensor(B, N,1).uniform_(min_val,max_val).to(device)
     else:
@@ -375,13 +485,32 @@ def generate_gorkov_targets(N,B=1, max_val=0, min_val=-1e-4):
     return targets
 
 def generate_pressure_targets(N,B=1, max_val=10000, min_val=7000):
+    '''
+    Generates a tensor of random pressure values\\
+    `N` Number of values per batch\\
+    `B` Number of batches to produce\\
+    `max_val` Maximum value that can be generated. Default: `10000`\\
+    `max_val` Minimum value that can be generated. Default: `7000`\\
+    Returns tensor of values
+    '''
     targets = torch.FloatTensor(B, N,1).uniform_(min_val,max_val).to(device)
     return targets
 
 def return_matrix(x,y,mat=None):
+    '''
+    Returns value of parameter `mat` - For compatibility with other functions
+    '''
     return mat
 
 def write_to_file(activations,fname,num_frames, num_transducers=512, flip=True):
+    '''
+    Writes each hologram in `activations` to the csv `fname` in order expected by OpenMPD\\
+    `activations` List of holograms\\
+    `fname` Name of file ro write to, expected to end in `.csv`\\
+    `num_frames` Number of frames in `activations` \\
+    `num_transducers` Number of transducers in the boards used. Default:512\\
+    `flip`: If True uses `get_convert_indexes` to swap order of transducers to be the same as OpenMPD expects. Default: `True`\\ 
+    '''
     
     row = torch.angle(activations).squeeze_()
     
@@ -403,9 +532,12 @@ def write_to_file(activations,fname,num_frames, num_transducers=512, flip=True):
 
 def get_rows_in(a_centres, b_centres, expand = True):
     '''
-    Takes two tensors and returns a mask for ```a_centres``` where a value of true means that row exists in ```b_centres``` \\
-    Asssumes in form 1x3xN -> returns mask over dim 1 
-
+    Takes two tensors and returns a mask for `a_centres` where a value of true means that row exists in `b_centres` \\
+    Asssumes in form 1x3xN -> returns mask over dim 1\\
+    `a_centres` Tensor of points to check for inclusion in `b_centres` \\
+    `b_centres` Tensor of points which may or maynot contain some number of points in `a_centres`\\
+    `expand` if True returns mask as `1x3xN` if False returns mask as `1xN`. Default: True\\
+    Returns mask for all rows in `a_centres` which are in `b_centres`
     '''
 
     M = a_centres.shape[2] #Number of total elements
