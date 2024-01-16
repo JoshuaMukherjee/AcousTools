@@ -14,8 +14,8 @@ def get_point_pos(A,B,C, points, res=(200,200),flip=True):
     step_y = AC / res[1]
 
     if points.shape[2] > 1:
-        points = torch.split(points.squeeze_().T,1)
-        points = [pt.squeeze_() for pt in points]
+        points = torch.split(points.squeeze().T,1)
+        points = [pt.squeeze() for pt in points]
     # print(points)
 
     pts_norm = []
