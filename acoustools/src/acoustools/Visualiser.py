@@ -117,7 +117,7 @@ def Visualise_single(A,B,C,activation,colour_function=propagate_abs, colour_func
     return result
 
 def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colour_function_args=None, 
-              res=(200,200), cmaps=[], add_lines_functions=None, add_line_args=None,vmin=None,vmax=None, matricies = None, show=True):
+              res=(200,200), cmaps=[], add_lines_functions=None, add_line_args=None,vmin=None,vmax=None, matricies = None, show=True,block=True):
     results = []
     lines = []
     if len(points) > 0:
@@ -204,7 +204,7 @@ def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colou
             plt.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
     
     if show:
-        plt.show()
+        plt.show(block=block)
     else:
         return plt
 
