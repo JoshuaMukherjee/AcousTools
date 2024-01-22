@@ -208,22 +208,20 @@ def force_mesh(activations, points, norms, areas, board, grad_function=forward_m
     pressure = torch.unsqueeze(pressure,1).expand(-1,3,-1)
 
 
-    force = 0.5* (k1 * (pressure * norms - k2*grad_norm*norms)) * areas
+    force = (k1 * (pressure * norms - k2*grad_norm*norms)) * areas
     force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
 
     # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))
 
     return force
 
-def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=None, grad_function=forward_model_grad,grad_function_args={}):
+def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=None, grad_function=forward_model_grad,grad_function_args={},F=None, Ax=None, Ay=None,Az=None):
     
     if force is None:
-        force = force_mesh(activations, points, norms, areas, board,grad_function,grad_function_args)
+        force = force_mesh(activations, points, norms, areas, board,grad_function,grad_function_args,F=F, Ax=Ax, Ay=Ay, Az=Az)
     
-
     displacement = points - centre_of_mass
     displacement = displacement.to(torch.float64)
-
 
     torque = torch.linalg.cross(displacement,force,dim=1)
 
