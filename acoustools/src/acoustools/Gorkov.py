@@ -83,6 +83,7 @@ def gorkov_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K
 
 
     pressure_points = prop_function(activations, fin_diff_points,**prop_fun_args)
+    # if len(pressure_points.shape)>1:
     pressure_points = torch.squeeze(pressure_points,2)
 
     pressure = pressure_points[:,:N]
@@ -208,7 +209,7 @@ def force_mesh(activations, points, norms, areas, board, grad_function=forward_m
     pressure = torch.unsqueeze(pressure,1).expand(-1,3,-1)
 
 
-    force = 0.5*(k1 * (pressure * norms - k2*grad_norm*norms)) * areas
+    force = (k1 * (pressure * norms - k2*grad_norm*norms)) * areas
     force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
 
     # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))
@@ -312,45 +313,45 @@ if __name__ == "__main__":
     from acoustools.Utilities import create_points, forward_model
     from acoustools.Solvers import wgs_wrapper, wgs
 
-    from acoustools.Visualiser import Visualise
+    # from acoustools.Visualiser import Visualise
 
 
-    points = create_points(4,1,x=0)
-    x = wgs_wrapper(points)
-    x = add_lev_sig(x)
+    # points = create_points(4,1,x=0)
+    # x = wgs_wrapper(points)
+    # x = add_lev_sig(x)
 
-    A = torch.tensor((0,-0.07, 0.07))
-    B = torch.tensor((0,0.07, 0.07))
-    C = torch.tensor((0,-0.07, -0.07))
-
-
-    res = (200,200)
-
-    AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]])
-    AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]])
-    step_x = AB / res[0]
-    step_y = AC / res[1]
-
-    positions = torch.zeros((1,3,res[0]*res[1])).to(device)
-
-    for i in range(0,res[0]):
-        for j in range(res[1]):
-            positions[:,:,i*res[0]+j] = A + step_x * i + step_y * j
-
-    print("Computing Force...")
-    fx, fy, fz = compute_force(x,positions, return_components=True)
+    # A = torch.tensor((0,-0.07, 0.07))
+    # B = torch.tensor((0,0.07, 0.07))
+    # C = torch.tensor((0,-0.07, -0.07))
 
 
-    fx = torch.reshape(fx, res)
-    fy = torch.reshape(fy, res)
-    fz = torch.reshape(fz, res)
+    # res = (200,200)
 
-    fx = torch.rot90(torch.fliplr(fx))
-    fy = torch.rot90(torch.fliplr(fy))
-    fz = torch.rot90(torch.fliplr(fz))
-    print("Plotting...")
+    # AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]])
+    # AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]])
+    # step_x = AB / res[0]
+    # step_y = AC / res[1]
 
-    Visualise(A,B,C,x,colour_functions=None,points=points,res=res,vmin=-3e-4, vmax= 1e-4, matricies=[fy,fz])
+    # positions = torch.zeros((1,3,res[0]*res[1])).to(device)
+
+    # for i in range(0,res[0]):
+    #     for j in range(res[1]):
+    #         positions[:,:,i*res[0]+j] = A + step_x * i + step_y * j
+
+    # print("Computing Force...")
+    # fx, fy, fz = compute_force(x,positions, return_components=True)
+
+
+    # fx = torch.reshape(fx, res)
+    # fy = torch.reshape(fy, res)
+    # fz = torch.reshape(fz, res)
+
+    # fx = torch.rot90(torch.fliplr(fx))
+    # fy = torch.rot90(torch.fliplr(fy))
+    # fz = torch.rot90(torch.fliplr(fz))
+    # print("Plotting...")
+
+    # Visualise(A,B,C,x,colour_functions=None,points=points,res=res,vmin=-3e-4, vmax= 1e-4, matricies=[fy,fz])
 
     # points = create_points(4,1)
     # x = wgs_wrapper(points)
@@ -358,23 +359,23 @@ if __name__ == "__main__":
     # force = get_force_axis(x,points)
     # print(force)
     
-    # def run():
-    #     N =4
-    #     B=2
-    #     points=  create_points(N,B=B)
-    #     print(points)
-    #     xs = torch.zeros((B,512,1)) +0j
-    #     for i in range(B):
-    #         A = forward_model(points[i,:]).to(device)
-    #         _, _, x = wgs(A,torch.ones(N,1).to(device)+0j,200)
-    #         xs[i,:] = x
+    def run():
+        N =4
+        B=2
+        points=  create_points(N,B=B)
+        print(points)
+        xs = torch.zeros((B,512,1)) +0j
+        for i in range(B):
+            A = forward_model(points[i,:]).to(device)
+            _, _, x = wgs(A,torch.ones(N,1).to(device)+0j,200)
+            xs[i,:] = x
 
 
-    #     xs = add_lev_sig(xs)
+        xs = add_lev_sig(xs)
 
-    #     gorkov_AG = gorkov_autograd(xs,points)
-    #     print(gorkov_AG)
+        gorkov_AG = gorkov_autograd(xs,points)
+        print(gorkov_AG)
 
-    #     gorkov_FD = gorkov_fin_diff(xs,points,axis="XYZ")
-    #     print(gorkov_FD)
-    # run()
+        gorkov_FD = gorkov_fin_diff(xs,points,axis="XYZ")
+        print(gorkov_FD)
+    run()
