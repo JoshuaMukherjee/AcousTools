@@ -32,17 +32,23 @@ def transducers():
   Returns the 'standard' transducer arrays with 2 16x16 boards at `z = +-234/2 `\\
   Written by Giorgos Christopoulos, 2022
   '''
-  return torch.cat((create_board(17,.234/2),create_board(17,-.234/2)),axis=0).to(device)
+  return torch.cat((create_board(17,BOARD_POSITIONS),create_board(17,-1*BOARD_POSITIONS)),axis=0).to(device)
+
+# BOARD_POSITIONS = .234/2
+BOARD_POSITIONS = 0.2365/2
+'''
+Static variable for the z-position of the boards, positive for top board, negative for bottom board
+'''
 
 TRANSDUCERS = transducers()
 '''
 Static variable for `transducers()` result
 '''
-TOP_BOARD = create_board(17,.234/2)
+TOP_BOARD = create_board(17,BOARD_POSITIONS)
 '''
 Static variable for a 16x16 array at `z=.234/2` - top board of a 2 array setup
 '''
-BOTTOM_BOARD = create_board(17,-.234/2)
+BOTTOM_BOARD = create_board(17,-1*BOARD_POSITIONS)
 '''
 Static variable for a 16x16 array at `z=-.234/2` - bottom board of a 2 array setup
 '''
