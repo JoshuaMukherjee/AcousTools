@@ -14,7 +14,7 @@ p_p = 29.36
 '''density of EPS particle, From Holographic acoustic elements for manipulation of levitated objects'''
 f = 40000
 '''Frequency of 40KHz sound'''
-wavelength = 0.00865
+wavelength = c_0 / f
 '''Wavelength of 40KHz sound'''
 k = 2*pi / wavelength
 '''Wavenumber of 40KHz sound'''
@@ -22,5 +22,6 @@ k = 2*pi / wavelength
 radius = 0.0045
 '''Radius of transducer'''
 # P_ref = 8.02 #old value
-P_ref = 0.17*18
+P_ref = 0.17*20
+# P_ref = 5.9983 #Value from Zak
 '''Reference pressure for transducers'''
