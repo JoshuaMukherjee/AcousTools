@@ -147,6 +147,7 @@ def gorkov_analytical(activations, points,board=TRANSDUCERS, axis="XYZ"):
     else:
         grad_z = 0
 
+
     K1 = c.V / (4*c.p_0*c.c_0**2)
     K2 = 3*c.V / (4*(2*c.f**2 * c.p_0))
     U = K1*p - K2*(grad_x+grad_y+grad_z)
@@ -171,12 +172,13 @@ def compute_force(activations, points,board=TRANSDUCERS,return_components=False)
     Pxz = torch.abs(Fxz@activations)
     Pyz = torch.abs(Fyz@activations)
 
+
     
     K1 = c.V / (4*c.p_0*c.c_0**2)
     K2 = 3*c.V / (4*(2*c.f**2 * c.p_0))
 
     single_sum = 2*K2*(Pz+Py+Pz)
-    
+
     force_x = -1 * (2*p * (K1 * Px - K2*(Pxz+Pxy+Pxx)) - Px*single_sum)
     force_y = -1 * (2*p * (K1 * Py - K2*(Pyz+Pyy+Pxy)) - Py*single_sum)
     force_z = -1 * (2*p * (K1 * Pz - K2*(Pzz+Pyz+Pxz)) - Pz*single_sum)
@@ -338,18 +340,18 @@ if __name__ == "__main__":
         # x = add_lev_sig(x)
         
         U_ag = gorkov_autograd(x,points)
-        F_aFD = force_fin_diff(x,points,U_function=gorkov_autograd).squeeze()
-        F_aFDs.append(F_aFD[axis].cpu().detach().numpy())
+        # F_aFD = force_fin_diff(x,points,U_function=gorkov_autograd).squeeze()
+        # F_aFDs.append(F_aFD[axis].cpu().detach().numpy())
 
         U_fd = gorkov_fin_diff(x,points)
-        F = force_fin_diff(x,points).squeeze()
-        F_FDs.append(F[axis].cpu().detach().numpy())
+        # F = force_fin_diff(x,points).squeeze()
+        # F_FDs.append(F[axis].cpu().detach().numpy())
 
         U_a = gorkov_analytical(x,points)
-        F_a = compute_force(x,points).squeeze()
-        F_As.append(F_a[axis].cpu().detach().numpy())
+        # F_a = compute_force(x,points).squeeze()
+        # F_As.append(F_a[axis].cpu().detach().numpy())
 
-        print(U_ag,U_fd,U_a, sep='\n')
+        # print(U_ag,U_fd,U_a, sep='\n')
         # print(F_aFD, F, F_a, sep='\n')
     # plt.scatter(F_FDs, F_aFDs)
     # plt.show()
