@@ -4,9 +4,9 @@ import acoustools.Constants as c
 from acoustools.BEM import grad_2_H, grad_H, get_cache_or_compute_H, get_cache_or_compute_H_gradients
 from acoustools.Mesh import translate, get_centre_of_mass_as_points, get_centres_as_points, get_normals_as_points, get_areas, merge_scatterers
 
-def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False):
+def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False,**params):
 
-    var_points = torch.autograd.Variable(points.data, requires_grad=True).to(device)
+    var_points = torch.autograd.Variable(points.data, requires_grad=True).to(device).to(torch.complex64)
 
     B = points.shape[0]
     N = points.shape[2]
@@ -14,20 +14,11 @@ def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False):
     if len(activation.shape) < 3:
         activation.unsqueeze_(0)    
     
-
-    pressure = propagate(activation,var_points)
-
-    if B > 1:
-        if N > 1:
-            grad_pos = torch.autograd.grad(pressure, var_points,grad_outputs=torch.ones((B,N),device=device)+1j, retain_graph=retain_graph)[0]
-        else:
-            grad_pos = torch.autograd.grad(pressure, var_points)[0]
-    else:
-        if N > 1:
-            grad_pos = torch.autograd.grad(pressure, var_points,grad_outputs=torch.ones((N),device=device)+1j, retain_graph=retain_graph)[0]
-        else:
-            grad_pos = torch.autograd.grad(pressure, var_points)[0]
+    pressure = propagate(activation.to(torch.complex64),var_points)
     
+    pressure.backward(torch.ones((B,N))+0j, inputs=var_points, retain_graph=retain_graph)
+    grad_pos = var_points.grad
+
     if K1 is None:
         # K1 = 1/4 * c.V * (1/(c.c_0**2 * c.p_0) - 1/(c.c_p**2 * c.p_p))
         K1 = c.V / (4*c.p_0*c.c_0**2) #Assuming f1=f2=1
@@ -83,15 +74,12 @@ def gorkov_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K
     B = points.shape[0]
     D = len(axis)
     N = points.shape[2]
-    fin_diff_points=  torch.zeros((B,3,((2*D)+1)*N)).to(device)
-    fin_diff_points[:,:,:N] = points.clone()
-    
+
     
     if len(activations.shape) < 3:
         activations = torch.unsqueeze(activations,0).clone().to(device)
 
     fin_diff_points = get_finite_diff_points_all_axis(points, axis, stepsize)
-
 
     pressure_points = prop_function(activations, fin_diff_points,**prop_fun_args)
     # if len(pressure_points.shape)>1:
@@ -123,6 +111,20 @@ def gorkov_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K
     U = K1 * p_in**2 - K2 *grad_term
     
     return U
+
+def force_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K1=None, K2=None,U_function=gorkov_fin_diff,U_fun_args={}):
+    B = points.shape[0]
+    D = len(axis)
+    N = points.shape[2]
+
+    fin_diff_points = get_finite_diff_points_all_axis(points, axis, stepsize)
+    
+    U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/10 ,K1=K1,K2=K2,**U_fun_args)
+    U_grads = U_points[:,N:]
+    split = torch.reshape(U_grads,(B,2, ((2*D))*N // 2))
+    
+    F =  (split[:,0,:] - split[:,1,:]) / (2*stepsize)
+    return F
 
 def gorkov_analytical(activations, points,board=TRANSDUCERS, axis="XYZ"):
     Fx, Fy, Fz = forward_model_grad(points)
@@ -172,7 +174,6 @@ def compute_force(activations, points,board=TRANSDUCERS,return_components=False)
     
     K1 = c.V / (4*c.p_0*c.c_0**2)
     K2 = 3*c.V / (4*(2*c.f**2 * c.p_0))
-
 
     single_sum = 2*K2*(Pz+Py+Pz)
     
@@ -323,56 +324,32 @@ def get_force_mesh_along_axis(start,end, activations, scatterers, board, mask=No
 if __name__ == "__main__":
     from acoustools.Utilities import create_points, forward_model
     from acoustools.Solvers import wgs_wrapper, wgs
+    import matplotlib.pyplot as plt
 
-    # from acoustools.Visualiser import Visualise
-
-
-    # points = create_points(4,1,x=0)
-    # x = wgs_wrapper(points)
-    # x = add_lev_sig(x)
-
-    # A = torch.tensor((0,-0.07, 0.07))
-    # B = torch.tensor((0,0.07, 0.07))
-    # C = torch.tensor((0,-0.07, -0.07))
-
-
-    # res = (200,200)
-
-    # AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]])
-    # AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]])
-    # step_x = AB / res[0]
-    # step_y = AC / res[1]
-
-    # positions = torch.zeros((1,3,res[0]*res[1])).to(device)
-
-    # for i in range(0,res[0]):
-    #     for j in range(res[1]):
-    #         positions[:,:,i*res[0]+j] = A + step_x * i + step_y * j
-
-    # print("Computing Force...")
-    # fx, fy, fz = compute_force(x,positions, return_components=True)
-
-
-    # fx = torch.reshape(fx, res)
-    # fy = torch.reshape(fy, res)
-    # fz = torch.reshape(fz, res)
-
-    # fx = torch.rot90(torch.fliplr(fx))
-    # fy = torch.rot90(torch.fliplr(fy))
-    # fz = torch.rot90(torch.fliplr(fz))
-    # print("Plotting...")
-
-    # Visualise(A,B,C,x,colour_functions=None,points=points,res=res,vmin=-3e-4, vmax= 1e-4, matricies=[fy,fz])
-
-    # points = create_points(4,1)
-    # x = wgs_wrapper(points)
-    # x = add_lev_sig(x)
-    # force = get_force_axis(x,points)
-    # print(force)
-    N=4
+    N=1
     B=1
-    points = create_points(N,B)
-    x = wgs_wrapper(points)
-    x = add_lev_sig(x)
-    U = gorkov_fin_diff(x, points)
-    print(U)
+    F_As = []
+    F_FDs = []
+    F_aFDs = []
+    axis=0
+    for _ in range(1):
+        points = create_points(N,B)
+        x = wgs_wrapper(points)
+        # x = add_lev_sig(x)
+        
+        U_ag = gorkov_autograd(x,points)
+        F_aFD = force_fin_diff(x,points,U_function=gorkov_autograd).squeeze()
+        F_aFDs.append(F_aFD[axis].cpu().detach().numpy())
+
+        U_fd = gorkov_fin_diff(x,points)
+        F = force_fin_diff(x,points).squeeze()
+        F_FDs.append(F[axis].cpu().detach().numpy())
+
+        U_a = gorkov_analytical(x,points)
+        F_a = compute_force(x,points).squeeze()
+        F_As.append(F_a[axis].cpu().detach().numpy())
+
+        print(U_ag,U_fd,U_a, sep='\n')
+        # print(F_aFD, F, F_a, sep='\n')
+    # plt.scatter(F_FDs, F_aFDs)
+    # plt.show()
