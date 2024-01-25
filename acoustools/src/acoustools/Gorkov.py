@@ -142,10 +142,10 @@ def gorkov_analytical(activations, points,board=TRANSDUCERS, axis="XYZ"):
 
 def compute_force(activations, points,board=TRANSDUCERS,return_components=False):
     
-    F = forward_model_batched(points)
-    Fx, Fy, Fz = forward_model_grad(points)
-    Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points)
-    Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points)
+    F = forward_model_batched(points,transducers=board)
+    Fx, Fy, Fz = forward_model_grad(points,transducers=board)
+    Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board)
+    Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=board)
 
     p   = torch.abs(F@activations)
     Px  = torch.abs(Fx@activations)
