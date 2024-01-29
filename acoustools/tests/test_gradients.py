@@ -1,6 +1,6 @@
 
 if __name__ == "__main__":
-    from acoustools.Utilities import forward_model_batched, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed, TRANSDUCERS, create_points, add_lev_sig, propagate, forward_model_second_derivative_unmixed_old
+    from acoustools.Utilities import forward_model_batched, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed, TRANSDUCERS, create_points, add_lev_sig, propagate
     from acoustools.Solvers import wgs_wrapper
     from acoustools.Gorkov import get_finite_diff_points_all_axis
     from acoustools.Utilities import device, propagate_abs
@@ -51,8 +51,9 @@ if __name__ == "__main__":
     B=1
     D=3
     for i in range(1):
-        # points = create_points(N,B,x=0.01, y=0.04, z=-0.03)
+        # points = create_points(N,B,x=0.02, y=-0.005, z=-0.04)
         points = create_points(N,B)
+        print(points)
         points = torch.autograd.Variable(points.data, requires_grad=True).to(device).to(torch.complex64)
         x = wgs_wrapper(points).to(torch.complex64)
         activations = add_lev_sig(x)
@@ -64,7 +65,7 @@ if __name__ == "__main__":
         Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board)
         Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=board)
 
-        stepsize = 0.000135156253/4
+        stepsize = 0.000135156253
 
         fin_diff_points = get_finite_diff_points_all_axis(points,stepsize=stepsize)
         pressure_points = propagate(activations, fin_diff_points)
@@ -75,9 +76,6 @@ if __name__ == "__main__":
         grad = (split[:,0,:] - split[:,1,:]) / (2*stepsize)
 
         p  = torch.abs(F@activations)
-        # p.backward(inputs=points, create_graph=True)
-        # p_grad = points.grad
-        # pa = torch.abs(points.grad)
 
         P_a = torch.autograd.grad (p, points, retain_graph=True, create_graph=True)[0]   # creates graph of first derivative
         pa = torch.abs(P_a)
@@ -93,15 +91,9 @@ if __name__ == "__main__":
         
         print()
 
-        # points.grad.backward(inputs=points,gradient=torch.ones(B,D,N)+0j )
-        # print(torch.abs(points.grad))
-
         grad_unmixed = (split[:,0,:] - 2*pressure + split[:,1,:]) / (stepsize**2)
-    
 
-        print()
-
-        Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed_old(points,transducers=board)
+        Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board)
         Pxx = torch.abs(Fxx@activations)
         print("Pxx", Pxx, torch.abs(grad_unmixed[0,0]), torch.abs(grad_unmixed[0,0]) / Pxx,sep="\t")
         Pyy = torch.abs(Fyy@activations)
@@ -109,18 +101,15 @@ if __name__ == "__main__":
         Pzz = torch.abs(Fzz@activations)
         print("Pzz", Pzz, torch.abs(grad_unmixed[0,2]), torch.abs(grad_unmixed[0,2]) / Pzz,sep="\t")
 
-        
         print()
 
         mixed_points = return_mixed_points(points,stepsize)
         mixed_pressure_points = propagate(activations, mixed_points)
-        
-       
+              
         Pxy = torch.abs(Fxy@activations)
         mixed_pressure_fin_diff_xy = mixed_pressure_points[:,1:5] * torch.tensor([1,-1,-1,1])
         Pxy_fd = torch.sum(mixed_pressure_fin_diff_xy) / (4*stepsize**2)
         print("Pxy",Pxy, torch.abs(Pxy_fd),torch.abs(Pxy_fd)/Pxy,sep='\t')
-
 
         Pxz = torch.abs(Fxz@activations)
         mixed_pressure_fin_diff_xz = mixed_pressure_points[:,5:9] * torch.tensor([1,-1,-1,1])
