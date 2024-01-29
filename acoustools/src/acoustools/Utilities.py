@@ -115,7 +115,7 @@ def compute_gradients(points, transducers = TRANSDUCERS):
     
 
     #Partial derivates of bessel function section wrt xyz
-    sin_theta = torch.divide(planar_distance,distances)
+    sin_theta = torch.divide(planar_distance,distances) 
     partialFpartialU = -1* (Constants.k**2 * Constants.radius**2)/4 * sin_theta + (Constants.k**4 * Constants.radius**4)/48 * sin_theta**3
     partialUpartiala = torch.ones_like(diff)
     
@@ -163,7 +163,8 @@ def forward_model_grad(points, transducers = TRANSDUCERS):
 
     return derivative[:,:,0,:].permute((0,2,1)), derivative[:,:,1,:].permute((0,2,1)), derivative[:,:,2,:].permute((0,2,1))
 
-def forward_model_second_derivative_unmixed(points, transducers = TRANSDUCERS):
+
+def forward_model_second_derivative_unmixed_old(points, transducers = TRANSDUCERS):
     '''
     Computes the second degree unmixed analytical gradient of the piston model\\
     `points` Point position to compute propagation to \\
@@ -197,7 +198,7 @@ def forward_model_second_derivative_unmixed(points, transducers = TRANSDUCERS):
 
     partial2fpartialX2[:,:,0,:] = (-2*dx**2*planar_square*distances_square + dy**2 * distances_square + planar_square * (2*dx**2 - dy**2 - dz**2)) / (planar_square**(3/4) * distances_square**(5/2))
     partial2fpartialX2[:,:,1,:] = (planar_square**2 * (-1*(dx*2-2*dy**2 + dz**2)) -2*dy**2*planar_square*distances_square +dx**2*distances_square**2) / (planar_square**(3/4) * distances_square**(5/2))
-    partial2fpartialX2[:,:,2,:] = planar_distance * (((3*dz**2)/distances_square**(5/2)) - (1/distances_square**(3/2)))
+    partial2fpartialX2[:,:,2,:] = planar_distance * (((3*dz**2)/(distances_square**(5/2))) - (1/(distances_square**(3/2)))) #This could be wrong?
 
     sin_theta = torch.divide(planar_distance,distances)
     partial2Fpartialf2 = -1 * (Constants.k**2 * Constants.radius**2)/4 + (Constants.k**4 * Constants.radius**4)/16 * sin_theta**2
@@ -217,6 +218,75 @@ def forward_model_second_derivative_unmixed(points, transducers = TRANSDUCERS):
 
     derivative = 2*partialHpartialX * (G * partialFpartialX + F * partialGpartialX) + H*(G*partial2FpartialX2 + 2*partialFpartialX*partialGpartialX + F*partial2GpartialX2) + F*G*partial2HpartialX2
     
+    return derivative[:,:,0,:].permute((0,2,1)), derivative[:,:,1,:].permute((0,2,1)), derivative[:,:,2,:].permute((0,2,1))
+
+    
+def forward_model_second_derivative_unmixed(points, transducers = TRANSDUCERS):
+    '''
+    Computes the second degree mixed analytical gradient of the piston model\\
+    `points` Point position to compute propagation to \\
+    `transducers` The Transducer array, default two 16x16 arrays \\
+    Returns second degree unmixed derivatives of forward model wrt x,y,z position - Pxx, Pyy, Pzz \\
+    Derivation Bk1, Pg. 260 - 261
+    '''
+
+
+    B = points.shape[0]
+    N = points.shape[2]
+    M = transducers.shape[0]
+
+    transducers = torch.unsqueeze(transducers,2)
+    transducers = transducers.expand((B,-1,-1,N))
+    points = torch.unsqueeze(points,1)
+    points = points.expand((-1,M,-1,-1))
+
+    diff = transducers - points
+    distances = torch.sqrt(torch.sum(diff**2, 2))
+    distance_axis = (transducers - points) **2
+    planar_distance= torch.sqrt(torch.sum(distance_axis[:,:,0:2,:],dim=2))
+
+    distance_expand = distances.unsqueeze(2).expand((-1,-1,3,-1))
+
+    dx = diff[:,:,0,:]
+    dy = diff[:,:,1,:]
+    dz = diff[:,:,2,:]
+
+    sin_theta = (torch.sqrt(dx**2 + dy**2)) / distances
+
+    p = 1j*Constants.k*distance_expand
+    phase = torch.e**(p)
+    
+    Ju = -1/96 * Constants.k**2 * Constants.radius**2 * sin_theta * (Constants.k**2 * Constants.radius**2 * sin_theta**2 + 12)
+    # uChi = dz / (distances)
+    planar_distance_2 = planar_distance.clone().unsqueeze(2).expand((-1,-1,2,-1))
+    distances_2 = distances.clone().unsqueeze(2).expand((-1,-1,2,-1))
+    uChi_xy = (diff[:,:,0:2,:] * planar_distance_2)/distances_2**3 - diff[:,:,0:2,:]/(planar_distance_2*distances_2)
+    uChi_z = (dz * planar_distance / distances**3).unsqueeze(2)
+    uChi = torch.cat([uChi_xy,uChi_z ],dim=2)
+    
+
+    Juu = -1/32 * Constants.k**2 * Constants.radius**2 * (Constants.k**2 * Constants.radius**2 * sin_theta**2 + 4)
+    # uChiChi = -1 * sin_theta
+    uChiChi_xy = (-2*diff[:,:,0:2,:]**2) / (planar_distance_2 * distances_2**3) + planar_distance_2*(((3*diff[:,:,0:2,:]**2) / distances_2**5) - 1/distances_2**3) + distances_2**-1 * (1/planar_distance_2 - diff[:,:,0:2,:] /planar_distance_2**3)
+    uChiChi_z = (planar_distance * ((3*dz**2)/distances**5 - distances**-3)).unsqueeze(2)
+    uChiChi = torch.cat([uChiChi_xy,uChiChi_z ],dim=2)
+
+    
+    Ju.unsqueeze_(2).expand((-1,-1,3,-1))
+    JChi = Ju*uChi
+    Juu.unsqueeze_(2).expand((-1,-1,3,-1))
+    JChiChi = uChi**2 * Juu + uChiChi * Ju
+    
+    dirChi = ((diff * phase) / distance_expand**3) - ((1j * Constants.k * diff * phase)/distance_expand**2)
+
+    bessel_arg=Constants.k*Constants.radius*torch.divide(planar_distance,distances)
+    J=1/2-torch.pow(bessel_arg,2)/16+torch.pow(bessel_arg,4)/384
+    J.unsqueeze_(2).expand((-1,-1,3,-1))
+
+    dirChiChi = (-(Constants.k**2 * diff*phase) / distance_expand**2 + (1j*Constants.k * phase)/distance_expand - (1j * Constants.k * diff**2 * phase) / distance_expand**3) * distance_expand**-1 + (3*diff**2 / distance_expand**5 - distance_expand**-3)*phase - (2*Constants.k * 1j * diff**2 * phase)/distance_expand**2
+    
+    derivative = 2*Constants.P_ref*2*JChi*dirChi + JChiChi * (phase/distance_expand) + J*dirChiChi
+
     return derivative[:,:,0,:].permute((0,2,1)), derivative[:,:,1,:].permute((0,2,1)), derivative[:,:,2,:].permute((0,2,1))
 
 def forward_model_second_derivative_mixed(points, transducers = TRANSDUCERS):
@@ -312,6 +382,7 @@ def forward_model_second_derivative_mixed(points, transducers = TRANSDUCERS):
     Pyz = H_*(Fy * Gz + Fz*Gy + Fyz*G_ + F_*Gyz) + G_ * (Fy*Hz+Fz*Hy + F_*Hyz) + F_*(Gy*Hz + Gz*Hy)
 
     return Pxy.permute(0,2,1), Pxz.permute(0,2,1), Pyz.permute(0,2,1)
+
 
 def forward_model_batched(points, transducers = TRANSDUCERS):
     '''

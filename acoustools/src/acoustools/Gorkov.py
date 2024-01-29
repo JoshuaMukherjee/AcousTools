@@ -15,7 +15,6 @@ def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False,**p
         activation.unsqueeze_(0)    
     
     pressure = propagate(activation.to(torch.complex64),var_points)
-    
     pressure.backward(torch.ones((B,N))+0j, inputs=var_points, retain_graph=retain_graph)
     grad_pos = var_points.grad
 
@@ -43,7 +42,7 @@ def get_finite_diff_points_all_axis(points,axis="XYZ", stepsize = 0.000135156253
     B = points.shape[0]
     D = len(axis)
     N = points.shape[2]
-    fin_diff_points=  torch.zeros((B,3,((2*D)+1)*N)).to(device)
+    fin_diff_points=  torch.zeros((B,3,((2*D)+1)*N)).to(device).to(torch.complex64)
     fin_diff_points[:,:,:N] = points.clone()
 
     i = 2
