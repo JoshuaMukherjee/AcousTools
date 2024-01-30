@@ -9,40 +9,51 @@ if __name__ == "__main__":
     import torch
 
 
-    def return_mixed_points(points,stepsize):
+    def return_mixed_points(points,stepsize=0.000135156253, stepsize_x=None,stepsize_y=None,stepsize_z=None ):
         '''
         Only works for N=1
         '''
         if points.shape[2] > 1:
             raise RuntimeError("Only for N=1")
+        
+        if stepsize_x is None:
+            stepsize_x = stepsize
+        
+        if stepsize_y is None:
+            stepsize_y = stepsize
+
+        if stepsize_z is None:
+            stepsize_z = stepsize
+
+
         mixed_points = points.clone().repeat((1,1,13))
         #Set x's
-        mixed_points[:,0,1] += stepsize
-        mixed_points[:,0,2] += stepsize
-        mixed_points[:,0,3] -= stepsize
-        mixed_points[:,0,4] -= stepsize
-        mixed_points[:,0,5] += stepsize
-        mixed_points[:,0,6] += stepsize
-        mixed_points[:,0,7] -= stepsize
-        mixed_points[:,0,8] -= stepsize
+        mixed_points[:,0,1] += stepsize_x
+        mixed_points[:,0,2] += stepsize_x
+        mixed_points[:,0,3] -= stepsize_x
+        mixed_points[:,0,4] -= stepsize_x
+        mixed_points[:,0,5] += stepsize_x
+        mixed_points[:,0,6] += stepsize_x
+        mixed_points[:,0,7] -= stepsize_x
+        mixed_points[:,0,8] -= stepsize_x
         #Set y's
-        mixed_points[:,1,1] += stepsize
-        mixed_points[:,1,2] -= stepsize
-        mixed_points[:,1,3] += stepsize
-        mixed_points[:,1,4] -= stepsize
-        mixed_points[:,1,9] += stepsize
-        mixed_points[:,1,10] += stepsize
-        mixed_points[:,1,11] -= stepsize
-        mixed_points[:,1,12] -= stepsize
+        mixed_points[:,1,1] += stepsize_y
+        mixed_points[:,1,2] -= stepsize_y
+        mixed_points[:,1,3] += stepsize_y
+        mixed_points[:,1,4] -= stepsize_y
+        mixed_points[:,1,9] += stepsize_y
+        mixed_points[:,1,10] += stepsize_y
+        mixed_points[:,1,11] -= stepsize_y
+        mixed_points[:,1,12] -= stepsize_y
         #Set z's
-        mixed_points[:,2,5] += stepsize
-        mixed_points[:,2,6] -= stepsize
-        mixed_points[:,2,7] += stepsize
-        mixed_points[:,2,8] -= stepsize
-        mixed_points[:,2,9] += stepsize
-        mixed_points[:,2,10] -= stepsize
-        mixed_points[:,2,11] += stepsize
-        mixed_points[:,2,12] -= stepsize
+        mixed_points[:,2,5] += stepsize_z
+        mixed_points[:,2,6] -= stepsize_z
+        mixed_points[:,2,7] += stepsize_z
+        mixed_points[:,2,8] -= stepsize_z
+        mixed_points[:,2,9] += stepsize_z
+        mixed_points[:,2,10] -= stepsize_z
+        mixed_points[:,2,11] += stepsize_z
+        mixed_points[:,2,12] -= stepsize_z
 
         return mixed_points
 
@@ -103,20 +114,24 @@ if __name__ == "__main__":
 
         print()
 
-        mixed_points = return_mixed_points(points,stepsize)
+        stepsize_x = stepsize *50
+        stepsize_y = stepsize *50
+        stepsize_z = stepsize *30
+
+        mixed_points = return_mixed_points(points,stepsize_x=stepsize_x, stepsize_y=stepsize_y, stepsize_z=stepsize_z)
         mixed_pressure_points = propagate(activations, mixed_points)
               
         Pxy = torch.abs(Fxy@activations)
         mixed_pressure_fin_diff_xy = mixed_pressure_points[:,1:5] * torch.tensor([1,-1,-1,1])
-        Pxy_fd = torch.sum(mixed_pressure_fin_diff_xy) / (4*stepsize**2)
+        Pxy_fd = torch.sum(mixed_pressure_fin_diff_xy) / (4*stepsize_x*stepsize_y)
         print("Pxy",Pxy, torch.abs(Pxy_fd),torch.abs(Pxy_fd)/Pxy,sep='\t')
 
         Pxz = torch.abs(Fxz@activations)
         mixed_pressure_fin_diff_xz = mixed_pressure_points[:,5:9] * torch.tensor([1,-1,-1,1])
-        Pxz_fd = torch.sum(mixed_pressure_fin_diff_xz) / (4*stepsize**2)
+        Pxz_fd = torch.sum(mixed_pressure_fin_diff_xz) / (4*stepsize_x*stepsize_y)
         print("Pxz",Pxz, torch.abs(Pxz_fd), torch.abs(Pxz_fd)/Pxz ,sep='\t')
 
         Pyz = torch.abs(Fyz@activations)
         mixed_pressure_fin_diff_yz = mixed_pressure_points[:,9:] * torch.tensor([1,-1,-1,1])
-        Pyz_fd = torch.sum(mixed_pressure_fin_diff_yz) / (4*stepsize**2)
+        Pyz_fd = torch.sum(mixed_pressure_fin_diff_yz) / (4*stepsize_y*stepsize_z)
         print("Pyz",Pyz, torch.abs(Pyz_fd), torch.abs(Pyz_fd)/Pyz ,sep='\t')

@@ -94,7 +94,6 @@ def gorkov_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K
     grad = torch.reshape(grad,(B,D,N))
     grad_abs_square = torch.pow(torch.abs(grad),2)
     grad_term = torch.sum(grad_abs_square,dim=1)
-    
 
     if K1 is None:
         # K1 = 1/4 * c.V * (1/(c.c_0**2 * c.p_0) - 1/(c.c_p**2 * c.p_p))
@@ -105,6 +104,7 @@ def gorkov_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K
     
     # p_in =  torch.abs(pressure)
     p_in = torch.sqrt(torch.real(pressure) **2 + torch.imag(pressure)**2)
+    p_in.squeeze_(2)
     # p_in = torch.squeeze(p_in,2)
 
     U = K1 * p_in**2 - K2 *grad_term
@@ -120,7 +120,7 @@ def force_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K1
     
     U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/10 ,K1=K1,K2=K2,**U_fun_args)
     U_grads = U_points[:,N:]
-    split = torch.reshape(U_grads,(B,2, ((2*D))*N // 2))
+    split = torch.reshape(U_grads,(B,2,-1))
     
     F =  (split[:,0,:] - split[:,1,:]) / (2*stepsize)
     return F
@@ -222,7 +222,7 @@ def force_mesh(activations, points, norms, areas, board, grad_function=forward_m
     pressure = torch.unsqueeze(pressure,1).expand(-1,3,-1)
 
 
-    force = (k1 * (pressure * norms - k2*grad_norm*norms)) * areas
+    force = 0.5*(k1 * (pressure * norms - k2*grad_norm*norms)) * areas
     force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
 
     # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))

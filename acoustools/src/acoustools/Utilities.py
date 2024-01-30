@@ -273,7 +273,7 @@ def forward_model_second_derivative_mixed(points, transducers = TRANSDUCERS):
     # F_first_U = -1* (Constants.k**2 * Constants.radius**2)/4 * sin_theta + (Constants.k**4 * Constants.radius**4)/48 * sin_theta**3
 
     F_second_U = -1/8 *Constants.k**3*Constants.radius**3  + 1/32 * Constants.k**5 * Constants.radius**5 * sin_theta**2 - 5/3072 * sin_theta**4 * Constants.k**7 * Constants.radius**7
-    F_first_U = -1* (Constants.k**3 * Constants.radius**3)/8 * sin_theta + 1/96 * Constants.k**5 * Constants.radius**5 * sin_theta**3 - 1/3072 * sin_theta**7 * Constants.k**7 * Constants.R**7
+    F_first_U = -1* (Constants.k**3 * Constants.radius**3)/8 * sin_theta + 1/96 * Constants.k**5 * Constants.radius**5 * sin_theta**3 - 1/3072 * sin_theta**7 * Constants.k**7 * Constants.radius**7
 
     Fxy = Ux * Uy * F_second_U + Uxy*F_first_U
     Fxz = Ux * Uz * F_second_U + Uxz*F_first_U
@@ -316,7 +316,7 @@ def forward_model_second_derivative_mixed(points, transducers = TRANSDUCERS):
     Pyz =  (H_*(Fy * Gz + Fz*Gy + Fyz*G_ + F_*Gyz) + G_ * (Fy*Hz+Fz*Hy + F_*Hyz) + F_*(Gy*Hz + Gz*Hy))
 
 
-    return Pxy.permute(0,2,1), Pxz.permute(0,2,1), Pyz.permute(0,2,1)
+    return Pxy.permute(0,2,1),Pxz.permute(0,2,1), Pyz.permute(0,2,1)
 
 
 def forward_model_batched(points, transducers = TRANSDUCERS):
