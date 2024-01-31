@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from acoustools.Utilities import device, TOP_BOARD, TRANSDUCERS, forward_model_batched, create_points, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed
 import acoustools.Constants as Constants
-from acoustools.Mesh import scatterer_file_name, load_scatterer, load_multiple_scatterers, get_centres_as_points, board_name
+from acoustools.Mesh import scatterer_file_name, load_scatterer, load_multiple_scatterers, get_centres_as_points, board_name, get_areas
 
 import hashlib
 
@@ -363,22 +363,62 @@ def compute_E(scatterer, points, board=TOP_BOARD, use_cache_H=True, print_lines=
     E = F+G@H 
     return E.to(torch.complex64)
 
-def propagate_BEM(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None):
+def propagate_BEM(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None,path="Media"):
     if E is None:
         if type(scatterer) == str:
             scatterer = load_scatterer(scatterer)
-        E = compute_E(scatterer,points,board,H=H)
+        E = compute_E(scatterer,points,board,H=H, path=path)
     
     out = E@activations
     return out
 
-def propagate_BEM_pressure(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None):
-    point_activations = propagate_BEM(activations,points,scatterer,board,H,E)
+def propagate_BEM_pressure(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None, path="Media"):
+    point_activations = propagate_BEM(activations,points,scatterer,board,H,E,path)
     pressures =  torch.abs(point_activations)
     # print(pressures)
     return pressures
 
 def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False):
+    # Bk1. Pg 263
+
+    centres = get_centres_as_points(scatterer)
+
+    B = points.shape[0]
+    N = points.shape[2]
+    M = centres.shape[2]
+
+    points = torch.unsqueeze(points,3)
+    points = points.expand((-1,-1,-1,M))
+    centres = torch.unsqueeze(centres,2)
+    centres = centres.expand((-1,-1,N,-1))
+
+    
+    diff = centres - points
+    # diff = diff.squeeze(3)
+
+    
+    distance_axis = diff**2
+    distances = torch.sqrt(torch.sum(distance_axis, 1))
+    distances_3 = distances.unsqueeze(1).expand(-1,3,-1,-1)
+
+    dz = diff[:,2,:,:]
+
+    phase = torch.exp(1j * Constants.k * distances)
+    phase_3 = phase.unsqueeze(1).expand(-1,3,-1,-1)
+
+
+    dist_3_inv_ik = -1*distances_3**-1 + 1j*Constants.k
+    diff_dz_phase_3 = diff * dz * phase_3
+    Ga = -1 * (1j * Constants.k * diff_dz_phase_3 * (dist_3_inv_ik)) / (4*torch.pi * distances_3**3) + (diff_dz_phase_3 * (dist_3_inv_ik))/(2*torch.pi * distances_3**4) - (diff_dz_phase_3)/(4*torch.pi * distances_3**5)
+    Ga[:,2,:,:] -= (phase * (-1*distances**-1 + 1j*Constants.k) )/ (4*torch.pi * distances**2)
+    Ga = Ga.to(torch.complex128)
+
+    areas = get_areas(scatterer)
+    Ga = Ga * areas
+
+    return Ga[:,0,:,:], Ga[:,1,:,:], Ga[:,2,:,:]
+    
+def get_G_partial_old(points, scatterer, board=TRANSDUCERS, return_components=False):
     B = points.shape[0]
     N = points.shape[2]
     
@@ -413,7 +453,7 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
 
     Aa = (1j*torch.exp(1j * Constants.k * distance_exp) * (Constants.k * distance_exp + 1j) * vecs) / (4*torch.pi * distance_exp_cube)
 
-    G, A,B,C = compute_green_derivative(centres,p,norms,B,N,M,True)
+    _, A,B,C = compute_green_derivative(centres,p,norms,B,N,M,True)
     A = torch.unsqueeze(A,3)
     A = A.expand(-1,-1,-1,3)
 
@@ -455,6 +495,7 @@ def BEM_forward_model_grad(points, scatterer, transducers=TRANSDUCERS, use_cache
     Fz = Fz.to(torch.complex128)
 
     H = H.expand(B, -1, -1).to(torch.complex128)
+
 
     Ex = Fx + Gx@H
     Ey = Fy + Gy@H

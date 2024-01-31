@@ -247,7 +247,7 @@ def forward_model_second_derivative_mixed(points, transducers = TRANSDUCERS):
 
     sin_theta = torch.divide(planar_distance,distances)
 
-    dx = distance_axis[:,:,0,:]
+    dx = distance_axis[:,:,0,:] #Should this be distance_axis or diff
     dy = distance_axis[:,:,1,:]
     dz = distance_axis[:,:,2,:]
 

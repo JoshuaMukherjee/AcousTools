@@ -5,7 +5,7 @@ def wgs(A, b, K):
     '''
     unbatched WGS solver for transducer phases, better to use `wgs_batch` \\
     `A` Forward model matrix to use \\ 
-    `b` initial guess - normally use `torch.ones(self.N,1).to(device)+0j`\\
+    `b` initial guess - normally use `torch.ones(N,1).to(device)+0j`\\
     `k` number of iterations to run for \\
     returns (hologram image, point phases, hologram)
     '''
