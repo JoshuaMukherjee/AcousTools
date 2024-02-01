@@ -113,7 +113,10 @@ def grad_H(points, scatterer, transducers, return_components = False):
     Bz = Bz.to(torch.complex64)
 
 
-    Ax, Ay, Az = get_G_partial(centres,scatterer,transducers)
+    Ax, Ay, Az =  get_G_partial(centres,scatterer,transducers)
+    # Ax *= -1
+    # Ay *= -1
+    # Az *= -1
     
     Ax = (-1* Ax).to(torch.complex64)
     Ay = (-1* Ay).to(torch.complex64)
@@ -414,7 +417,7 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
     Ga = Ga.to(torch.complex128)
 
     areas = get_areas(scatterer)
-    Ga = Ga * areas
+    Ga =  Ga * areas
 
     return Ga[:,0,:,:], Ga[:,1,:,:], Ga[:,2,:,:]
     
@@ -486,9 +489,9 @@ def BEM_forward_model_grad(points, scatterer, transducers=TRANSDUCERS, use_cache
     Gx, Gy, Gz = get_G_partial(points, scatterer, transducers)
 
 
-    # Gx[Gx.isnan()] = 0
-    # Gy[Gy.isnan()] = 0
-    # Gz[Gz.isnan()] = 0
+    Gx[Gx.isnan()] = 0
+    Gy[Gy.isnan()] = 0
+    Gz[Gz.isnan()] = 0
 
     Fx = Fx.to(torch.complex128)
     Fy = Fy.to(torch.complex128)

@@ -2,14 +2,16 @@ if __name__ == "__main__":
 
     from acoustools.BEM import load_multiple_scatterers, scatterer_file_name, compute_E, propagate_BEM_pressure, BEM_forward_model_grad
     from acoustools.Mesh import get_lines_from_plane
-    from acoustools.Utilities import create_points, TRANSDUCERS, device, add_lev_sig
+    from acoustools.Utilities import create_points, TRANSDUCERS, device, add_lev_sig, forward_model_grad
     from acoustools.Solvers import wgs_batch
     from acoustools.Visualiser import Visualise
     from acoustools.Gorkov import get_finite_diff_points_all_axis
 
     import vedo, torch
+    path = "../BEMMedia"
 
-    wall_paths = ["../../BEMMedia/flat-lam1.stl","../../BEMMedia/flat-lam1.stl"]
+
+    wall_paths = [path+"/flat-lam1.stl",path+"/flat-lam1.stl"]
     walls = load_multiple_scatterers(wall_paths,dxs=[-0.175/2,0.175/2],rotys=[90,-90]) #Make mesh at 0,0,0
     walls.scale((1,19/12,19/12),reset=True,origin =False)
     walls.filename = scatterer_file_name(walls)
@@ -17,9 +19,9 @@ if __name__ == "__main__":
     N = 1
     B = 1
 
-    p = create_points(N,B,y=0)
+    # p = create_points(N,B,y=0)
+    p = create_points(N,B,x=0,y=0,z=0)
 
-    path = "../../BEMMedia"
 
     print(p.squeeze())
     E = compute_E(walls, p, board=TRANSDUCERS, path=path)
@@ -35,8 +37,14 @@ if __name__ == "__main__":
     print(torch.abs(Ez@x))
     print()
 
+    Fx, Fy, Fz = forward_model_grad(p)
+    print(torch.abs(Fx@x))
+    print(torch.abs(Fy@x))
+    print(torch.abs(Fz@x))
+    print()
+
     
-    stepsize = 0.000135156253/4
+    stepsize = 0.000135156253
     fin_diff_points = get_finite_diff_points_all_axis(p,stepsize=stepsize)
     pressures = propagate_BEM_pressure(x,fin_diff_points,walls, path=path,board=TRANSDUCERS)
     pressure = pressures[:,:N]

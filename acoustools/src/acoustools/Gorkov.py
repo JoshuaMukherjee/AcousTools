@@ -214,14 +214,11 @@ def force_mesh(activations, points, norms, areas, board, grad_function=forward_m
 
     grad = torch.cat((px,py,pz),dim=1).to(torch.complex128)
     grad_norm = torch.norm(grad,2,dim=1)**2
-
     
     k1 = 1/ (2*c.p_0*(c.c_0**2))
     k2 = 1/ (c.k**2)
 
-    pressure = torch.unsqueeze(pressure,1).expand(-1,3,-1)
-
-
+    pressure = torch.unsqueeze(pressure,1).expand(-1,3,-1)  
     force = 0.5*(k1 * (pressure * norms - k2*grad_norm*norms)) * areas
     force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
 

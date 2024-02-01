@@ -129,6 +129,7 @@ def plot_plane(connections):
 def get_normals_as_points(*scatterers, permute_to_points=True):
     norm_list = []
     for scatterer in scatterers:
+        scatterer.compute_normals()
         norm =  torch.tensor(scatterer.cell_normals).to(device)
 
         if permute_to_points:
@@ -166,6 +167,7 @@ def get_centres_as_points(*scatterers, permute_to_points=True):
 def get_areas(*scatterers):
     area_list = []
     for scatterer in scatterers:
+        scatterer.compute_cell_size()
         area_list.append(torch.Tensor(scatterer.celldata["Area"]).to(device))
     
     return torch.stack(area_list)
