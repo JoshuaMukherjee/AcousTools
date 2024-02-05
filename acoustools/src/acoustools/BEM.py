@@ -349,7 +349,7 @@ def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print
 
     return H
 
-def compute_E(scatterer, points, board=TOP_BOARD, use_cache_H=True, print_lines=False, H=None,path="Media"):
+def compute_E(scatterer, points, board=TOP_BOARD, use_cache_H=True, print_lines=False, H=None,path="Media", return_components=False):
     if print_lines: print("H...")
     
     if H is None:
@@ -363,8 +363,11 @@ def compute_E(scatterer, points, board=TOP_BOARD, use_cache_H=True, print_lines=
     
     if print_lines: print("E...")
 
-    E = F+G@H 
+    E = F+G@H
+    if return_components:
+        return E.to(torch.complex64), F.to(torch.complex64), G.to(torch.complex64), H.to(torch.complex64)
     return E.to(torch.complex64)
+
 
 def propagate_BEM(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None,path="Media"):
     if E is None:
