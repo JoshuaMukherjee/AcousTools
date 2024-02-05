@@ -56,8 +56,6 @@ def compute_G(points, scatterer):
   
     partial_greens = compute_green_derivative(centres,p,norms, B,N,M)
     
-    
-
     G = areas * partial_greens
     return G
 
@@ -76,7 +74,7 @@ def compute_A(scatterer):
     norms = torch.tensor(scatterer.cell_normals).to(device)
 
     green = compute_green_derivative(m.unsqueeze_(0),m_prime.unsqueeze_(0),norms,1,M,M)
-
+    # areas = areas.unsqueeze(0).T.expand((-1,M)).unsqueeze(0)
     A = green * areas * -1
     eye = torch.eye(M).to(bool)
     A[:,eye] = 0.5
@@ -88,10 +86,14 @@ def compute_bs(scatterer, board):
     bs = forward_model_batched(centres,board)
     return bs.to(torch.complex64)
 
-def compute_H(scatterer, board):
+def compute_H(scatterer, board,use_LU=True):
     A = compute_A(scatterer)
     bs = compute_bs(scatterer,board)
-    H = torch.linalg.solve(A,bs)
+    if not use_LU:
+        H = torch.linalg.solve(A,bs)
+    else:
+        LU, pivots = torch.linalg.lu_factor(A)
+        H = torch.linalg.lu_solve(LU, pivots, bs)
 
     return H
 
@@ -364,10 +366,10 @@ def compute_E(scatterer, points, board=TOP_BOARD, use_cache_H=True, print_lines=
     if print_lines: print("E...")
 
     E = F+G@H
+
     if return_components:
         return E.to(torch.complex64), F.to(torch.complex64), G.to(torch.complex64), H.to(torch.complex64)
     return E.to(torch.complex64)
-
 
 def propagate_BEM(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None,path="Media"):
     if E is None:

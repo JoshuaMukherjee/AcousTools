@@ -90,13 +90,14 @@ def gspat(R,forward, backward, target, iterations):
 
     return phase_hologram, points
 
-def gspat_wrapper(points):
+def gspat_wrapper(points, board=TRANSDUCERS,A=None):
     '''
     Wrapper for GSPAT Solver only needing points as input\\
     `points` Target point positions\\
     returns hologram
     '''
-    A = forward_model_batched(points)
+    if A is None:
+        A = forward_model_batched(points,board)
     backward = torch.conj(A).mT
     R = A@backward
     phase_hologram,pres = gspat(R,A,backward,torch.ones(points.shape[2],1).to(device)+0j, 200)
