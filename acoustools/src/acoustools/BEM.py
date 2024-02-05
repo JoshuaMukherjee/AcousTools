@@ -14,7 +14,7 @@ import hashlib
 def compute_green_derivative(y,x,norms,B,N,M, return_components=False):
     distance = torch.sqrt(torch.sum((x - y)**2,dim=3))
 
-    vecs = x-y
+    vecs = y-x
     norms = norms.expand(B,N,-1,-1)
 
     
@@ -75,7 +75,7 @@ def compute_A(scatterer):
 
     norms = torch.tensor(scatterer.cell_normals).to(device)
 
-    green = compute_green_derivative(m_prime.unsqueeze_(0),m.unsqueeze_(0),norms,1,M,M)
+    green = compute_green_derivative(m.unsqueeze_(0),m_prime.unsqueeze_(0),norms,1,M,M)
 
     A = green * areas * -1
     eye = torch.eye(M).to(bool)
@@ -415,6 +415,7 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
 
     dist_3_inv_ik = -1*distances_3**-1 + 1j*Constants.k
     diff_dz_phase_3 = diff * dz * phase_3
+    # Doesnt take into account that norm isnt parallel to z axis - assumes dz/dist = cos(x)
     Ga = -1 * (1j * Constants.k * diff_dz_phase_3 * (dist_3_inv_ik)) / (4*torch.pi * distances_3**3) + (diff_dz_phase_3 * (dist_3_inv_ik))/(2*torch.pi * distances_3**4) - (diff_dz_phase_3)/(4*torch.pi * distances_3**5)
     Ga[:,2,:,:] -= (phase * (-1*distances**-1 + 1j*Constants.k) )/ (4*torch.pi * distances**2)
     Ga = Ga.to(torch.complex128)
