@@ -566,6 +566,30 @@ def get_rows_in(a_centres, b_centres, expand = True):
     else:
         return mask
 
+def read_phases_from_file(file, invert=True, top_board=False):
+    '''
+    Gets phases from a csv file, expects a csv with each row being one geometry
+    '''
+    phases_out = []
+    with open(file, "r") as f:
+        for line in f.readlines():
+            phases = line.rstrip().split(",")
+            phases = [float(p) for p in phases]
+            phases = torch.tensor(phases).to(device).unsqueeze_(1)
+            phases = torch.exp(1j*phases)
+            if invert:
+                if not top_board:
+                    IDX = get_convert_indexes()
+                    _,INVIDX = torch.sort(IDX)
+                    phases = phases[INVIDX]
+                else:
+                    for i in range(16):
+                    #    print(torch.flipud(TOP_BOARD[i*16:(i+1)*16]))
+                       phases[i*16:(i+1)*16] = torch.flipud(phases[i*16:(i+1)*16])
+            phases_out.append(phases)
+    phases_out = torch.stack(phases_out)
+    return phases_out
+            
 
 
 if __name__ == "__main__":
