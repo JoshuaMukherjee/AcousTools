@@ -21,6 +21,7 @@ if __name__ == "__main__":
     # E = compute_E(scatterer, p, TOP_BOARD,path=path,use_cache_H=False)
     E, F, G, H = compute_E(scatterer, p, TOP_BOARD,path=path,use_cache_H=False,return_components=True)
     x = wgs_wrapper(p,board=TOP_BOARD,A=E)
+    # print(x.shape)
     
     A = torch.tensor((-0.12,0, 0.12))
     B = torch.tensor((0.12,0, 0.12))
@@ -30,5 +31,6 @@ if __name__ == "__main__":
 
     line_params = {"scatterer":scatterer,"origin":origin,"normal":normal}
 
-    Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure,propagate_abs],colour_function_args=[{"scatterer":scatterer,"board":TOP_BOARD,"path":path,'H':H},{"board":TOP_BOARD}],vmax=8621, show=True,res=[256,256])
+    # Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure,propagate_abs],colour_function_args=[{"scatterer":scatterer,"board":TOP_BOARD,"path":path,'H':H},{"board":TOP_BOARD}],vmax=8621, show=True,res=[256,256])
+    Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],colour_function_args=[{"scatterer":scatterer,"board":TOP_BOARD,"path":path,'H':H}],vmax=8621, show=True,res=[256,256])
 
