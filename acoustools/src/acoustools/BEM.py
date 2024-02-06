@@ -386,7 +386,7 @@ def propagate_BEM_pressure(activations,points,scatterer=None,board=TOP_BOARD,H=N
     # print(pressures)
     return pressures
 
-def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False):
+def get_G_partial_wrong(points, scatterer, board=TRANSDUCERS, return_components=False):
     # Bk1. Pg 263
 
     centres = get_centres_as_points(scatterer)
@@ -427,7 +427,7 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
 
     return Ga[:,0,:,:], Ga[:,1,:,:], Ga[:,2,:,:]
     
-def get_G_partial_old(points, scatterer, board=TRANSDUCERS, return_components=False):
+def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False):
     B = points.shape[0]
     N = points.shape[2]
     
