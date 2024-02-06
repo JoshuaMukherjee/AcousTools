@@ -21,7 +21,7 @@ k = 2*pi / wavelength #732.7329804081634
 # radius=0.005 
 radius = 0.0045
 '''Radius of transducer'''
-P_ref = 8.02 #old value
-# P_ref = 0.17*20 #3.4
+# P_ref = 8.02 #old value
+P_ref = 0.17*20 #3.4
 # P_ref = 5.9983 #Value from Zak
 '''Reference pressure for transducers'''
