@@ -23,15 +23,14 @@ if __name__ == "__main__":
     p = create_points(N,B,x=0,y=0,z=0)
 
 
-    print(p.squeeze())
-    E = compute_E(walls, p, board=TRANSDUCERS, path=path)
+    E = compute_E(walls, p, board=TRANSDUCERS, path=path, use_cache_H=False)
     _,_,x = wgs_batch(E,torch.ones(N,1).to(device)+0j,200)
     x = add_lev_sig(x)
 
     print(torch.abs(E@x))
     print()
 
-    Ex, Ey, Ez = BEM_forward_model_grad(p,walls, TRANSDUCERS, path=path)
+    Ex, Ey, Ez = BEM_forward_model_grad(p,walls, TRANSDUCERS, path=path, use_cache_H=False)
     print(torch.abs(Ex@x))
     print(torch.abs(Ey@x))
     print(torch.abs(Ez@x))
@@ -55,7 +54,7 @@ if __name__ == "__main__":
    
 
 
-    exit()
+    # exit()
     A = torch.tensor((-0.09,0, 0.09))
     B = torch.tensor((0.09,0, 0.09))
     C = torch.tensor((-0.09,0, -0.09))
