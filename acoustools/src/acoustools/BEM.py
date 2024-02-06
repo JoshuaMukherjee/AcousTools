@@ -18,9 +18,9 @@ def compute_green_derivative(y,x,norms,B,N,M, return_components=False):
     norms = norms.expand(B,N,-1,-1)
 
     
-    norm_norms = torch.norm(norms,2,dim=3)
+    # norm_norms = torch.norm(norms,2,dim=3) # === 1
     vec_norms = torch.norm(vecs,2,dim=3)
-    angles = torch.sum(norms*vecs,3) / (norm_norms*vec_norms)
+    angles = torch.sum(norms*vecs,3) / (vec_norms)
 
     A = (torch.e**(1j*Constants.k*distance))/(4*torch.pi*distance)
     B = (1j*Constants.k - 1/(distance))
@@ -385,48 +385,7 @@ def propagate_BEM_pressure(activations,points,scatterer=None,board=TOP_BOARD,H=N
     pressures =  torch.abs(point_activations)
     # print(pressures)
     return pressures
-
-def get_G_partial_wrong(points, scatterer, board=TRANSDUCERS, return_components=False):
-    # Bk1. Pg 263
-
-    centres = get_centres_as_points(scatterer)
-
-    B = points.shape[0]
-    N = points.shape[2]
-    M = centres.shape[2]
-
-    points = torch.unsqueeze(points,3)
-    points = points.expand((-1,-1,-1,M))
-    centres = torch.unsqueeze(centres,2)
-    centres = centres.expand((-1,-1,N,-1))
-
-    
-    diff = centres - points
-    # diff = diff.squeeze(3)
-
-    
-    distance_axis = diff**2
-    distances = torch.sqrt(torch.sum(distance_axis, 1))
-    distances_3 = distances.unsqueeze(1).expand(-1,3,-1,-1)
-
-    dz = diff[:,2,:,:]
-
-    phase = torch.exp(1j * Constants.k * distances)
-    phase_3 = phase.unsqueeze(1).expand(-1,3,-1,-1)
-
-
-    dist_3_inv_ik = -1*distances_3**-1 + 1j*Constants.k
-    diff_dz_phase_3 = diff * dz * phase_3
-    # Doesnt take into account that norm isnt parallel to z axis - assumes dz/dist = cos(x)
-    Ga = -1 * (1j * Constants.k * diff_dz_phase_3 * (dist_3_inv_ik)) / (4*torch.pi * distances_3**3) + (diff_dz_phase_3 * (dist_3_inv_ik))/(2*torch.pi * distances_3**4) - (diff_dz_phase_3)/(4*torch.pi * distances_3**5)
-    Ga[:,2,:,:] -= (phase * (-1*distances**-1 + 1j*Constants.k) )/ (4*torch.pi * distances**2)
-    Ga = Ga.to(torch.complex128)
-
-    areas = get_areas(scatterer)
-    Ga =  Ga * areas
-
-    return Ga[:,0,:,:], Ga[:,1,:,:], Ga[:,2,:,:]
-    
+   
 def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False):
     B = points.shape[0]
     N = points.shape[2]
