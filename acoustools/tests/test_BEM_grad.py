@@ -8,7 +8,7 @@ if __name__ == "__main__":
     from acoustools.Gorkov import get_finite_diff_points_all_axis
 
     import vedo, torch
-    path = "../../BEMMedia"
+    path = "../BEMMedia"
 
 
     wall_paths = [path+"/flat-lam1.stl",path+"/flat-lam1.stl"]
@@ -20,7 +20,8 @@ if __name__ == "__main__":
     B = 1
 
     # p = create_points(N,B,y=0)
-    p = create_points(N,B,y=0)
+    # p = create_points(N,B,y=0,x=0,z=0.01)
+    p = torch.tensor([[0,0],[0,0],[0.04,-0.06]]).unsqueeze(0).to(device)
 
 
     E = compute_E(walls, p, board=TRANSDUCERS, path=path, use_cache_H=False)
@@ -60,6 +61,12 @@ if __name__ == "__main__":
     C = torch.tensor((-0.09,0, -0.09))
     normal = (0,1,0)
     origin = (0,0,0)
+
+    # A = torch.tensor((0,-0.09, 0.09))
+    # B = torch.tensor((0,0.09, 0.09))
+    # C = torch.tensor((0,-0.09, -0.09))
+    # normal = (1,0,0)
+    # origin = (0,0,0)
 
     line_params = {"scatterer":walls,"origin":origin,"normal":normal}
 
