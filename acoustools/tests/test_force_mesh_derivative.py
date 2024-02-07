@@ -7,10 +7,11 @@ from acoustools.Solvers import wgs_wrapper
 
 
 if __name__ == "__main__":
-    wall_paths = ["../BEMMedia/flat-lam1.stl","../BEMMedia/flat-lam1.stl"]
+    path = "../../BEMMedia"
+    wall_paths = [path+"/flat-lam1.stl",path+"flat-lam1.stl"]
     walls = load_multiple_scatterers(wall_paths,dxs=[-0.06,0.06],rotys=[90,-90]) #Make mesh at 0,0,0
     
-    ball_path = "../BEMMedia/Sphere-lam2.stl"
+    ball_path = path+"/Sphere-lam2.stl"
     ball = load_scatterer(ball_path,dy=-0.06) #Make mesh at 0,0,0
     scale_to_diameter(ball,0.04)
     
@@ -18,7 +19,7 @@ if __name__ == "__main__":
 
     centres = get_centres_as_points(scatterer)
 
-    H = get_cache_or_compute_H(scatterer,TRANSDUCERS,path = "../BEMMedia/")
+    H = get_cache_or_compute_H(scatterer,TRANSDUCERS,path = path)
     x = wgs_wrapper(centres,A=H)
 
     norms = get_normals_as_points(scatterer)
