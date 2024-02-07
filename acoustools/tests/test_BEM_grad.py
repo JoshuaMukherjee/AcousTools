@@ -2,13 +2,13 @@ if __name__ == "__main__":
 
     from acoustools.BEM import load_multiple_scatterers, scatterer_file_name, compute_E, propagate_BEM_pressure, BEM_forward_model_grad
     from acoustools.Mesh import get_lines_from_plane
-    from acoustools.Utilities import create_points, TRANSDUCERS, device, add_lev_sig, forward_model_grad
+    from acoustools.Utilities import create_points, TRANSDUCERS, device, add_lev_sig, forward_model_grad, propagate_abs
     from acoustools.Solvers import wgs_batch
     from acoustools.Visualiser import Visualise
     from acoustools.Gorkov import get_finite_diff_points_all_axis
 
     import vedo, torch
-    path = "../BEMMedia"
+    path = "../../BEMMedia"
 
 
     wall_paths = [path+"/flat-lam1.stl",path+"/flat-lam1.stl"]
@@ -16,11 +16,11 @@ if __name__ == "__main__":
     walls.scale((1,19/12,19/12),reset=True,origin =False)
     walls.filename = scatterer_file_name(walls)
 
-    N = 1
+    N = 2
     B = 1
 
     # p = create_points(N,B,y=0)
-    p = create_points(N,B,x=0,y=0,z=0)
+    p = create_points(N,B,y=0)
 
 
     E = compute_E(walls, p, board=TRANSDUCERS, path=path, use_cache_H=False)
@@ -63,5 +63,5 @@ if __name__ == "__main__":
 
     line_params = {"scatterer":walls,"origin":origin,"normal":normal}
 
-    Visualise(A,B,C, x, points=p, colour_functions=[propagate_BEM_pressure], add_lines_functions=[get_lines_from_plane],add_line_args=[line_params],\
-              colour_function_args=[{"scatterer":walls,"board":TRANSDUCERS,"path":path}],vmax=9000, show=True)
+    Visualise(A,B,C, x, points=p, colour_functions=[propagate_BEM_pressure, propagate_abs], add_lines_functions=[get_lines_from_plane,None],add_line_args=[line_params,{}],\
+              colour_function_args=[{"scatterer":walls,"board":TRANSDUCERS,"path":path},{}],vmax=9000, show=True)

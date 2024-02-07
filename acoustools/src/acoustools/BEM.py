@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from acoustools.Utilities import device, TOP_BOARD, TRANSDUCERS, forward_model_batched, create_points, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed
 import acoustools.Constants as Constants
-from acoustools.Mesh import scatterer_file_name, load_scatterer, load_multiple_scatterers, get_centres_as_points, board_name, get_areas
+from acoustools.Mesh import scatterer_file_name, load_scatterer, load_multiple_scatterers, get_centres_as_points, board_name, get_areas, get_normals_as_points
 
 import hashlib
 
@@ -107,12 +107,12 @@ def grad_H(points, scatterer, transducers, return_components = False):
 
     B = compute_bs(scatterer,transducers)
     A = compute_A(scatterer)
-    A_inv = torch.inverse(A)
+    A_inv = torch.inverse(A).to(torch.complex128)
     
     Bx, By, Bz = forward_model_grad(centres, transducers)
-    Bx = Bx.to(torch.complex64)
-    By = By.to(torch.complex64)
-    Bz = Bz.to(torch.complex64)
+    Bx = Bx.to(torch.complex128)
+    By = By.to(torch.complex128)
+    Bz = Bz.to(torch.complex128)
 
 
     Ax, Ay, Az =  get_G_partial(centres,scatterer,transducers)
@@ -120,31 +120,29 @@ def grad_H(points, scatterer, transducers, return_components = False):
     # Ay *= -1
     # Az *= -1
     
-    Ax = (-1* Ax).to(torch.complex64)
-    Ay = (-1* Ay).to(torch.complex64)
-    Az = (-1* Az).to(torch.complex64)
+    Ax = (-1* Ax)
+    Ay = (-1* Ay)
+    Az = (-1* Az)
+    # .to(torch.complex64)
 
-
+    
     eye = torch.eye(M).to(bool)
     Ax[:,eye] = 0
     Ay[:,eye] = 0
     Az[:,eye] = 0
 
     
-
     A_inv_x = (-1*A_inv @ Ax @ A_inv).to(torch.complex64)
     A_inv_y = (-1*A_inv @ Ay @ A_inv).to(torch.complex64)
     A_inv_z = (-1*A_inv @ Az @ A_inv).to(torch.complex64)
-
-
-    # Hx = (B.mT@A_inv_x).mT + (A_inv@Bx)
-    # Hy = (B.mT@A_inv_y).mT + (A_inv@By)
-    # Hz = (B.mT@A_inv_z).mT + (A_inv@By)
 
     Hx = (A_inv_x@B) + (A_inv@Bx)
     Hy = (A_inv_y@B) + (A_inv@By)
     Hz = (A_inv_z@B) + (A_inv@By)
 
+    Hx = Hx.to(torch.complex64)
+    Hy = Hy.to(torch.complex64)
+    Hz = Hz.to(torch.complex64)
 
     if return_components:
         return Hx, Hy, Hz, A, A_inv, Ax, Ay, Az
@@ -385,8 +383,40 @@ def propagate_BEM_pressure(activations,points,scatterer=None,board=TOP_BOARD,H=N
     pressures =  torch.abs(point_activations)
     # print(pressures)
     return pressures
-   
+
+
 def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False):
+    '''
+    Returns gradient of the G matrix in BEM
+    '''
+    #Bk1. Page 272
+    areas = get_areas(scatterer)
+    centres = get_centres_as_points(scatterer)
+
+    N = points.shape[2]
+    M = centres.shape[2]
+
+    points = points.unsqueeze(3).expand(-1,-1,-1,M)
+    centres = centres.unsqueeze(2).expand(-1,-1,N,-1)
+
+
+
+    vecs = points - centres #Centres -> Points
+    vecs = vecs.to(torch.double)
+    distances = torch.sum(vecs**2)
+    norms = get_normals_as_points(scatterer).real.to(torch.double).unsqueeze(2).expand(-1,-1,N,-1)
+
+    vec_norm = torch.norm(vecs,2)
+    angle = torch.einsum('ijkh,ijkh->ikh', vecs, norms).unsqueeze(1) / vec_norm
+    angle_grad = -1*norms / vec_norm
+    phase = torch.exp(1j * Constants.k * distances)
+
+    grad_G = areas * (-1 * phase / (4*torch.pi*distances**3) * (vecs / distances * angle * (Constants.k**2 * distances**2 + 2j*Constants.k*distances - 2) + distances * angle_grad * (1-1j*Constants.k*distances)))
+    grad_G = grad_G.to(torch.complex128)
+    
+    return grad_G[:,0,:], grad_G[:,1,:], grad_G[:,2,:]
+
+def get_G_partial_old(points, scatterer, board=TRANSDUCERS, return_components=False):
     B = points.shape[0]
     N = points.shape[2]
     
