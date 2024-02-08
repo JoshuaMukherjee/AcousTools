@@ -381,7 +381,6 @@ def propagate_BEM(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=Non
 def propagate_BEM_pressure(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None, path="Media"):
     point_activations = propagate_BEM(activations,points,scatterer,board,H,E,path)
     pressures =  torch.abs(point_activations)
-    # print(pressures)
     return pressures
 
 
@@ -416,64 +415,6 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
     
     return grad_G[:,0,:], grad_G[:,1,:], grad_G[:,2,:]
 
-def get_G_partial_old(points, scatterer, board=TRANSDUCERS, return_components=False):
-    B = points.shape[0]
-    N = points.shape[2]
-    
-    centres = torch.tensor(scatterer.cell_centers).to(device)
-    M = centres.shape[0]
-
-    p = torch.permute(points,(0,2,1))
-    p = torch.unsqueeze(p,2).expand((-1,-1,M,-1))
-
-    #Y is centres, X is points
-
-    vecs = p-centres #Centres -> Points
-    norms = torch.tensor(scatterer.cell_normals).to(device)
-    norms = norms.expand(B,N,-1,-1)
-
-    norm_norms = torch.norm(norms,2,dim=3)
-    vec_norms = torch.norm(vecs,2,dim=3)
-    vec_norms_cube = vec_norms**3
-
-    distance = torch.sqrt(torch.sum(vecs**2,dim=3))
-    distance_exp = torch.unsqueeze(distance,3)
-    distance_exp = distance_exp.expand(-1,-1,-1,3)
-    distance_exp_cube = distance_exp ** 3
-
-    Ca = torch.zeros((B,N,M,3)).to(device)
-    Ca[:,:,:,0] = (norms[:,:,:,0] * (vecs[:,:,:,1]**2 +vecs[:,:,:,2]**2) - vecs[:,:,:,0] * (vecs[:,:,:,1] * norms[:,:,:,1] + vecs[:,:,:,2] * norms[:,:,:,2])) / (norm_norms * vec_norms_cube)
-    Ca[:,:,:,1] = (norms[:,:,:,1] * (vecs[:,:,:,0]**2 +vecs[:,:,:,2]**2) - vecs[:,:,:,1] * (vecs[:,:,:,0] * norms[:,:,:,0] + vecs[:,:,:,2] * norms[:,:,:,2])) / (norm_norms * vec_norms_cube)
-    Ca[:,:,:,2] = (norms[:,:,:,2] * (vecs[:,:,:,1]**2 +vecs[:,:,:,0]**2) - vecs[:,:,:,2] * (vecs[:,:,:,1] * norms[:,:,:,1] + vecs[:,:,:,0] * norms[:,:,:,0])) / (norm_norms * vec_norms_cube)
-
-
-    Ba = vecs / distance_exp**2
-
-    Aa = (1j*torch.exp(1j * Constants.k * distance_exp) * (Constants.k * distance_exp + 1j) * vecs) / (4*torch.pi * distance_exp_cube)
-
-    _, A,B,C = compute_green_derivative(centres,p,norms,B,N,M,True)
-    A = torch.unsqueeze(A,3)
-    A = A.expand(-1,-1,-1,3)
-
-    B = torch.unsqueeze(B,3)
-    B = B.expand(-1,-1,-1,3)
-
-    C = torch.unsqueeze(C,3)
-    C = C.expand(-1,-1,-1,3)
-
-    areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
-    areas = torch.unsqueeze(areas,0)
-    areas = torch.unsqueeze(areas,0)
-    areas = torch.unsqueeze(areas,3)
-
-    
-    Ga = B * (C*Aa + A*Ca) + A*C*Ba
-    Ga = areas * Ga
-    
-    if return_components:
-        return Ga[:,:,:,0], Ga[:,:,:,1], Ga[:,:,:,2], A, B, C, Aa, Ba, Ca
-    else:
-        return Ga[:,:,:,0], Ga[:,:,:,1], Ga[:,:,:,2]
 
 def BEM_forward_model_grad(points, scatterer, transducers=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None, return_components=False,path="Media"):
     B = points.shape[0]
