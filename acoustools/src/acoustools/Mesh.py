@@ -152,17 +152,21 @@ def get_centre_of_mass_as_points(*scatterers, permute_to_points=True):
     return torch.real(torch.stack(centres_list))
 
 
-def get_centres_as_points(*scatterers, permute_to_points=True):
+def get_centres_as_points(*scatterers, permute_to_points=True, add_normals=False, normal_scale=0.001):
     centre_list = []
     for scatterer in scatterers:
         centres =  torch.tensor(scatterer.cell_centers).to(device)
 
         if permute_to_points:
-            centres = torch.permute(centres,(1,0))
+            centres = torch.permute(centres,(1,0)).unsqueeze_(0)
+        
+        if add_normals:
+            norms= get_normals_as_points(scatterer)
+            centres += norms.real * normal_scale
         
         centre_list.append(centres.to(torch.float32))
-    
-    return torch.stack(centre_list)
+        centres = torch.cat(centre_list,dim=0)
+    return centres
 
 def get_areas(*scatterers):
     area_list = []
