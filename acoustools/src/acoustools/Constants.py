@@ -12,7 +12,7 @@ p_0 = 1.2
 c_p = 1052
 '''Speed of sound in EPS particle'''
 p_p = 29.36 
-'''density of EPS particle, From Holographic acoustic elements for manipulation of levitated objects'''
+'''density of EPS particle, From `Holographic acoustic elements for manipulation of levitated objects`'''
 f = 40000
 '''Frequency of 40KHz sound'''
 wavelength = c_0 / f #0.008575
