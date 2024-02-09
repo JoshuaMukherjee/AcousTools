@@ -7,6 +7,18 @@ from acoustools.Mesh import translate, merge_scatterers, get_centres_as_points, 
 import torch
 
 def force_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K1=None, K2=None,U_function=gorkov_fin_diff,U_fun_args={}):
+    '''
+    Returns the force on a particle using finite differences to approximate the derivative of the gor'kov potential\\
+    `activations` Transducer hologram\\
+    `points` Points to propagate to\\
+    `axis` string containing `X`, `Y` or `Z` defining the axis to take into account eg `XYZ` considers all 3 axes and `YZ` considers only the y and z-axes\\
+    `stepsize` stepsize to use for finite differences \\
+    `K1` Value for K1 to be used in the gor'kov computation, see `Holographic acoustic elements for manipulation of levitated objects` for more information\\
+    `K2` Value for K1 to be used in the gor'kov computation, see `Holographic acoustic elements for manipulation of levitated objects` for more information\\
+    `U_function` The funvtion used to compute the gor'kov potential\\
+    `U_fun_args` arguments for `U_function` \\
+    Returns Force
+    '''
     B = points.shape[0]
     D = len(axis)
     N = points.shape[2]
@@ -22,6 +34,14 @@ def force_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K1
 
 
 def compute_force(activations, points,board=TRANSDUCERS,return_components=False):
+    '''
+    Returns the force on a particle using the analytical derivative of the Gor'kov potential and the piston model\\  
+    `activations` Transducer hologram\\
+    `points` Points to propagate to\\
+    `board` Transducers to use \\
+    `return_components` If true returns force as one tensor otherwise returns Fx, Fy, Fz\\
+    Returns force  
+    '''
     
     F = forward_model_batched(points,transducers=board)
     Fx, Fy, Fz = forward_model_grad(points,transducers=board)
@@ -58,6 +78,15 @@ def compute_force(activations, points,board=TRANSDUCERS,return_components=False)
         return force
     
 def get_force_axis(activations, points,board=TRANSDUCERS, axis=2):
+    '''
+    Returns the force in one axis on a particle using the analytical derivative of the Gor'kov potential and the piston model\\  
+    `activations` Transducer hologram\\
+    `points` Points to propagate to\\
+    `board` Transducers to use \\
+    `axis` Axis to take the force in\\
+    Equivalent to `compute_force(activations, points,return_components=True)[axis]` \\
+    Returns force  
+    '''
     forces = compute_force(activations, points,return_components=True)
     force = forces[axis]
 
@@ -65,6 +94,21 @@ def get_force_axis(activations, points,board=TRANSDUCERS, axis=2):
 
 
 def force_mesh(activations, points, norms, areas, board, grad_function=forward_model_grad, grad_function_args={},F=None, Ax=None, Ay=None,Az=None):
+    '''
+    Returns the force on a mesh using a discritised version of Eq. 1 in `Acoustical boundary hologram for macroscopic rigid-body levitation`\\
+    `activations` Transducer hologram\\
+    `points` Points to propagate to\\
+    `norms` The normals to the mesh faces\\
+    `areas` The areas of the mesh points\\
+    `board` Transducers to use \\
+    `grad_function` The function to use to compute the gradient of pressure\\
+    `grad_function_args` The argument to pass to `grad_function`\\
+    `F` A precomputed forward propagation matrix, if None will be computed\\
+    `Ax` The gradient of F wrt x, if None will be computed\\
+    `Ay` The gradient of F wrt y, if None will be computed\\
+    `Az` The gradient of F wrt z, if None will be computed\\
+    Returns the force on each mesh element\\
+    '''
     
     p = propagate(activations,points,board,A=F)
     pressure = torch.abs(p)**2
@@ -96,7 +140,24 @@ def force_mesh(activations, points, norms, areas, board, grad_function=forward_m
     return force
 
 def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=None, grad_function=forward_model_grad,grad_function_args={},F=None, Ax=None, Ay=None,Az=None):
-    
+    '''
+    Returns the torque on a mesh using a discritised version of Eq. 1 in `Acoustical boundary hologram for macroscopic rigid-body levitation`\\
+    `activations` Transducer hologram\\
+    `points` Points to propagate to\\
+    `norms` The normals to the mesh faces\\
+    `areas` The areas of the mesh points\\
+    `centre_of_mass` The position of the centre of mass of the mesh\\
+    `board` Transducers to use \\
+    `force` Precomputed force on the mesh faces, if None will be computed\\
+    `grad_function` The function to use to compute the gradient of pressure\\
+    `grad_function_args` The argument to pass to `grad_function`\\
+    `F` A precomputed forward propagation matrix, if None will be computed\\
+    `Ax` The gradient of F wrt x, if None will be computed\\
+    `Ay` The gradient of F wrt y, if None will be computed\\
+    `Az` The gradient of F wrt z, if None will be computed\\
+    Returns the force on each mesh element\\
+    '''
+
     if force is None:
         force = force_mesh(activations, points, norms, areas, board,grad_function,grad_function_args,F=F, Ax=Ax, Ay=Ay, Az=Az)
     
@@ -136,7 +197,21 @@ def force_mesh_derivative(activations, points, norms, areas, board, scatterer,Hx
 
 def get_force_mesh_along_axis(start,end, activations, scatterers, board, mask=None, steps=200, path="Media",print_lines=False, use_cache=True, Hs = None, Hxs=None, Hys=None, Hzs=None):
     '''
-    First element in scatterers is the mesh to levitate, rest is considered reflectors
+    Computes the force on a mesh at each point from `start` to `end` with number of samples = `steps`  \\
+    `start` The starting position\\
+    `end` The ending position\\
+    `activations` Transducer hologram\\
+    `scatterers` First element is the mesh to move, rest is considered static reflectors \\
+    `board` Transducers to use \\
+    `mask` The mask to apply to filter force for only the mesh to move\\
+    `steps` Number of steps to take from start to end\\
+    `path` path to folder containing BEMCache/ \\
+    `print_lines` if true prints messages detaling progress\\
+    `use_cache` If true uses the cache system, otherwise computes H and does not save it\\
+    `Hs` List of precomputed forward propagation matricies\\
+    `Hxs` List of precomputed derivative of forward propagation matricies wrt x\\
+    `Hys` List of precomputed derivative of forward propagation matricies wrt y\\
+    `Hzs` List of precomputed derivative of forward propagation matricies wrt z\\
     '''
     # if Ax is None or Ay is None or Az is None:
     #     Ax, Ay, Az = grad_function(points=points, transducers=board, **grad_function_args)
