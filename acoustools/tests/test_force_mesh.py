@@ -1,5 +1,5 @@
 if __name__ == "__main__":
-    from acoustools.Gorkov import force_mesh, compute_force
+    from acoustools.Force import force_mesh, compute_force
     from acoustools.Utilities import create_points, propagate_abs, add_lev_sig, TRANSDUCERS
     from acoustools.Solvers import wgs_wrapper
     from acoustools.Mesh import load_multiple_scatterers, get_normals_as_points, get_centres_as_points, get_areas, get_weight
@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     board = TRANSDUCERS
 
-    path = "../BEMMedia"
+    path = "../../BEMMedia"
     paths = [path+"/Sphere-lam2.stl"]
     scatterer = load_multiple_scatterers(paths,dys=[-0.06])
 
@@ -25,8 +25,6 @@ if __name__ == "__main__":
     x = wgs_wrapper(p, board=board, A=E)
 
     pres = propagate_BEM_pressure(x,p,scatterer,board=TRANSDUCERS,E=E)
-
-    
 
     areas = get_areas(scatterer)
     force = force_mesh(x,p,norms,areas,board, grad_function=BEM_forward_model_grad, F=E, grad_function_args={"scatterer":scatterer,"H":H,"path":path})

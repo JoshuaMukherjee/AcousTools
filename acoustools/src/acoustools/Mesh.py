@@ -211,3 +211,4 @@ def downsample(scatterer, factor=2, n=None, method='quadric', boundaries=False, 
 
     return scatterer_small
 
+

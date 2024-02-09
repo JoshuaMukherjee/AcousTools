@@ -1,4 +1,4 @@
-from acoustools.Gorkov import force_mesh_derivative
+from acoustools.Force import force_mesh_derivative
 from acoustools.BEM import  get_cache_or_compute_H
 from acoustools.Mesh import load_scatterer,scale_to_diameter, get_centres_as_points, get_normals_as_points, get_areas, load_multiple_scatterers, merge_scatterers
 from acoustools.Utilities import TRANSDUCERS

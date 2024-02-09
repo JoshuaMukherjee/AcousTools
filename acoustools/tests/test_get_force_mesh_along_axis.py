@@ -1,7 +1,7 @@
 
 
 if __name__ == "__main__":
-    from acoustools.Gorkov import force_mesh, compute_force, get_force_mesh_along_axis
+    from acoustools.Force import force_mesh, compute_force, get_force_mesh_along_axis
     from acoustools.Utilities import create_points, propagate_abs, add_lev_sig, TRANSDUCERS
     from acoustools.Solvers import wgs_wrapper
     from acoustools.Mesh import load_multiple_scatterers, get_normals_as_points, get_centres_as_points, get_areas, get_weight, load_scatterer, scale_to_diameter, merge_scatterers

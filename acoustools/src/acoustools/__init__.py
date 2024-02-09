@@ -7,6 +7,7 @@ import acoustools.BEM
 import acoustools.Gorkov
 import acoustools.Visualiser
 import acoustools.Mesh
+import acoustools.Force
 from acoustools.Constants import *
 
 import acoustools.Optimise.Objectives 
