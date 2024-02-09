@@ -1,5 +1,6 @@
 
 pi = 3.1415926535
+'''pi to 10 decimal places'''
 R = .001 
 '''Radius of particle'''
 V = 4/3 * pi * R**3
