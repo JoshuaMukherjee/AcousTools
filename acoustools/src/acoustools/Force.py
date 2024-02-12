@@ -1,5 +1,5 @@
 from acoustools.Gorkov import gorkov_fin_diff, get_finite_diff_points_all_axis
-from acoustools.Utilities import forward_model_batched, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed, TRANSDUCERS, propagate
+from acoustools.Utilities import forward_model_batched, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed, TRANSDUCERS, propagate, DTYPE
 import acoustools.Constants as c
 from acoustools.BEM import grad_H, grad_2_H, get_cache_or_compute_H, get_cache_or_compute_H_gradients
 from acoustools.Mesh import translate, merge_scatterers, get_centres_as_points, get_areas, get_normals_as_points
@@ -109,13 +109,15 @@ def force_mesh(activations, points, norms, areas, board, grad_function=forward_m
     `Az` The gradient of F wrt z, if None will be computed\\
     Returns the force on each mesh element\\
     '''
-    
+    activations= activations
     p = propagate(activations,points,board,A=F)
     pressure = torch.abs(p)**2
     
     if Ax is None or Ay is None or Az is None:
         Ax, Ay, Az = grad_function(points=points, transducers=board, **grad_function_args)
     
+
+
     px = (Ax@activations).squeeze_(2).unsqueeze_(0)
     py = (Ay@activations).squeeze_(2).unsqueeze_(0)
     pz = (Az@activations).squeeze_(2).unsqueeze_(0)
@@ -125,7 +127,7 @@ def force_mesh(activations, points, norms, areas, board, grad_function=forward_m
     pz[pz.isnan()] = 0
 
 
-    grad = torch.cat((px,py,pz),dim=1).to(torch.complex128)
+    grad = torch.cat((px,py,pz),dim=1).to(DTYPE)
     grad_norm = torch.norm(grad,2,dim=1)**2
     
     k1 = 1/ (2*c.p_0*(c.c_0**2))
@@ -155,15 +157,15 @@ def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=N
     `Ax` The gradient of F wrt x, if None will be computed\\
     `Ay` The gradient of F wrt y, if None will be computed\\
     `Az` The gradient of F wrt z, if None will be computed\\
-    Returns the force on each mesh element\\
+    Returns the force on each mesh element\\        
     '''
 
     if force is None:
         force = force_mesh(activations, points, norms, areas, board,grad_function,grad_function_args,F=F, Ax=Ax, Ay=Ay, Az=Az)
+    force = force.to(DTYPE)
     
     displacement = points - centre_of_mass
-    displacement = displacement.to(torch.float64)
-
+    displacement = displacement.to(DTYPE)
     torque = torch.linalg.cross(displacement,force,dim=1)
 
     return torch.real(torque)

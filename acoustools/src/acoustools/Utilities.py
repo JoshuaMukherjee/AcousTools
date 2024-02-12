@@ -1,6 +1,10 @@
 import torch, math, sys
 import acoustools.Constants as Constants
 
+DTYPE = torch.complex64
+'''
+Data type to use for matricies - use `.to(DTYPE)` to convert
+'''
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu' 
 '''Constant storing device to use, `cuda` if cuda is available else cpu. \\ 

@@ -286,7 +286,7 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
         # start = torch.ones((B,M,1)).to(device) +0j
         start = torch.e**(1j*torch.rand((B,M,1))*torch.pi)
 
-        start=start.to(device)
+        start=start.to(device).to(DTYPE)
     
     
     # param = torch.nn.Parameter(start).to(device)

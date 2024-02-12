@@ -1,4 +1,4 @@
-from acoustools.Utilities import device, forward_model_batched
+from acoustools.Utilities import device, forward_model_batched, DTYPE
 import acoustools.Constants as Constants
 
 import vedo, torch
@@ -135,7 +135,7 @@ def get_normals_as_points(*scatterers, permute_to_points=True):
         if permute_to_points:
             norm = torch.permute(norm,(1,0))
         
-        norm_list.append(norm.to(torch.complex64))
+        norm_list.append(norm.to(DTYPE))
     
     return torch.stack(norm_list)
 
@@ -147,7 +147,7 @@ def get_centre_of_mass_as_points(*scatterers, permute_to_points=True):
         if permute_to_points:
             centre_of_mass = torch.unsqueeze(centre_of_mass,1)
         
-        centres_list.append(centre_of_mass.to(torch.complex64))
+        centres_list.append(centre_of_mass.to(DTYPE))
     
     return torch.real(torch.stack(centres_list))
 
@@ -164,7 +164,7 @@ def get_centres_as_points(*scatterers, permute_to_points=True, add_normals=False
             norms= get_normals_as_points(scatterer)
             centres += norms.real * normal_scale
         
-        centre_list.append(centres.to(torch.float32))
+        centre_list.append(centres.to(DTYPE))
         centres = torch.cat(centre_list,dim=0)
     return centres
 

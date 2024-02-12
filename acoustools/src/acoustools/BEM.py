@@ -5,11 +5,12 @@ import pickle
 
 import matplotlib.pyplot as plt
 
-from acoustools.Utilities import device, TOP_BOARD, TRANSDUCERS, forward_model_batched, create_points, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed
+from acoustools.Utilities import device, TOP_BOARD, TRANSDUCERS, forward_model_batched, create_points, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed, DTYPE
 import acoustools.Constants as Constants
 from acoustools.Mesh import scatterer_file_name, load_scatterer, load_multiple_scatterers, get_centres_as_points, board_name, get_areas, get_normals_as_points
 
 import hashlib
+
 
 def compute_green_derivative(y,x,norms,B,N,M, return_components=False):
     '''
@@ -31,10 +32,10 @@ def compute_green_derivative(y,x,norms,B,N,M, return_components=False):
     
     # norm_norms = torch.norm(norms,2,dim=3) # === 1
     vec_norms = torch.norm(vecs,2,dim=3)
-    angles = torch.sum(norms*vecs,3) / (vec_norms)
+    angles = (torch.sum(norms*vecs,3) / (vec_norms)).to(DTYPE)
 
-    A = (torch.e**(1j*Constants.k*distance))/(4*torch.pi*distance)
-    B = (1j*Constants.k - 1/(distance))
+    A = ((torch.e**(1j*Constants.k*distance))/(4*torch.pi*distance)).to(DTYPE)
+    B = (1j*Constants.k - 1/(distance)).to(DTYPE)
     partial_greens = A*B*angles
     partial_greens[partial_greens.isnan()] = 1
 
@@ -59,7 +60,7 @@ def compute_G(points, scatterer):
     #Compute the partial derivative of Green's Function
 
     #Firstly compute the distances from mesh points -> control points
-    centres = torch.tensor(scatterer.cell_centers).to(device) #Uses centre points as position of mesh
+    centres = torch.tensor(scatterer.cell_centers).to(device).to(DTYPE) #Uses centre points as position of mesh
     centres = centres.expand((B,N,-1,-1))
     
     # print(points.shape)
@@ -101,7 +102,7 @@ def compute_A(scatterer):
     eye = torch.eye(M).to(bool)
     A[:,eye] = 0.5
 
-    return A.to(torch.complex64)
+    return A.to(DTYPE)
 
 def compute_bs(scatterer, board):
     '''
@@ -112,7 +113,7 @@ def compute_bs(scatterer, board):
     '''
     centres = torch.tensor(scatterer.cell_centers).to(device).T.unsqueeze_(0)
     bs = forward_model_batched(centres,board)
-    return bs.to(torch.complex64)
+    return bs.to(DTYPE)
 
 def compute_H(scatterer, board,use_LU=True):
     '''
@@ -146,12 +147,12 @@ def grad_H(points, scatterer, transducers, return_components = False):
 
     B = compute_bs(scatterer,transducers)
     A = compute_A(scatterer)
-    A_inv = torch.inverse(A).to(torch.complex128)
+    A_inv = torch.inverse(A).to(DTYPE)
     
     Bx, By, Bz = forward_model_grad(centres, transducers)
-    Bx = Bx.to(torch.complex128)
-    By = By.to(torch.complex128)
-    Bz = Bz.to(torch.complex128)
+    Bx = Bx.to(DTYPE)
+    By = By.to(DTYPE)
+    Bz = Bz.to(DTYPE)
 
 
     Ax, Ay, Az =  get_G_partial(centres,scatterer,transducers)
@@ -162,7 +163,6 @@ def grad_H(points, scatterer, transducers, return_components = False):
     Ax = (-1* Ax)
     Ay = (-1* Ay)
     Az = (-1* Az)
-    # .to(torch.complex64)
 
     
     eye = torch.eye(M).to(bool)
@@ -171,17 +171,17 @@ def grad_H(points, scatterer, transducers, return_components = False):
     Az[:,eye] = 0
 
     
-    A_inv_x = (-1*A_inv @ Ax @ A_inv).to(torch.complex64)
-    A_inv_y = (-1*A_inv @ Ay @ A_inv).to(torch.complex64)
-    A_inv_z = (-1*A_inv @ Az @ A_inv).to(torch.complex64)
+    A_inv_x = (-1*A_inv @ Ax @ A_inv).to(DTYPE)
+    A_inv_y = (-1*A_inv @ Ay @ A_inv).to(DTYPE)
+    A_inv_z = (-1*A_inv @ Az @ A_inv).to(DTYPE)
 
     Hx = (A_inv_x@B) + (A_inv@Bx)
     Hy = (A_inv_y@B) + (A_inv@By)
     Hz = (A_inv_z@B) + (A_inv@By)
 
-    Hx = Hx.to(torch.complex64)
-    Hy = Hy.to(torch.complex64)
-    Hz = Hz.to(torch.complex64)
+    Hx = Hx.to(DTYPE)
+    Hy = Hy.to(DTYPE)
+    Hz = Hz.to(DTYPE)
 
     if return_components:
         return Hx, Hy, Hz, A, A_inv, Ax, Ay, Az
@@ -207,9 +207,9 @@ def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, 
     B = compute_bs(scatterer,transducers)
 
     Fx, Fy, Fz = forward_model_grad(centres, transducers)
-    Fx = Fx.to(torch.complex64)
-    Fy = Fy.to(torch.complex64)
-    Fz = Fz.to(torch.complex64)
+    Fx = Fx.to(DTYPE)
+    Fy = Fy.to(DTYPE)
+    Fz = Fz.to(DTYPE)
     Fa = torch.stack([Fx,Fy,Fz],dim=3)
 
     Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(centres, transducers)
@@ -229,15 +229,15 @@ def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, 
         Ax[:,eye] = 0
         Ay[:,eye] = 0
         Az[:,eye] = 0
-        Ax = Ax.to(torch.complex64)
-        Ay = Ay.to(torch.complex64)
-        Az = Az.to(torch.complex64)
+        Ax = Ax.to(DTYPE)
+        Ay = Ay.to(DTYPE)
+        Az = Az.to(DTYPE)
     Aa = torch.stack([Ax,Ay,Az],dim=3)
 
     
-    A_inv_x = (-1*A_inv @ Ax @ A_inv).to(torch.complex64)
-    A_inv_y = (-1*A_inv @ Ay @ A_inv).to(torch.complex64)
-    A_inv_z = (-1*A_inv @ Az @ A_inv).to(torch.complex64)
+    A_inv_x = (-1*A_inv @ Ax @ A_inv).to(DTYPE)
+    A_inv_y = (-1*A_inv @ Ay @ A_inv).to(DTYPE)
+    A_inv_z = (-1*A_inv @ Az @ A_inv).to(DTYPE)
 
 
     A_inv_a = torch.stack([A_inv_x,A_inv_y,A_inv_z],dim=3)
@@ -290,7 +290,7 @@ def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, 
     Gx, Gy, Gz, A_green, B_green, C_green, Aa_green, Ba_green, Ca_green = get_G_partial(centres, scatterer, transducers, return_components=True)
 
     Gaa = 2*Ca_green*(B_green*Aa_green + A_green*Ba_green) + C_green*(B_green*Aaa + 2*Aa_green*Ba_green + A_green*Baa)+ A_green*B_green*Caa
-    Gaa = Gaa.to(torch.complex64)
+    Gaa = Gaa.to(DTYPE)
 
     areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
     areas = torch.unsqueeze(areas,0)
@@ -309,12 +309,12 @@ def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, 
     A_inv = A_inv.unsqueeze(1).expand(-1,3,-1,-1)
     Faa = Faa.permute(0,3,1,2)
 
-    Fa = Fa.to(torch.complex64)
-    Faa = Faa.to(torch.complex64)
+    Fa = Fa.to(DTYPE)
+    Faa = Faa.to(DTYPE)
 
     Gaa = Gaa.permute(0,3,2,1)
     Aa = Aa.permute(0,3,2,1)
-    Aa = Aa.to(torch.complex64)
+    Aa = Aa.to(DTYPE)
 
     X1 = A_inv_a @ Fa + A_inv @ Faa
     X2 = (A_inv @ (Aa @ A_inv @ Aa - Gaa)@A_inv) @ F
@@ -440,21 +440,21 @@ def compute_E(scatterer, points, board=TOP_BOARD, use_cache_H=True, print_lines=
     if print_lines: print("H...")
     
     if H is None:
-        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines)
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines).to(DTYPE)
         
     if print_lines: print("G...")
-    G = compute_G(points, scatterer).to(torch.complex64)
+    G = compute_G(points, scatterer).to(DTYPE)
     
     if print_lines: print("F...")
-    F = forward_model_batched(points,board)
+    F = forward_model_batched(points,board).to(DTYPE)
     
     if print_lines: print("E...")
 
     E = F+G@H
 
     if return_components:
-        return E.to(torch.complex64), F.to(torch.complex64), G.to(torch.complex64), H.to(torch.complex64)
-    return E.to(torch.complex64)
+        return E.to(DTYPE), F.to(DTYPE), G.to(DTYPE), H.to(DTYPE)
+    return E.to(DTYPE)
 
 def propagate_BEM(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None,path="Media"):
     '''
@@ -516,9 +516,9 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
 
 
     vecs = points - centres #Centres -> Points
-    vecs = vecs.to(torch.double)
+    vecs = vecs.to(DTYPE)
     distances = torch.sum(vecs**2)
-    norms = get_normals_as_points(scatterer).real.to(torch.double).unsqueeze(2).expand(-1,-1,N,-1)
+    norms = get_normals_as_points(scatterer).real.to(DTYPE).unsqueeze(2).expand(-1,-1,N,-1)
 
     vec_norm = torch.norm(vecs,2)
     angle = torch.einsum('ijkh,ijkh->ikh', vecs, norms).unsqueeze(1) / vec_norm
@@ -526,7 +526,7 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
     phase = torch.exp(1j * Constants.k * distances)
 
     grad_G = areas * (-1 * phase / (4*torch.pi*distances**3) * (vecs / distances * angle * (Constants.k**2 * distances**2 + 2j*Constants.k*distances - 2) + distances * angle_grad * (1-1j*Constants.k*distances)))
-    grad_G = grad_G.to(torch.complex128)
+    grad_G = grad_G.to(DTYPE)
     
     return grad_G[:,0,:], grad_G[:,1,:], grad_G[:,2,:]
 
@@ -555,11 +555,11 @@ def BEM_forward_model_grad(points, scatterer, transducers=TRANSDUCERS, use_cache
     Gy[Gy.isnan()] = 0
     Gz[Gz.isnan()] = 0
 
-    Fx = Fx.to(torch.complex128)
-    Fy = Fy.to(torch.complex128)
-    Fz = Fz.to(torch.complex128)
+    Fx = Fx.to(DTYPE)
+    Fy = Fy.to(DTYPE)
+    Fz = Fz.to(DTYPE)
 
-    H = H.expand(B, -1, -1).to(torch.complex128)
+    H = H.expand(B, -1, -1).to(DTYPE)
 
 
     Ex = Fx + Gx@H
@@ -568,9 +568,9 @@ def BEM_forward_model_grad(points, scatterer, transducers=TRANSDUCERS, use_cache
 
 
     if return_components:
-        return Ex.to(torch.complex64), Ey.to(torch.complex64), Ez.to(torch.complex64), Fx, Fy, Fz, Gx, Gy, Gz, H
+        return Ex.to(DTYPE), Ey.to(DTYPE), Ez.to(DTYPE), Fx, Fy, Fz, Gx, Gy, Gz, H
     else:
-        return Ex.to(torch.complex64), Ey.to(torch.complex64), Ez.to(torch.complex64)
+        return Ex.to(DTYPE), Ey.to(DTYPE), Ez.to(DTYPE)
     
 def BEM_forward_model_second_derivative_unmixed(points, scatterer, board=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None, return_components=False,path="Media"):
     '''
@@ -628,7 +628,7 @@ def BEM_forward_model_second_derivative_unmixed(points, scatterer, board=TRANSDU
     Gx, Gy, Gz, A, B, C, Aa, Ba, Ca = get_G_partial(points, scatterer, board, return_components=True)
 
     Gaa = 2*Ca*(B*Aa + A*Ba) + C*(B*Aaa + 2*Aa*Ba + A*Baa)+ A*B*Caa
-    Gaa = Gaa.to(torch.complex64)
+    Gaa = Gaa.to(DTYPE)
 
     areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
     areas = torch.unsqueeze(areas,0)
@@ -722,9 +722,9 @@ def BEM_forward_model_second_derivative_mixed(points, scatterer, board=TRANSDUCE
     Gxz = C[:,:,:,0]*(Aa[:,:,:,0]*Ba[:,:,:,2] + Aa[:,:,:,2]*Ba[:,:,:,0] + Aab[:,:,:,1]*B[:,:,:,0] + A[:,:,:,0]*Bab[:,:,:,1]) + B[:,:,:,0] * (Aa[:,:,:,0] * Ca[:,:,:,2] + Aa[:,:,:,2] * Ca[:,:,:,0] + A[:,:,:,0]*Cab[:,:,:,1]) + A[:,:,:,0] * (Ba[:,:,:,0]*Ca[:,:,:,2] + Ba[:,:,:,2]*Ca[:,:,:,0])
     Gyz = C[:,:,:,0]*(Aa[:,:,:,1]*Ba[:,:,:,2] + Aa[:,:,:,2]*Ba[:,:,:,1] + Aab[:,:,:,2]*B[:,:,:,0] + A[:,:,:,0]*Bab[:,:,:,2]) + B[:,:,:,0] * (Aa[:,:,:,1] * Ca[:,:,:,2] + Aa[:,:,:,2] * Ca[:,:,:,1] + A[:,:,:,0]*Cab[:,:,:,2]) + A[:,:,:,0] * (Ba[:,:,:,1]*Ca[:,:,:,2] + Ba[:,:,:,2]*Ca[:,:,:,1])
 
-    Gxy = Gxy.to(torch.complex64)
-    Gxz = Gxz.to(torch.complex64)
-    Gyz = Gyz.to(torch.complex64)
+    Gxy = Gxy.to(DTYPE)
+    Gxz = Gxz.to(DTYPE)
+    Gyz = Gyz.to(DTYPE)
 
     areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
 

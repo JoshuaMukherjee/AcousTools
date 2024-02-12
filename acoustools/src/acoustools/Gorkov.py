@@ -1,12 +1,12 @@
 import torch
-from acoustools.Utilities import device, propagate, propagate_abs, add_lev_sig, forward_model_batched, forward_model_grad, TRANSDUCERS, forward_model_second_derivative_unmixed,forward_model_second_derivative_mixed, return_matrix
+from acoustools.Utilities import device, propagate, propagate_abs, add_lev_sig, forward_model_batched, forward_model_grad, TRANSDUCERS, forward_model_second_derivative_unmixed,forward_model_second_derivative_mixed, return_matrix, DTYPE
 import acoustools.Constants as c
 from acoustools.BEM import grad_2_H, grad_H, get_cache_or_compute_H, get_cache_or_compute_H_gradients
 from acoustools.Mesh import translate, get_centre_of_mass_as_points, get_centres_as_points, get_normals_as_points, get_areas, merge_scatterers
 
 def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False,**params):
 
-    var_points = torch.autograd.Variable(points.data, requires_grad=True).to(device).to(torch.complex64)
+    var_points = torch.autograd.Variable(points.data, requires_grad=True).to(device).to(DTYPE)
 
     B = points.shape[0]
     N = points.shape[2]
@@ -14,7 +14,7 @@ def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False,**p
     if len(activation.shape) < 3:
         activation.unsqueeze_(0)    
     
-    pressure = propagate(activation.to(torch.complex64),var_points)
+    pressure = propagate(activation.to(DTYPE),var_points)
     pressure.backward(torch.ones((B,N))+0j, inputs=var_points, retain_graph=retain_graph)
     grad_pos = var_points.grad
 
@@ -42,7 +42,7 @@ def get_finite_diff_points_all_axis(points,axis="XYZ", stepsize = 0.000135156253
     B = points.shape[0]
     D = len(axis)
     N = points.shape[2]
-    fin_diff_points=  torch.zeros((B,3,((2*D)+1)*N)).to(device).to(torch.complex64)
+    fin_diff_points=  torch.zeros((B,3,((2*D)+1)*N)).to(device).to(DTYPE)
     fin_diff_points[:,:,:N] = points.clone()
 
     i = 2
