@@ -1,6 +1,9 @@
 import torch, math, sys
 import acoustools.Constants as Constants
 
+torch.cuda.empty_cache()
+
+
 DTYPE = torch.complex64
 '''
 Data type to use for matricies - use `.to(DTYPE)` to convert

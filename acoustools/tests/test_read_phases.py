@@ -1,5 +1,5 @@
 if __name__ == "__main__":
-    from acoustools.Utilities import read_phases_from_file, TOP_BOARD, create_points
+    from acoustools.Utilities import read_phases_from_file, TOP_BOARD, create_points,DTYPE
     from acoustools.BEM import load_scatterer, compute_E, propagate_BEM_pressure
     from acoustools.Visualiser import Visualise
 
@@ -7,7 +7,7 @@ if __name__ == "__main__":
     import torch
 
     path = "../BEMMedia/BEMPhases"
-    x = read_phases_from_file(path+"/BunnyCppLam2.csv", top_board=True)
+    x = read_phases_from_file(path+"/BunnyCppLam2.csv", top_board=True).to(DTYPE)
 
     path = "../BEMMedia"
     # scatterer = load_scatterer(path+"/Sphere-lam2.stl",dy=-0.06,dz=-0.08)

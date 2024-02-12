@@ -26,7 +26,7 @@ def compute_green_derivative(y,x,norms,B,N,M, return_components=False):
     '''
     distance = torch.sqrt(torch.sum((x - y)**2,dim=3))
 
-    vecs = y-x
+    vecs = x-y #y-x
     norms = norms.expand(B,N,-1,-1)
 
     
@@ -48,7 +48,7 @@ def compute_G(points, scatterer):
     '''
     Computes G in the BEM model\\
     `points` The points to propagate to\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)
+    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
     Returns G
     '''
     areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
@@ -70,7 +70,8 @@ def compute_G(points, scatterer):
 
     #Compute cosine of angle between mesh normal and point
     scatterer.compute_normals()
-    norms = torch.tensor(scatterer.cell_normals).to(device)
+    # norms = torch.tensor(scatterer.cell_normals).to(device)
+    norms = get_normals_as_points(scatterer,permute_to_points=False)
   
     partial_greens = compute_green_derivative(centres,p,norms, B,N,M)
     
@@ -94,7 +95,8 @@ def compute_A(scatterer):
     m_prime = m.clone()
     m_prime = m_prime.permute((1,0,2))
 
-    norms = torch.tensor(scatterer.cell_normals).to(device)
+    # norms = torch.tensor(scatterer.cell_normals).to(device)
+    norms = get_normals_as_points(scatterer,permute_to_points=False)
 
     green = compute_green_derivative(m.unsqueeze_(0),m_prime.unsqueeze_(0),norms,1,M,M)
     # areas = areas.unsqueeze(0).T.expand((-1,M)).unsqueeze(0)
@@ -252,7 +254,8 @@ def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, 
     vecs = vecs.unsqueeze(0)
     
 
-    norms = torch.tensor(scatterer.cell_normals).to(device)
+    # norms = torch.tensor(scatterer.cell_normals).to(device)
+    norms = get_normals_as_points(scatterer,permute_to_points=False)
     norms = norms.expand(1,M,-1,-1)
 
     norm_norms = torch.norm(norms,2,dim=3)
@@ -513,12 +516,10 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
     points = points.unsqueeze(3).expand(-1,-1,-1,M)
     centres = centres.unsqueeze(2).expand(-1,-1,N,-1)
 
-
-
     vecs = points - centres #Centres -> Points
     vecs = vecs.to(DTYPE)
     distances = torch.sum(vecs**2)
-    norms = get_normals_as_points(scatterer).real.to(DTYPE).unsqueeze(2).expand(-1,-1,N,-1)
+    norms = get_normals_as_points(scatterer).to(DTYPE).unsqueeze(2).expand(-1,-1,N,-1)
 
     vec_norm = torch.norm(vecs,2)
     angle = torch.einsum('ijkh,ijkh->ikh', vecs, norms).unsqueeze(1) / vec_norm
@@ -589,7 +590,8 @@ def BEM_forward_model_second_derivative_unmixed(points, scatterer, board=TRANSDU
     p = torch.unsqueeze(p,2).expand((-1,-1,M,-1))
 
     vecs = p-centres #Centres -> Points
-    norms = torch.tensor(scatterer.cell_normals).to(device)
+    # norms = torch.tensor(scatterer.cell_normals).to(device)
+    norms = get_normals_as_points(scatterer,permute_to_points=False)
     norms = norms.expand(B,N,-1,-1)
 
     norm_norms = torch.norm(norms,2,dim=3)
@@ -664,7 +666,8 @@ def BEM_forward_model_second_derivative_mixed(points, scatterer, board=TRANSDUCE
     p = torch.unsqueeze(p,2).expand((-1,-1,M,-1))
 
     vecs = p-centres #Centres -> Points
-    norms = torch.tensor(scatterer.cell_normals).to(device)
+    # norms = torch.tensor(scatterer.cell_normals).to(device)
+    norms = get_normals_as_points(scatterer,permute_to_points=False)
     norms = norms.expand(Batch,N,-1,-1)
 
     distance = torch.sqrt(torch.sum(vecs**2,dim=3))

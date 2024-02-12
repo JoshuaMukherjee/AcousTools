@@ -7,7 +7,7 @@ if __name__ == "__main__":
 
     import torch, vedo
 
-    path = "../../BEMMedia"
+    path = "../BEMMedia"
     scatterer = load_scatterer(path+"/Sphere-lam2.stl",dy=-0.06,dz=-0.08)
     # scatterer = load_scatterer(path+"/Bunny-lam2.stl",dz=-0.10, rotz=90)
     # print(get_centre_of_mass_as_points(scatterer))
