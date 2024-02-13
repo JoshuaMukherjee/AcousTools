@@ -26,7 +26,7 @@ def compute_green_derivative(y,x,norms,B,N,M, return_components=False):
     '''
     distance = torch.sqrt(torch.sum((x - y)**2,dim=3))
 
-    vecs = x-y #y-x
+    vecs = y-x
     norms = norms.expand(B,N,-1,-1)
 
     
@@ -521,7 +521,7 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
     distances = torch.sum(vecs**2)
     norms = get_normals_as_points(scatterer).to(DTYPE).unsqueeze(2).expand(-1,-1,N,-1)
 
-    vec_norm = torch.norm(vecs,2)
+    vec_norm = torch.norm(vecs,2,dim=1)
     angle = torch.einsum('ijkh,ijkh->ikh', vecs, norms).unsqueeze(1) / vec_norm
     angle_grad = -1*norms / vec_norm
     phase = torch.exp(1j * Constants.k * distances)

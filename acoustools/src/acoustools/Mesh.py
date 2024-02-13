@@ -130,7 +130,7 @@ def get_normals_as_points(*scatterers, permute_to_points=True):
     norm_list = []
     for scatterer in scatterers:
         scatterer.compute_normals()
-        norm =  -1*torch.tensor(scatterer.cell_normals).to(device)
+        norm =  torch.tensor(scatterer.cell_normals).to(device)
 
         if permute_to_points:
             norm = torch.permute(norm,(1,0))
