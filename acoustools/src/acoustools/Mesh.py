@@ -15,7 +15,7 @@ def board_name(board):
 
 def scatterer_file_name(scatterer):
     '''
-    ONLY USE TO SET FILENAME, USE `scatterer.filename` to GET
+    ONLY USE TO SET FILENAME, USE `scatterer.filename` TO GET
     '''
     # print(torch.sign(board[:,2]))
     # print(top,bottom)

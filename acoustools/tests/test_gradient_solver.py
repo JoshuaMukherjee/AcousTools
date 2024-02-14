@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
         xs = targets.squeeze_().cpu().flatten().detach().numpy()
         ys = propagate_abs(x4, p).squeeze_().cpu().flatten().detach().numpy()
-
+    
         plt.scatter(xs,ys)
         plt.xlim((6500, 10500))
         plt.ylim((6500, 10500))
@@ -85,5 +85,5 @@ if __name__ == "__main__":
         plt.plot([np.min(xs),np.max(xs)],[np.min(xs),np.max(xs)])
         plt.show()
 
-    test_gorkov_target()
+    test_pressure_target()
     

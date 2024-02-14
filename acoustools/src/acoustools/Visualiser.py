@@ -249,7 +249,10 @@ def force_quiver(points, U,V,norm, ylims=None, xlims=None,log=False,show=True,co
     
 
 
-
+def force_quiver_3d(points, U,V,W, scale=1):
+    ax = plt.figure().add_subplot(projection='3d')
+    ax.quiver(points[:,0,:].cpu().detach().numpy(), points[:,1,:].cpu().detach().numpy(), points[:,2,:].cpu().detach().numpy(), U.cpu().detach().numpy()* scale, V.cpu().detach().numpy()* scale, W.cpu().detach().numpy()* scale)
+    plt.show()
 
 
 

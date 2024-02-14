@@ -1,4 +1,5 @@
 from acoustools.Utilities import *
+from acoustools.Optimise.Constraints import constrain_phase_only
 import torch
 
 def wgs(A, b, K):
@@ -94,6 +95,8 @@ def gspat_wrapper(points, board=TRANSDUCERS,A=None):
     '''
     Wrapper for GSPAT Solver only needing points as input\\
     `points` Target point positions\\
+    `board` The Transducer array, default two 16x16 arrays\\
+    `A` The Forward propagation matrix, if `None` will be computed 
     returns hologram
     '''
     if A is None:
@@ -256,7 +259,7 @@ def temporal_wgs(A, y, K,ref_in, ref_out,T_in,T_out):
 
 def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torch.optim.Adam, lr=0.01, 
                             objective_params={}, start=None, iters=200, 
-                            maximise=False, targets=None, constrains=None, log=False, return_loss=False,
+                            maximise=False, targets=None, constrains=constrain_phase_only, log=False, return_loss=False,
                             scheduler=None, scheduler_args=None):
     '''
     Solves phases using gradient descent\\

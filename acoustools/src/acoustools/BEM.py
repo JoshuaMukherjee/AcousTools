@@ -506,7 +506,7 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
     `return_components` if true will return the subparts used to compute\\
     Returns gradient of the G matrix in BEM
     '''
-    #Bk1. Page 272
+    #Bk1. Page 273
     areas = get_areas(scatterer)
     centres = get_centres_as_points(scatterer)
 

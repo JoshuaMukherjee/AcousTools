@@ -6,6 +6,7 @@ if __name__ == "__main__":
     from acoustools.Solvers import wgs_batch
     from acoustools.Visualiser import Visualise
     from acoustools.Gorkov import get_finite_diff_points_all_axis
+    import acoustools.Constants as Constants
 
     import vedo, torch
     path = "../BEMMedia"
@@ -44,7 +45,9 @@ if __name__ == "__main__":
     print()
 
     
-    stepsize = 0.000135156253
+    # stepsize = 0.000135156253
+    stepsize = Constants.wavelength/8
+    print(stepsize)
     fin_diff_points = get_finite_diff_points_all_axis(p,stepsize=stepsize)
     pressures = propagate_BEM_pressure(x,fin_diff_points,walls, path=path,board=TRANSDUCERS)
     pressure = pressures[:,:N]
@@ -70,5 +73,5 @@ if __name__ == "__main__":
 
     line_params = {"scatterer":walls,"origin":origin,"normal":normal}
 
-    Visualise(A,B,C, x, points=p, colour_functions=[propagate_BEM_pressure, propagate_abs], add_lines_functions=[get_lines_from_plane,None],add_line_args=[line_params,{}],\
-              colour_function_args=[{"scatterer":walls,"board":TRANSDUCERS,"path":path},{}],vmax=9000, show=True)
+    # Visualise(A,B,C, x, points=p, colour_functions=[propagate_BEM_pressure, propagate_abs], add_lines_functions=[get_lines_from_plane,None],add_line_args=[line_params,{}],\
+            #   colour_function_args=[{"scatterer":walls,"board":TRANSDUCERS,"path":path},{}],vmax=9000, show=True)
