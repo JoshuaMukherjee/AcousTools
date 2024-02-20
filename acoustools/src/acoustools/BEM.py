@@ -743,7 +743,7 @@ def BEM_forward_model_second_derivative_mixed(points, scatterer, board=TRANSDUCE
 
     return Exy, Exz, Eyz
 
-def BEM_gorkov_analytical(activations,points,scatterer=None,board=TRANSDUCERS,H=None,E=None):
+def BEM_gorkov_analytical(activations,points,scatterer=None,board=TRANSDUCERS,H=None,E=None,**params):
     '''
     Returns Gor'kov potential computed analytically from the BEM model\\
     `activations` Transducer hologram\\
@@ -756,10 +756,12 @@ def BEM_gorkov_analytical(activations,points,scatterer=None,board=TRANSDUCERS,H=
     if type(scatterer) == str:
             scatterer = load_scatterer(scatterer)
     
+    path = params['path']
+    
     if E is None:
-        E = compute_E(scatterer,points,board,H=H)
+        E = compute_E(scatterer,points,board,H=H,path=path)
 
-    Ex, Ey, Ez = BEM_forward_model_grad(points,scatterer,board,H=H)
+    Ex, Ey, Ez = BEM_forward_model_grad(points,scatterer,board,H=H,path=path)
 
     p = E@activations
     px = Ex@activations

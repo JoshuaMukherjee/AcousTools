@@ -104,7 +104,8 @@ def gorkov_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K
     
     # p_in =  torch.abs(pressure)
     p_in = torch.sqrt(torch.real(pressure) **2 + torch.imag(pressure)**2)
-    p_in.squeeze_(2)
+    if len(p_in.shape) > 2:
+        p_in.squeeze_(2)
     # p_in = torch.squeeze(p_in,2)
 
     U = K1 * p_in**2 - K2 *grad_term

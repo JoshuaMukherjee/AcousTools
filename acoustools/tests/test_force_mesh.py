@@ -1,25 +1,26 @@
 if __name__ == "__main__":
-    from acoustools.Force import force_mesh, compute_force
+    from acoustools.Force import force_mesh, compute_force, force_fin_diff
     from acoustools.Utilities import create_points, propagate_abs, add_lev_sig, TRANSDUCERS
     from acoustools.Solvers import wgs_wrapper
-    from acoustools.Mesh import load_multiple_scatterers, get_normals_as_points, get_centres_as_points, get_areas, get_weight
-    from acoustools.BEM import compute_E, BEM_forward_model_grad, propagate_BEM_pressure
+    from acoustools.Mesh import load_multiple_scatterers, get_normals_as_points, get_centres_as_points, get_areas, get_weight, scale_to_diameter, get_centre_of_mass_as_points,get_lines_from_plane
+    from acoustools.BEM import compute_E, BEM_forward_model_grad, propagate_BEM_pressure, BEM_gorkov_analytical
     import acoustools.Constants as c 
-    from acoustools.Visualiser import Visualise, force_quiver
+    from acoustools.Visualiser import Visualise, force_quiver_3d
 
     import vedo, torch
 
     board = TRANSDUCERS
 
-    path = "../../BEMMedia"
+    path = "../BEMMedia"
     paths = [path+"/Sphere-lam2.stl"]
     scatterer = load_multiple_scatterers(paths,dys=[-0.06])
+    scale_to_diameter(scatterer, 0.001)
 
     # weight = get_weight(scatterer, c.p_p)
     weight = -1 * (0.1/1000) * 9.81
 
     norms = get_normals_as_points(scatterer)
-    p = get_centres_as_points(scatterer,add_normals=True)
+    p = get_centres_as_points(scatterer)
 
     E, F,G,H = compute_E(scatterer, p, TRANSDUCERS, return_components=True, path=path)
     x = wgs_wrapper(p, board=board, A=E)
@@ -27,13 +28,26 @@ if __name__ == "__main__":
     pres = propagate_BEM_pressure(x,p,scatterer,board=TRANSDUCERS,E=E)
 
     areas = get_areas(scatterer)
-    force = force_mesh(x,p,norms,areas,board, grad_function=BEM_forward_model_grad, F=E, grad_function_args={"scatterer":scatterer,"H":H,"path":path})
+    # force = force_mesh(x,p,norms,areas,board, grad_function=BEM_forward_model_grad, F=E, grad_function_args={"scatterer":scatterer,"H":H,"path":path})
+    force = force_mesh(x,p,norms,areas,board)
     force[force.isnan()] = 0
 
-    F = torch.sum(force)
+    F = torch.sum(force,dim=2)
     print(F)
 
-    print(F + weight)
+    # print(F + weight)
+    
+    F_U_BEM = force_fin_diff(x, p, U_function=BEM_gorkov_analytical,U_fun_args={"scatterer":scatterer, "board":TRANSDUCERS,'path':path})
+    F_U_BEM = torch.reshape(F_U_BEM, (1,3,-1))
+    print(torch.sum(F_U_BEM,dim=2))
+
+    F_U_PM_FD = force_fin_diff(x, p)
+    F_U_PM_FD = torch.reshape(F_U_PM_FD, (1,3,-1))
+    print(torch.sum(F_U_PM_FD,dim=2))
+
+    F_A = compute_force(x,p)
+    print(torch.sum(F_A,dim=1))
+
 
     A = torch.tensor((-0.09,0, 0.09))
     B = torch.tensor((0.09,0, 0.09))
@@ -47,9 +61,9 @@ if __name__ == "__main__":
     # normal = (1,0,0)
     # origin = (0,0,0)
 
+    line_params = {"scatterer":scatterer,"origin":origin,"normal":normal}
+    # Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],colour_function_args=[{"scatterer":scatterer,"board":TRANSDUCERS,"path":path}],vmax=9000, show=True,add_lines_functions=[get_lines_from_plane], add_line_args=[line_params])
 
-    Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],colour_function_args=[{"scatterer":scatterer,"board":TRANSDUCERS,"path":path}],vmax=9000, show=True)
-
-    force_quiver(p,force[:,0,:],force[:,2,:], normal,show=True,log=False)
+    force_quiver_3d(p,force[:,0,:],force[:,1,:],force[:,2,:],scale=500)
 
 
