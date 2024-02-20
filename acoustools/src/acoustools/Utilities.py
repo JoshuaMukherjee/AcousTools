@@ -427,25 +427,18 @@ def convert_to_complex(matrix):
 
 def get_convert_indexes():
     '''
-    Gets indexes to swap between transducer order for acoustools and OpenMPD\\
+    Gets indexes to swap between transducer order for acoustools and OpenMPD for two boards\\
     Use: `row = row[FLIP_INDEXES]` and invert with `_,INVIDX = torch.sort(IDX)` \\
     Returns Indexes
     '''
-    
-    board = transducers()
-    board[512//2:,0] = torch.flipud(board[512//2:,0])
-    board[:,1] = torch.flipud(board[:,1])
-    board[:,2] = torch.flipud(board[:,2])
-    indexes = []
 
-    for t,row in enumerate(board):
-        for b,row_b in enumerate(transducers()):
-            if torch.all(row == row_b):
-                indexes.append(b)
-    indexes = torch.as_tensor(indexes)
-
-
+    indexes = torch.arange(0,512)
+    # Flip top board
+    indexes[:256] = torch.flip(indexes[:256],dims=[0])
+    indexes[256:] = torch.flatten(torch.flip(torch.reshape(indexes[256:],(16,-1)),dims=[1]))
     return indexes
+
+
 
 def create_points(N,B=1,x=None,y=None,z=None, min_pos=-0.06, max_pos = 0.06):
     '''
@@ -525,7 +518,7 @@ def write_to_file(activations,fname,num_frames, num_transducers=512, flip=True):
     '''
     Writes each hologram in `activations` to the csv `fname` in order expected by OpenMPD\\
     `activations` List of holograms\\
-    `fname` Name of file ro write to, expected to end in `.csv`\\
+    `fname` Name of file to write to, expected to end in `.csv`\\
     `num_frames` Number of frames in `activations` \\
     `num_transducers` Number of transducers in the boards used. Default:512\\
     `flip`: If True uses `get_convert_indexes` to swap order of transducers to be the same as OpenMPD expects. Default: `True`\\ 
