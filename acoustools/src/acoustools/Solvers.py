@@ -27,6 +27,7 @@ def wgs(A, b, K):
 
 def wgs_batch(A, b, iterations):
     '''
+    CHECK IF BACTHED CORRECTLY
     batched WGS solver for transducer phases\\
     `A` Forward model matrix to use \\ 
     `b` initial guess - normally use `torch.ones(self.N,1).to(device)+0j`\\

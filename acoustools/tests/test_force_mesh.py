@@ -21,6 +21,7 @@ if __name__ == "__main__":
 
     norms = get_normals_as_points(scatterer)
     p = get_centres_as_points(scatterer)
+    com = get_centre_of_mass_as_points(scatterer)
 
     E, F,G,H = compute_E(scatterer, p, TRANSDUCERS, return_components=True, path=path)
     x = wgs_wrapper(p, board=board, A=E)
@@ -37,16 +38,19 @@ if __name__ == "__main__":
 
     # print(F + weight)
     
-    F_U_BEM = force_fin_diff(x, p, U_function=BEM_gorkov_analytical,U_fun_args={"scatterer":scatterer, "board":TRANSDUCERS,'path':path})
-    F_U_BEM = torch.reshape(F_U_BEM, (1,3,-1))
-    print(torch.sum(F_U_BEM,dim=2))
+    F_U_BEM = force_fin_diff(x, com, U_function=BEM_gorkov_analytical,U_fun_args={"scatterer":scatterer, "board":TRANSDUCERS,'path':path},stepsize=0.000135156253/10)
+    # F_U_BEM = torch.reshape(F_U_BEM, (1,3,-1))
+    # print(torch.sum(F_U_BEM,dim=2))
+    print(F_U_BEM)
 
-    F_U_PM_FD = force_fin_diff(x, p)
-    F_U_PM_FD = torch.reshape(F_U_PM_FD, (1,3,-1))
-    print(torch.sum(F_U_PM_FD,dim=2))
+    F_U_PM_FD = force_fin_diff(x, com,stepsize=0.000135156253/10)
+    # F_U_PM_FD = torch.reshape(F_U_PM_FD, (1,3,-1))
+    # print(torch.sum(F_U_PM_FD,dim=2))
+    print(F_U_PM_FD)
 
-    F_A = compute_force(x,p)
-    print(torch.sum(F_A,dim=1))
+    F_A = compute_force(x,com)
+    # print(torch.sum(F_A,dim=1))
+    print(F_A)
 
 
     A = torch.tensor((-0.09,0, 0.09))
@@ -62,7 +66,7 @@ if __name__ == "__main__":
     # origin = (0,0,0)
 
     line_params = {"scatterer":scatterer,"origin":origin,"normal":normal}
-    # Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],colour_function_args=[{"scatterer":scatterer,"board":TRANSDUCERS,"path":path}],vmax=9000, show=True,add_lines_functions=[get_lines_from_plane], add_line_args=[line_params])
+    Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],colour_function_args=[{"scatterer":scatterer,"board":TRANSDUCERS,"path":path}],vmax=9000, show=True,add_lines_functions=[get_lines_from_plane], add_line_args=[line_params])
 
     force_quiver_3d(p,force[:,0,:],force[:,1,:],force[:,2,:],scale=500)
 
