@@ -134,10 +134,16 @@ def force_mesh(activations, points, norms, areas, board, grad_function=forward_m
     k2 = 1/ (c.k**2)
 
     pressure = torch.unsqueeze(pressure,1).expand(-1,3,-1)  
-    # print(pressure, k2*grad_norm)
+   
+    
     # force = -1/2*(k1 * (pressure * norms - k2*grad_norm*norms)) * areas # Old and maybe incorrect?
     # force = -1/2 * k1 * (pressure + k2 * torch.abs(grad)**2) * norms * areas #Bks1. Page 299 for derivation
+    
     force = -1/2 * k1 * (pressure + k2 * grad_norm) * norms * areas #Bks1. Page 299 for derivation, norm on pg 307
+    
+    # compressability = -1*k1*k2*(grad.conj().resolve_conj() @ (grad.mH @ norms) )* areas #Bk2. Pg 9
+    # force += compressability.real 
+    
     force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
 
     # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))

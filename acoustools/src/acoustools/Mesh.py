@@ -89,6 +89,8 @@ def scale_to_diameter(scatterer, diameter):
     x1,x2,y1,y2,z1,z2 = scatterer.bounds()
     diameter_sphere = x2 - x1
     scatterer.scale(diameter/diameter_sphere,reset=True)
+    scatterer.compute_cell_size()
+    scatterer.compute_normals()
     scatterer.filename = scatterer_file_name(scatterer)
     
 

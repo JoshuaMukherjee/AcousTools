@@ -410,6 +410,7 @@ def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print
         f_name = scatterer.filename+"--"+ board_name(board)
         f_name = hashlib.md5(f_name.encode()).hexdigest()
         f_name = path+"/BEMCache/"  +  f_name + ".bin"
+        # print(f_name)
 
         try:
             if print_lines: print("Trying to load H at", f_name ,"...")
@@ -459,7 +460,7 @@ def compute_E(scatterer, points, board=TOP_BOARD, use_cache_H=True, print_lines=
         return E.to(DTYPE), F.to(DTYPE), G.to(DTYPE), H.to(DTYPE)
     return E.to(DTYPE)
 
-def propagate_BEM(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None,path="Media"):
+def propagate_BEM(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None,path="Media", use_cache_H=True,print_lines=False):
     '''
     Propagates transducer phases to points using BEM\\
     `activations` Transducer hologram\\
@@ -469,17 +470,19 @@ def propagate_BEM(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=Non
     `H` Precomputed H - if None H will be computed\\ 
     `E` Precomputed E - if None E will be computed\\ 
     `path` path to folder containing BEMCache/ \\
+    `use_cache_H` If True uses the cache system to load and save the H matrix. Default `True`\\
+    `print_lines` if true prints messages detaling progress\\
     Returns complex pressure at points
     '''
     if E is None:
         if type(scatterer) == str:
             scatterer = load_scatterer(scatterer)
-        E = compute_E(scatterer,points,board,H=H, path=path)
+        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines)
     
     out = E@activations
     return out
 
-def propagate_BEM_pressure(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None, path="Media"):
+def propagate_BEM_pressure(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None, path="Media",use_cache_H=True, print_lines=False):
     '''
     Propagates transducer phases to points using BEM and returns absolute value of complex pressure\\
     `activations` Transducer hologram\\
@@ -490,9 +493,11 @@ def propagate_BEM_pressure(activations,points,scatterer=None,board=TOP_BOARD,H=N
     `E` Precomputed E - if None E will be computed\\ 
     `path` path to folder containing BEMCache/ \\
     Returns complex pressure at points\\
+    `use_cache_H` If True uses the cache system to load and save the H matrix. Default `True`\\
+    `print_lines` if true prints messages detaling progress\\
     Equivalent to `torch.abs(propagate_BEM(activations,points,scatterer,board,H,E,path))
     '''
-    point_activations = propagate_BEM(activations,points,scatterer,board,H,E,path)
+    point_activations = propagate_BEM(activations,points,scatterer,board,H,E,path,use_cache_H=use_cache_H,print_lines=print_lines)
     pressures =  torch.abs(point_activations)
     return pressures
 
