@@ -17,10 +17,11 @@ if __name__ == "__main__":
     scatterer = load_multiple_scatterers(paths,dys=[-0.06])
     # scale_to_diameter(scatterer, 0.001)
     scale_to_diameter(scatterer, 2*c.R)
+    print(get_centre_of_mass_as_points(scatterer))
     # scale_to_diameter(scatterer, 6*c.R)
 
-    vedo.write(scatterer,path+"/TinySphere-lam2.stl",False)
-    exit()
+    # vedo.write(scatterer,path+"/TinySphere-lam2.stl",False)
+    # exit()
 
     weight = -1*get_weight(scatterer, c.p_p)
     print(weight)
@@ -30,11 +31,10 @@ if __name__ == "__main__":
     p = get_centres_as_points(scatterer)
     com = get_centre_of_mass_as_points(scatterer)
 
-    E, F,G,H = compute_E(scatterer, com, TRANSDUCERS, return_components=True, path=path)
-    Hx, Hy, Hz = get_cache_or_compute_H_gradients(scatterer, board,print_lines=True,path=path)
+    E, F,G,H = compute_E(scatterer, com, TRANSDUCERS, return_components=True, path=path, print_lines=False)
+    Hx, Hy, Hz = get_cache_or_compute_H_gradients(scatterer, board,print_lines=False,path=path)
     x = wgs_wrapper(com, board=board, A=E)
     x = add_lev_sig(x)
-
     pres = propagate_BEM_pressure(x,p,scatterer,board=TRANSDUCERS,E=E)
 
     areas = get_areas(scatterer)
@@ -66,7 +66,6 @@ if __name__ == "__main__":
     # print(torch.sum(F_A,dim=1))
     print(F_A)
 
-
     # A = torch.tensor((-0.09,0, 0.09))
     # B = torch.tensor((0.09,0, 0.09))
     # C = torch.tensor((-0.09,0, -0.09))
@@ -84,6 +83,7 @@ if __name__ == "__main__":
     # C = torch.tensor((0,-0.09, -0.09))
     # normal = (1,0,0)
     # origin = (0,0,0)
+
 
     line_params = {"scatterer":scatterer,"origin":origin,"normal":normal}
     Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],colour_function_args=[{"scatterer":scatterer,"board":TRANSDUCERS,"path":path}],vmax=9000, show=True,add_lines_functions=[get_lines_from_plane], add_line_args=[line_params])
