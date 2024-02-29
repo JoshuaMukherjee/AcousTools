@@ -566,13 +566,17 @@ def get_rows_in(a_centres, b_centres, expand = True):
     else:
         return mask
 
-def read_phases_from_file(file, invert=True, top_board=False):
+def read_phases_from_file(file, invert=True, top_board=False, ignore_first_line=True):
     '''
     Gets phases from a csv file, expects a csv with each row being one geometry
     '''
     phases_out = []
+    line_one = True
     with open(file, "r") as f:
         for line in f.readlines():
+            if ignore_first_line and line_one:
+                line_one = False
+                continue
             phases = line.rstrip().split(",")
             phases = [float(p) for p in phases]
             phases = torch.tensor(phases).to(device).unsqueeze_(1)
