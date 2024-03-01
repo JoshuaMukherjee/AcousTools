@@ -17,16 +17,10 @@ def scatterer_file_name(scatterer):
     '''
     ONLY USE TO SET FILENAME, USE `scatterer.filename` TO GET
     '''
-    # print(torch.sign(board[:,2]))
-    # print(top,bottom)
-    f_name = scatterer.metadata["FILE"][0]
-    bounds = [str(round(i,8)) for i in scatterer.bounds()]
-    # centre_of_mass = get_centre_of_mass_as_points(scatterer)
-    # centre_of_mass = str(centre_of_mass[0,0].item()) +  "-" + str(centre_of_mass[0,1].item()) + "-" + str(centre_of_mass[0,2].item())
-    rots = str(scatterer.metadata["rotX"][0]) + str(scatterer.metadata["rotY"][0]) + str(scatterer.metadata["rotZ"][0])
-    # if "\\" in f_name:
-        # f_name = f_name.split("/")[1].split(".")[0]
-    f_name = f_name + "".join(bounds) +"--" + "-".join(rots)
+
+    f_name = str(scatterer.coordinates)
+
+
     return f_name
 
 def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,dz=0, rotx=0, roty=0, rotz=0, root_path=""):
