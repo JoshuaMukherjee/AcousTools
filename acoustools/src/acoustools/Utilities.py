@@ -569,6 +569,11 @@ def get_rows_in(a_centres, b_centres, expand = True):
 def read_phases_from_file(file, invert=True, top_board=False, ignore_first_line=True):
     '''
     Gets phases from a csv file, expects a csv with each row being one geometry
+    `file` The file path to read from\\
+    `invert` Convert transducer order from OpenMPD -> Acoustools order. Default True\\
+    `top_board` if True assumes only the top board. Default False\\
+    `ignore_first_line` If true assumes header is the first line\\
+    Returns phases
     '''
     phases_out = []
     line_one = True

@@ -4,6 +4,14 @@ import matplotlib.pyplot as plt
 
 
 def get_point_pos(A,B,C, points, res=(200,200),flip=True):
+    '''
+    converts point positions in 3D to pixel locations in the plane defined by ABC\\
+    `A` Position of the top left corner of the image\\
+    `B` Position of the top right corner of the image\\
+    `C` Position of the bottom left corner of the image\\
+    `res` Number of pixels as a tuple (X,Y). Default (200,200)\\
+    `flip` Reverses X and Y directions. Default True
+    '''
     AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]])
     AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]])
 
@@ -38,55 +46,17 @@ def get_point_pos(A,B,C, points, res=(200,200),flip=True):
 
     return pts_norm
 
-
-def Visualise_single_slow(A,B,C,activation,colour_function=propagate_abs, colour_function_args={}, res=(200,200), flip=True):
-    '''
-    OLD SLOW VERSION
-    Visalises field generated from activation to the plane ABC
-    colour_function defined what is plotted, default is pressure 
-    '''
-    if len(activation.shape) < 3:
-        activation.unsqueeze_(0)
-    
-
-    AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]])
-    AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]])
-
-    step_x = AB / res[0]
-    step_y = AC / res[1]
-
-    result = torch.zeros(res)
-    posX = torch.tensor([0])
-
-    for i in range(0,res[0]):
-        posX = A + step_x * i
-        for j in range(res[1]):
-            pos = (posX + step_y * j).to(device)
-
-            pos.unsqueeze_(0)
-            pos.unsqueeze_(2)
-            
-            field_val = colour_function(activation,pos,**colour_function_args)
-            result[i,j] = field_val
-        print(i,end=" ")
-    if flip:
-        # result = torch.flip(result,[0,])
-        # result = torch.rot90(result)
-        result = torch.rot90(torch.fliplr(result))
-    
-    
-    return result
-
-    # plt.imshow(result.cpu().detach().numpy(),cmap="hot")
-    # plt.colorbar()
-    
-
-    # plt.show()
-
 def Visualise_single(A,B,C,activation,colour_function=propagate_abs, colour_function_args={}, res=(200,200), flip=True):
     '''
     Visalises field generated from activation to the plane ABC
-    colour_function defined what is plotted, default is pressure 
+    `A` Position of the top left corner of the image\\
+    `B` Position of the top right corner of the image\\
+    `C` Position of the bottom left corner of the image\\
+    `activation` The transducer activation to use\\
+    `colour_function` Function to call at each position. Should return a value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`\\
+    `colour_function_args` The arguments to pass to `colour_function`\\
+    `res` Number of pixels as a tuple (X,Y). Default (200,200)\\
+    `flip` Reverses X and Y directions. Default True
     '''
     if len(activation.shape) < 3:
         activation.unsqueeze_(0)
@@ -118,6 +88,27 @@ def Visualise_single(A,B,C,activation,colour_function=propagate_abs, colour_func
 
 def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colour_function_args=None, 
               res=(200,200), cmaps=[], add_lines_functions=None, add_line_args=None,vmin=None,vmax=None, matricies = None, show=True,block=True):
+    '''
+    Visalises any numvber of fields generated from activation to the plane ABC and arranges them in a (1,N) grid
+    `A` Position of the top left corner of the image\\
+    `B` Position of the top right corner of the image\\
+    `C` Position of the bottom left corner of the image\\
+    `activation` The transducer activation to use\\
+    `points` List of point positions to add crosses for each plot. Positions should be given in their position in 3D\\
+    `colour_functions` List of function to call at each position for each plot. Should return a value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`\\
+    `colour_function_args` The arguments to pass to `colour_functions`\\
+    `res` Number of pixels as a tuple (X,Y). Default (200,200)\\
+    `cmaps` The cmaps to pass to plot\\
+    `add_lines_functions` List of functions to extract lines and add to the image\\
+    `add_line_args` List of parameters to add to `add_lines_functions`\\
+    `vmin` Minimum value to use across all plots\\
+    `vmax` MAximum value to use across all plots\\
+    `matricies` precomputed matricies to plot\\
+    `show` If True will call `plt.show(block=block)` else does not. Default True\\
+    `block` Will be passed to `plot.show(block=block)`. Default True
+    '''
+
+
     results = []
     lines = []
     if len(points) > 0:
