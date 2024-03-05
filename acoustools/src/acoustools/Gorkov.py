@@ -4,7 +4,17 @@ import acoustools.Constants as c
 from acoustools.BEM import grad_2_H, grad_H, get_cache_or_compute_H, get_cache_or_compute_H_gradients
 from acoustools.Mesh import translate, get_centre_of_mass_as_points, get_centres_as_points, get_normals_as_points, get_areas, merge_scatterers
 
-def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False,**params):
+def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False,board=TRANSDUCERS,**params):
+    '''
+    Computes the Gorkov potential using pytorch's autograd system\\
+    `activation` The transducer activations to use \\
+    `points` The points to compute the potential at\\
+    `K1` The value for K1 in the Gorkov equation, if None will use `c.V / (4*c.p_0*c.c_0**2)`
+    `K2` The value for K2 in the Gorkov equation, if None will use `3*c.V / (4*(2*c.f**2 * c.p_0))`\\
+    `board` The transducer boards to use\\
+    `retain_graph` Value will be passed to autograd\\
+    Returns gorkov potential at each point
+    '''
 
     var_points = torch.autograd.Variable(points.data, requires_grad=True).to(device).to(DTYPE)
 
@@ -14,7 +24,7 @@ def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False,**p
     if len(activation.shape) < 3:
         activation.unsqueeze_(0)    
     
-    pressure = propagate(activation.to(DTYPE),var_points)
+    pressure = propagate(activation.to(DTYPE),var_points,board=board)
     pressure.backward(torch.ones((B,N))+0j, inputs=var_points, retain_graph=retain_graph)
     grad_pos = var_points.grad
 
@@ -30,6 +40,13 @@ def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False,**p
     return gorkov
 
 def get_finite_diff_points(points, axis, stepsize = 0.000135156253):
+    '''
+    Gets points for finite difference calculations in one axis\\
+    `points` Points around which to find surrounding points\\
+    `axis` The axis to add points in\\
+    `stepsize` The distance aroud points to add, default 0.000135156253\\
+    Returns points 
+    '''
     #points = Bx3x4
     points_h = points.clone()
     points_neg_h = points.clone()
@@ -39,6 +56,13 @@ def get_finite_diff_points(points, axis, stepsize = 0.000135156253):
     return points_h, points_neg_h
 
 def get_finite_diff_points_all_axis(points,axis="XYZ", stepsize = 0.000135156253):
+    '''
+    Gets points for finite difference calculations\\
+    `points` Points around which to find surrounding points\\
+    `axis` The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis\\
+    `stepsize` The distance aroud points to add, default 0.000135156253\\
+    Returns Points
+    '''
     B = points.shape[0]
     D = len(axis)
     N = points.shape[2]
@@ -68,7 +92,20 @@ def get_finite_diff_points_all_axis(points,axis="XYZ", stepsize = 0.000135156253
     
     return fin_diff_points
 
-def gorkov_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K1=None, K2=None,prop_function=propagate,prop_fun_args={}):
+def gorkov_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K1=None, K2=None,prop_function=propagate,prop_fun_args={}, board=TRANSDUCERS):
+    '''
+    Computes the Gorkov potential using finite differences to compute derivatives\\
+    `activation` The transducer activations to use \\
+    `points` The points to compute the potential at\\
+    `axis` The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis\\
+    `stepsize` The distance aroud points to add, default 0.000135156253\\
+    `K1` The value for K1 in the Gorkov equation, if None will use `c.V / (4*c.p_0*c.c_0**2)`
+    `K2` The value for K2 in the Gorkov equation, if None will use `3*c.V / (4*(2*c.f**2 * c.p_0))`
+    `prop_function` Function to use to compute pressure\\
+    `prop_fun_args` Arguments to pass to `prop_function`\\
+    `board` The transducer boards to use\\
+    Returns gorkov potential at each point
+    '''
     # torch.autograd.set_detect_anomaly(True)
     B = points.shape[0]
     D = len(axis)
@@ -80,7 +117,7 @@ def gorkov_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K
 
     fin_diff_points = get_finite_diff_points_all_axis(points, axis, stepsize)
 
-    pressure_points = prop_function(activations, fin_diff_points,**prop_fun_args)
+    pressure_points = prop_function(activations, fin_diff_points,board=board,**prop_fun_args)
     # if len(pressure_points.shape)>1:
     # pressure_points = torch.squeeze(pressure_points,2)
 
@@ -113,6 +150,15 @@ def gorkov_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K
     return U
 
 def gorkov_analytical(activations, points,board=TRANSDUCERS, axis="XYZ"):
+    '''
+    Computes the Gorkov potential using analytical derivative of the piston model\\
+    `activation` The transducer activations to use \\
+    `points` The points to compute the potential at\\
+    `board` The transducer boards to use\\
+    `axis` The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis\\
+    Returns gorkov potential at each point
+    '''
+
     Fx, Fy, Fz = forward_model_grad(points)
     F = forward_model_batched(points,board)
     
