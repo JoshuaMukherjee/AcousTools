@@ -38,10 +38,10 @@ def wgs_batch(A, b, iterations):
     b0 = b.to(device)
     x = torch.ones(A.shape[2],1).to(device) + 0j
     for kk in range(iterations):
-        y = torch.matmul(A,x)                                   # forward propagate
-        y = y/torch.max(torch.abs(y))                           # normalize forward propagated field (useful for next step's division)
+        y = torch.matmul(A,x)                                     # forward propagate
+        y = y/torch.max(torch.abs(y),dim=1,keepdim=True).values                           # normalize forward propagated field (useful for next step's division)
         b = torch.multiply(b0,torch.divide(b,torch.abs(y)))     # update target - current target over normalized field
-        b = b/torch.max(torch.abs(b))                           # normalize target
+        b = b/torch.max(torch.abs(b),dim=1,keepdim=True).values                          # normalize target
         p = torch.multiply(b,torch.divide(y,torch.abs(y)))      # keep phase, apply target amplitude
         r = torch.matmul(AT,p)                                  # backward propagate
         x = torch.divide(r,torch.abs(r))                        # keep phase for hologram  
