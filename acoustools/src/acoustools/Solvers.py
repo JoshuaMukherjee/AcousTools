@@ -260,7 +260,7 @@ def temporal_wgs(A, y, K,ref_in, ref_out,T_in,T_out):
 def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torch.optim.Adam, lr=0.01, 
                             objective_params={}, start=None, iters=200, 
                             maximise=False, targets=None, constrains=constrain_phase_only, log=False, return_loss=False,
-                            scheduler=None, scheduler_args=None):
+                            scheduler=None, scheduler_args=None, save_each_n = 0, save_set_n = None):
     '''
     Solves phases using gradient descent\\
     `points` Target point positions \\
@@ -278,10 +278,13 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
     `return_loss`: If `True` save and return objective values for each step as well as the optimised result \\
     `scheduler` Learning rate scheduler to use, if `None` no scheduler is used. Default: `None` \\
     `scheduler_args`: Parameters to pass to `scheduler`\\
-    Returns optimised result and optionally the objective values (see `return_loss`)
+    `save_each_n`: For n>0 will save the optimiser results at every n steps. Set either `save_each_n` or `save_set_iters`\\
+    `save_set_iters`: List containing exact iterations to save optimiser results at. Set either `save_each_n` or `save_set_iters`\\
+    Returns optimised result and optionally the objective values and results (see `return_loss`, `save_each_n` and `save_set_iters`). If either are returned both will be returned but maybe empty if not asked for
     ''' 
 
     losses = []
+    results = {}
     B = points.shape[0]
     N = points.shape[1]
     M = board.shape[0]
@@ -312,6 +315,13 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
         if return_loss:
             losses.append(loss)
         
+        if save_each_n > 0 and epoch % save_each_n == 0:
+            results[epoch] = param.clone().detach()
+        elif save_set_n is not None and epoch in save_set_n:
+            results[epoch] = param.clone().detach()
+
+
+        
         loss.backward(torch.tensor([1]*B).to(device))
         optim.step()
         if scheduler is not None:
@@ -320,9 +330,10 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
         if constrains is not None:
             param.data = constrains(param)
 
-    if return_loss:
-        return param, losses
+    if return_loss or save_each_n > 0:
+        return param, losses, results
     
+
     return param
     
     
