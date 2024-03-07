@@ -496,7 +496,7 @@ def generate_gorkov_targets(N,B=1, max_val=0, min_val=-1e-4):
          targets = torch.FloatTensor(N,1).uniform_(min_val,max_val).to(device)
     return targets
 
-def generate_pressure_targets(N,B=1, max_val=10000, min_val=7000):
+def generate_pressure_targets(N,B=1, max_val=5000, min_val=3000):
     '''
     Generates a tensor of random pressure values\\
     `N` Number of values per batch\\
