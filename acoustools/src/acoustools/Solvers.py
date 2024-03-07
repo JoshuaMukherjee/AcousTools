@@ -241,21 +241,26 @@ def temporal_wgs(A, y, K,ref_in, ref_out,T_in,T_out):
     '''
     #ref_out -> points
     #ref_in-> transducers
-    AT = torch.conj(A).T.to(device)
+    AT = torch.conj(A).mT.to(device)
     y0 = y.to(device)
-    x = torch.ones(A.shape[1],1).to(device) + 0j
+    x = torch.ones(A.shape[2],1).to(device) + 0j
     for kk in range(K):
         z = torch.matmul(A,x)                                   # forward propagate
-        z = z/torch.max(torch.abs(z))                           # normalize forward propagated field (useful for next step's division)
+        z = z/torch.max(torch.abs(z),dim=1,keepdim=True).values # normalize forward propagated field (useful for next step's division)
         z = ph_thresh(ref_out,z,T_out); 
         
         y = torch.multiply(y0,torch.divide(y,torch.abs(z)))     # update target - current target over normalized field
-        y = y/torch.max(torch.abs(y))                           # normalize target
+        y = y/torch.max(torch.abs(y),dim=1,keepdim=True).values # normalize target
         p = torch.multiply(y,torch.divide(z,torch.abs(z)))      # keep phase, apply target amplitude
         r = torch.matmul(AT,p)                                  # backward propagate
         x = torch.divide(r,torch.abs(r))                        # keep phase for hologram    
         x = ph_thresh(ref_in,x,T_in);    
     return y, p, x
+
+
+
+
+
 
 def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torch.optim.Adam, lr=0.01, 
                             objective_params={}, start=None, iters=200, 
