@@ -36,22 +36,24 @@ if __name__ == "__main__":
         import numpy as np
 
         N = 4
-        B = 20
+        B = 100
 
         p = create_points(N,B)
-        targets = generate_pressure_targets(N,B).squeeze_(2)
+        MIN = 1000
+        MAX = 5000
+        targets = generate_pressure_targets(N,B,max_val=MAX, min_val=MIN).squeeze_(2)
         x4 = gradient_descent_solver(p,target_pressure_mse_objective, 
-                                    maximise=False, constrains=constrain_phase_only, lr=1e-1, iters=500, targets=targets)
+                                    maximise=False, constrains=constrain_phase_only, lr=1e-1, iters=5000, targets=targets, log=True)
         
-        print(targets)
-        print(propagate_abs(x4,p))
+        # print(targets)
+        # print(propagate_abs(x4,p))
 
         xs = targets.squeeze_().cpu().flatten().detach().numpy()
         ys = propagate_abs(x4, p).squeeze_().cpu().flatten().detach().numpy()
     
         plt.scatter(xs,ys)
-        plt.xlim((6500, 10500))
-        plt.ylim((6500, 10500))
+        plt.xlim((MIN-200, MAX+200))
+        plt.ylim((MIN-200, MAX+200))
         plt.plot([np.min(xs),np.max(xs)],[np.min(xs),np.max(xs)],color="red")
         plt.xlabel("Target (Pa)")
         plt.ylabel("Output (Pa)")
@@ -62,11 +64,11 @@ if __name__ == "__main__":
         import numpy as np
 
         N = 4
-        B = 20
+        B = 100
         p = create_points(N,B)
-        targets_u = generate_gorkov_targets(N,B,min_val=-9e-5,max_val=-1e-5)
+        targets_u = generate_gorkov_targets(N,B,min_val=-1e-5,max_val=-1e-6)
         x5 = gradient_descent_solver(p,target_gorkov_mse_objective, 
-                                     constrains=constrain_phase_only, lr=1e2, iters=800, targets=targets_u,log=True,
+                                     constrains=constrain_phase_only, lr=1e3, iters=1000, targets=targets_u,log=True,
                                      objective_params={"no_sig":True})
 
         # x5 = add_lev_sig(x5)
@@ -74,16 +76,13 @@ if __name__ == "__main__":
         xs = targets_u.squeeze_().cpu().flatten().detach().numpy()
         ys = gorkov_analytical(x5, p).squeeze_().cpu().flatten().detach().numpy()
 
-        print(xs)
-        print(ys)
-
         plt.scatter(xs,ys)
-        plt.xlim((-1e-4, -1e-6))
-        plt.ylim((-1e-4, 0))
+        # plt.xlim((-1e-6, -1e-7))
+        # plt.ylim((-1e-6, -1e-7))
         plt.xlabel("Target")
         plt.ylabel("Output")
         plt.plot([np.min(xs),np.max(xs)],[np.min(xs),np.max(xs)])
         plt.show()
 
-    test_pressure_target()
+    test_gorkov_target()
     

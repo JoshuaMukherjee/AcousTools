@@ -1,13 +1,13 @@
 if __name__ == '__main__':
 
-    from acoustools.Solvers import wgs_wrapper
+    from acoustools.Solvers import naive_solver_wrapper
     from acoustools.Utilities import create_points, add_lev_sig
     from acoustools.Visualiser import Visualise
 
     import torch
 
     p = create_points(4,1,y=0)
-    x = wgs_wrapper(p)
+    x = naive_solver_wrapper(p)
     x = add_lev_sig(x)
 
     A = torch.tensor((-0.09,0, 0.09))

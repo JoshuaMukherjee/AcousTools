@@ -8,7 +8,10 @@ import acoustools.Gorkov
 import acoustools.Visualiser
 import acoustools.Mesh
 import acoustools.Force
-import acoustools.read_beast_file
+try:
+    import acoustools.read_beast_file
+except:
+    pass
 from acoustools.Constants import *
 
 import acoustools.Optimise.Objectives 
