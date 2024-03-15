@@ -283,7 +283,7 @@ def translate(scatterer, dx=0,dy=0,dz=0):
     scatterer.shift(np.array([dx,dy,dz]))
     scatterer.filename = scatterer_file_name(scatterer)
 
-def rotate(scatterer, axis, rot):
+def rotate(scatterer, axis, rot, centre=()):
     '''
     Rotates a scatterer in axis by rot\\
     `scatterer` The scatterer to use\\
@@ -294,10 +294,10 @@ def rotate(scatterer, axis, rot):
     if axis[0]:
         scatterer.metadata["rotX"] = scatterer.metadata["rotX"] + rot
     if axis[1]:
-        scatterer.metadata["rotY"] = scatterer.metadata["rotZ"] + rot
+        scatterer.metadata["rotY"] = scatterer.metadata["rotY"] + rot
     if axis[2]:
         scatterer.metadata["rotZ"] = scatterer.metadata["rotZ"] + rot
-    scatterer.rotate(rot, axis)
+    scatterer.rotate(rot, axis,center=centre)
     scatterer.filename = scatterer_file_name(scatterer)
 
 
