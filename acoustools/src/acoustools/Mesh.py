@@ -283,21 +283,26 @@ def translate(scatterer, dx=0,dy=0,dz=0):
     scatterer.shift(np.array([dx,dy,dz]))
     scatterer.filename = scatterer_file_name(scatterer)
 
-def rotate(scatterer, axis, rot, centre=()):
+def rotate(scatterer, axis, rot, centre=(0, 0, 0), rotate_around_COM=False):
     '''
     Rotates a scatterer in axis by rot\\
     `scatterer` The scatterer to use\\
     `axis` The axis to rotate in\\
-    `rot` Angle to rotate\\
+    `rot` Angle to rotate in degrees\\
+    `centre` point to rotate around\\
+    `rotate_around_COM` If True will set `centre` to `scatterer`s centre of mass
     Modifies inplace so does not return a value
     '''
+    if rotate_around_COM:
+        centre = vedo.vector(get_centre_of_mass_as_points(scatterer).cpu().detach().squeeze())
+
     if axis[0]:
         scatterer.metadata["rotX"] = scatterer.metadata["rotX"] + rot
     if axis[1]:
         scatterer.metadata["rotY"] = scatterer.metadata["rotY"] + rot
     if axis[2]:
         scatterer.metadata["rotZ"] = scatterer.metadata["rotZ"] + rot
-    scatterer.rotate(rot, axis,center=centre)
+    scatterer.rotate(rot, axis,point=centre)
     scatterer.filename = scatterer_file_name(scatterer)
 
 
