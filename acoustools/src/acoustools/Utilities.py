@@ -428,7 +428,7 @@ def convert_to_complex(matrix):
 def get_convert_indexes():
     '''
     Gets indexes to swap between transducer order for acoustools and OpenMPD for two boards\\
-    Use: `row = row[FLIP_INDEXES]` and invert with `_,INVIDX = torch.sort(IDX)` \\
+    Use: `row = row[:,FLIP_INDEXES]` and invert with `_,INVIDX = torch.sort(IDX)` \\
     Returns Indexes
     '''
 
