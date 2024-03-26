@@ -2,9 +2,9 @@ from acoustools.Utilities import *
 from acoustools.Optimise.Constraints import constrain_phase_only
 import torch
 
-def wgs(A, b, K):
+def wgs_solver_unbatched(A, b, K):
     '''
-    unbatched WGS solver for transducer phases, better to use `wgs_batch` \\
+    unbatched WGS solver for transducer phases, better to use `wgs_solver_batch` \\
     `A` Forward model matrix to use \\ 
     `b` initial guess - normally use `torch.ones(N,1).to(device)+0j`\\
     `k` number of iterations to run for \\
@@ -25,7 +25,7 @@ def wgs(A, b, K):
                     
     return y, p, x
 
-def wgs_batch(A, b, iterations):
+def wgs_solver_batch(A, b, iterations):
     '''
     batched WGS solver for transducer phases\\
     `A` Forward model matrix to use \\ 
@@ -47,21 +47,39 @@ def wgs_batch(A, b, iterations):
                     
     return y, p, x
 
-def wgs_wrapper(points,iter = 200, board = TRANSDUCERS, A = None):
+def wgs(points,iter = 200, board = TRANSDUCERS, A = None, b=None, return_components=False):
     '''
     Simple WGS interface\\
     Wrapper for wgs_batch, creates forward model within itself\\
     `points` Points to use\\
     `iter` Number of iterations for WGS, default:`200`\\
     `board` The Transducer array, default two 16x16 arrays\\
+    `b` initial guess - If none will use `torch.ones(N,1).to(device)+0j`\\
+    `return_components` IF True will return `hologram image, point phases, hologram` else will return `hologram`, default True
     returns hologram
     '''
+    if len(points.shape) > 2:
+        N = points.shape[2]
+        batch=True
+    else:
+        N = points.shape[1]
+        batch=False
+
     if A is None:
-        A = forward_model_batched(points, board)
-    _,_,act = wgs_batch(A,torch.ones(points.shape[2],1).to(device)+0j,iter)
+        A = forward_model(points, board)
+    if b is None:
+        b = torch.ones(N,1).to(device)+0j
+
+    if batch:
+        img,pha,act = wgs_solver_batch(A,b,iter)
+    else:
+        img,pha,act = wgs_solver_unbatched(A,b,iter)
+
+    if return_components:
+        return img,pha,act
     return act
 
-def gspat(R,forward, backward, target, iterations):
+def gspat_solver(R,forward, backward, target, iterations):
     '''
     GS-PAT Solver for transducer phases\\
     `R` R Matrix\\
@@ -91,39 +109,35 @@ def gspat(R,forward, backward, target, iterations):
 
     return phase_hologram, points
 
-def gspat_wrapper(points, board=TRANSDUCERS,A=None):
+def gspat(points, board=TRANSDUCERS,A=None, b = None, iterations=200, return_components=False):
     '''
     Wrapper for GSPAT Solver only needing points as input\\
     `points` Target point positions\\
     `board` The Transducer array, default two 16x16 arrays\\
-    `A` The Forward propagation matrix, if `None` will be computed 
-    returns hologram
+    `A` The Forward propagation matrix, if `None` will be computed \\
+    `b` initial guess - If None will use `torch.ones(N,1).to(device)+0j`\\
+    `iterations` Number of iterations to use\\
+    `return_components` IF True will return `hologram, pressure` else will return `hologram`, default True\\
     '''
+
     if A is None:
-        A = forward_model_batched(points,board)
+        A = forward_model(points,board)
     backward = torch.conj(A).mT
     R = A@backward
-    phase_hologram,pres = gspat(R,A,backward,torch.ones(points.shape[2],1).to(device)+0j, 200)
+
+    if b is None:
+        if is_batched_points(points):
+            b = torch.ones(points.shape[2],1).to(device)+0j
+        else:
+            b = torch.ones(points.shape[1],1).to(device)+0j
+    phase_hologram,pres = gspat_solver(R,A,backward,b, iterations)
+    
+    if return_components:
+        return phase_hologram,pres
     return phase_hologram
 
-def naive(points):
-    '''
-    Naive (backpropagation) algorithm for phase retrieval\\
-    `points` Target point positions\\
-    returns (point activations, point pressure)
-    '''
-    activation = torch.ones(points.shape[1]) +0j
-    activation = activation.to(device)
-    forward = forward_model(points.T).to(device)
-    back = torch.conj(forward).T
-    # print(back.device, activation.device)
-    trans = back@activation
-    trans_phase=  trans / torch.abs(trans)
-    out = forward@trans_phase
-    pressure = torch.abs(out)
-    return out, pressure
 
-def naive_solver_batch(points,board=TRANSDUCERS):
+def naive_solver_batched(points,board=TRANSDUCERS):
     '''
     Batched naive (backpropagation) algorithm for phase retrieval\\
     `points` Target point positions\\
@@ -140,7 +154,7 @@ def naive_solver_batch(points,board=TRANSDUCERS):
 
     return out, trans_phase
 
-def naive_solver(points,transd=TRANSDUCERS):
+def naive_solver_unbatched(points,board=TRANSDUCERS):
     '''
     Unbatched naive (backpropagation) algorithm for phase retrieval\\
     `points` Target point positions\\
@@ -150,7 +164,7 @@ def naive_solver(points,transd=TRANSDUCERS):
 
     activation = torch.ones(points.shape[1]) +0j
     activation = activation.to(device)
-    forward = forward_model(points,transd)
+    forward = forward_model(points,board)
     back = torch.conj(forward).T
     trans = back@activation
     trans_phase=  trans / torch.abs(trans)
@@ -159,13 +173,20 @@ def naive_solver(points,transd=TRANSDUCERS):
 
     return out, trans_phase
 
-def naive_solver_wrapper(points):
+def naive(points, board = TRANSDUCERS, return_components=False):
     '''
     Wrapper for naive solver\\
     `points` Target point positions\\
+    `board` The Transducer array, default two 16x16 arrays\\
+    `return_components` If True will return `hologram, pressure` else will return `hologram`, default True\\
     returns hologram
     '''
-    out,act = naive_solver_batch(points)
+    if is_batched_points(points):
+        out,act = naive_solver_batched(points,board=board)
+    else:
+        out,act = naive_solver_unbatched(points,board=board)
+    if return_components:
+        return act, out
     return act
 
 def ph_thresh(z_last,z,threshold):
@@ -342,14 +363,3 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
     return param
     
     
-
-
-
-if __name__ == "__main__":
-   points = create_points(4,2)
-   x = naive_solver_wrapper(points)
-   print(propagate_abs(x,points))
-
-   x = wgs_wrapper(points)
-   print(propagate_abs(x,points))
-        
