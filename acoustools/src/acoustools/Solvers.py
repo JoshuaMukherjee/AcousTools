@@ -109,12 +109,14 @@ def gspat_solver(R,forward, backward, target, iterations):
 
     return phase_hologram, points
 
-def gspat(points, board=TRANSDUCERS,A=None, b = None, iterations=200, return_components=False):
+def gspat(points=None, board=TRANSDUCERS,A=None,B=None, R=None ,b = None, iterations=200, return_components=False):
     '''
     Wrapper for GSPAT Solver only needing points as input\\
     `points` Target point positions\\
     `board` The Transducer array, default two 16x16 arrays\\
     `A` The Forward propagation matrix, if `None` will be computed \\
+    `B` The backwards propagation matrix, if `None` will be computed \\
+    `R` The R propagation matrix, if `None` will be computed \\
     `b` initial guess - If None will use `torch.ones(N,1).to(device)+0j`\\
     `iterations` Number of iterations to use\\
     `return_components` IF True will return `hologram, pressure` else will return `hologram`, default True\\
@@ -122,15 +124,17 @@ def gspat(points, board=TRANSDUCERS,A=None, b = None, iterations=200, return_com
 
     if A is None:
         A = forward_model(points,board)
-    backward = torch.conj(A).mT
-    R = A@backward
+    if B is None:
+        B = torch.conj(A).mT
+    if R is None:
+        R = A@backward
 
     if b is None:
         if is_batched_points(points):
             b = torch.ones(points.shape[2],1).to(device)+0j
         else:
             b = torch.ones(points.shape[1],1).to(device)+0j
-    phase_hologram,pres = gspat_solver(R,A,backward,b, iterations)
+    phase_hologram,pres = gspat_solver(R,A,B,b, iterations)
     
     if return_components:
         return phase_hologram,pres
