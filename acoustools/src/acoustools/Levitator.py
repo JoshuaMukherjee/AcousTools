@@ -56,7 +56,7 @@ class LevitatorController():
     def set_phase_amplitude(self, phases, amplitudes=None, relative_amplitude=1):
         '''
         RECCOMENDED NOT TO USE - USE `levitate` INSTEAD\\
-        Sets the phases and ampliyudes in memory\\
+        Sets the phases and amplitudes in memory\\
         `phases`: Hologram to use\\
         `amplitudes`: Optional set of amplitudes to set. If None uses relative_amplitude for all transducers\\
         `relative_amplitude`: Single value to use for all transducers. Default 1\\
