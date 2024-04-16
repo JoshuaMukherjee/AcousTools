@@ -127,7 +127,7 @@ def gspat(points=None, board=TRANSDUCERS,A=None,B=None, R=None ,b = None, iterat
     if B is None:
         B = torch.conj(A).mT
     if R is None:
-        R = A@backward
+        R = A@B
 
     if b is None:
         if is_batched_points(points):
