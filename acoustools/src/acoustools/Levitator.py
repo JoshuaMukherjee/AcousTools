@@ -10,11 +10,11 @@ class LevitatorController():
      Class to enable the manipulation of an acoustic levitator from python. 
     '''
 
-    def __init__(self, bin_path = None, ids = (999,1000), matBoardToWorld=None, print_lines=False):
+    def __init__(self, bin_path = None, ids = (1000,999), matBoardToWorld=None, print_lines=False):
         '''
         Creates the controller\\
         `bin_path`: The path to the binary files needed. If none will use files contained in AcousToosl. NOTE WHEN SET TO NONE THIS CHANGES THE CURRENT WORKING DIRECTORY AND THEN CHANGES IT BACK Default: None.\\
-        `ids`: IDs of boards. Default `(999,1000)`\\
+        `ids`: IDs of boards. Default `(1000,999)`\\
         `matBoardToWorld`: Matric defining the mapping between simulated and real boards. When None uses a default setting. Default None.\\
         `print_lines`: If False supresses some print messages
         '''
@@ -27,11 +27,12 @@ class LevitatorController():
         print(os.getcwd())
         self.levitatorLib = CDLL(self.bin_path+'Levitator.dll')
 
-        self.ids = (ctypes.c_int * 3)(999,1000)
+        self.ids = (ctypes.c_int * 2)(*ids)
         self.board_number = len(ids)
 
         if matBoardToWorld is None:
             self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number)) (
+                
                 -1, 0, 0, 0,
                 0, 1, 0, 0,
                 0, 0, -1, 0.24,
@@ -41,6 +42,7 @@ class LevitatorController():
                 0, 1, 0, 0,
                 0, 0, 1, 0,
                 0, 0, 0, 1,
+                
             )
         else:
             self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number))(matBoardToWorld)
@@ -61,11 +63,9 @@ class LevitatorController():
         `amplitudes`: Optional set of amplitudes to set. If None uses relative_amplitude for all transducers\\
         `relative_amplitude`: Single value to use for all transducers. Default 1\\
         '''
-        cwd = os.getcwd()
-        os.chdir(self.bin_path)
+
         self.levitatorLib.set_phase_amplitude.argtypes = [ctypes.c_void_p, POINTER(ctypes.c_float), POINTER(ctypes.c_float), ctypes.c_float]
         self.levitatorLib.set_phase_amplitude(self.controller,phases,amplitudes,relative_amplitude)
-        os.chdir(cwd)
     
     def send_message(self):
         '''
@@ -97,7 +97,8 @@ class LevitatorController():
         `relative_amplitude`: Single value [0,1] to set amplitude to. Default 1\\
         `permute`: Convert between acoustools transducer order and OpenMPD. Default True.
         '''
-        
+
+
         if permute:
             phases = phases[:,self.IDX]
 
@@ -111,7 +112,7 @@ class LevitatorController():
         if amplitudes is not None:
             amplitudes = (ctypes.c_float * (256*self.board_number))(*amplitudes)
 
-        relative_amplitude = ctypes.c_float(1.0)
+        relative_amplitude = ctypes.c_float(relative_amplitude)
 
         self.set_phase_amplitude(phases, amplitudes, relative_amplitude)
         self.send_message()
