@@ -543,22 +543,24 @@ def write_to_file(activations,fname,num_frames, num_transducers=512, flip=True):
     `num_transducers` Number of transducers in the boards used. Default:512\\
     `flip`: If True uses `get_convert_indexes` to swap order of transducers to be the same as OpenMPD expects. Default: `True`\\ 
     '''
-    
-    row = torch.angle(activations).squeeze_()
-    
-    if flip:
-        FLIP_INDEXES = get_convert_indexes()
-        row = row[FLIP_INDEXES]
-        
-
     output_f = open(fname,"w")
     output_f.write(str(num_frames)+","+str(num_transducers)+"\n")
-    for i,phase in enumerate(row):
-                output_f.write(str(phase.item()))
-                if i < num_transducers-1:
-                    output_f.write(",")
-                else:
-                    output_f.write("\n")
+    
+    for row in activations:
+        row = torch.angle(row).squeeze_()
+        
+        if flip:
+            FLIP_INDEXES = get_convert_indexes()
+            row = row[FLIP_INDEXES]
+            
+
+       
+        for i,phase in enumerate(row):
+                    output_f.write(str(phase.item()))
+                    if i < num_transducers-1:
+                        output_f.write(",")
+                    else:
+                        output_f.write("\n")
 
     output_f.close()
 
