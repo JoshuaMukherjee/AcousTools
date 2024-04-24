@@ -35,7 +35,7 @@ class LevitatorController():
                 
                 -1, 0, 0, 0,
                 0, 1, 0, 0,
-                0, 0, -1, 0.24,
+                0, 0, 1, 0.24,
                 0, 0, 0, 1,
 
                 1, 0, 0, 0,
@@ -55,25 +55,14 @@ class LevitatorController():
 
         self.IDX = get_convert_indexes()
     
-    def set_phase_amplitude(self, phases, amplitudes=None, relative_amplitude=1):
-        '''
-        RECCOMENDED NOT TO USE - USE `levitate` INSTEAD\\
-        Sets the phases and amplitudes in memory\\
-        `phases`: Hologram to use\\
-        `amplitudes`: Optional set of amplitudes to set. If None uses relative_amplitude for all transducers\\
-        `relative_amplitude`: Single value to use for all transducers. Default 1\\
-        '''
-
-        self.levitatorLib.set_phase_amplitude.argtypes = [ctypes.c_void_p, POINTER(ctypes.c_float), POINTER(ctypes.c_float), ctypes.c_float]
-        self.levitatorLib.set_phase_amplitude(self.controller,phases,amplitudes,relative_amplitude)
     
-    def send_message(self):
+    def send_message(self, phases, amplitudes=None, relative_amplitude=1, num_geometries = 1, sleep_ms = 0):
         '''
         RECCOMENDED NOT TO USE - USE `levitate` INSTEAD\\
         sends messages to levitator
         '''
-        self.levitatorLib.send_message.argtypes = [ctypes.c_void_p]
-        self.levitatorLib.send_message(self.controller)
+        self.levitatorLib.send_message.argtypes = [ctypes.c_void_p,POINTER(ctypes.c_float), POINTER(ctypes.c_float), ctypes.c_float, ctypes.c_int, ctypes.c_int]
+        self.levitatorLib.send_message(self.controller,phases,amplitudes,relative_amplitude,num_geometries, sleep_ms)
     
     def disconnect(self):
         '''
@@ -89,30 +78,42 @@ class LevitatorController():
         self.levitatorLib.turn_off.argtypes = [ctypes.c_void_p]
         self.levitatorLib.turn_off(self.controller)
 
-    def levitate(self, phases, amplitudes=None, relative_amplitude=1, permute=True):
+    def levitate(self, phases, amplitudes=None, relative_amplitude=1, permute=True, sleep_ms = 0):
         '''
         Send a single phase map to the levitator - This is the reccomended function to use as will deal with dtype conversions etc\\
-        `phases`: `Torch.Tensor` of phases, expects a batched dimension in dim 0 and takes and sends ONLY THE FIRST HOLOGRAM. If phases is complex then ` phases = torch.angle(phases)` will be run, else phases left as is\\
-        `amplitudes`: Optional `Torch.Tensor` of amplitudes\\
+        `phases`: `Torch.Tensor` of phases or list of `Torch.Tensor` of phases, expects a batched dimension in dim 0. If phases is complex then ` phases = torch.angle(phases)` will be run, else phases left as is\\
+        `amplitudes`: Optional `Torch.Tensor` of amplitudes, same shape as `phases`\\
         `relative_amplitude`: Single value [0,1] to set amplitude to. Default 1\\
-        `permute`: Convert between acoustools transducer order and OpenMPD. Default True.
+        `permute`: Convert between acoustools transducer order and OpenMPD. Default True.\\
+        `sleep_ms`: Time to wait between frames in ms.
         '''
+        to_output = []
 
+        if type(phases) is list:
+            num_geometries = len(phases)
+            for phases_elem in phases:
 
-        if permute:
-            phases = phases[:,self.IDX]
+                if permute:
+                    phases_elem = phases_elem[:,self.IDX]
 
-        if torch.is_complex(phases):
-            phases = torch.angle(phases)
+                if torch.is_complex(phases_elem):
+                    phases_elem = torch.angle(phases_elem)
         
-        phases = phases[0].squeeze().cpu().detach().tolist()
+                to_output = to_output + phases_elem.squeeze().cpu().detach().tolist()
+        else:
+            num_geometries = 1
+            if permute:
+                    phases = phases[:,self.IDX]
 
-        phases = (ctypes.c_float * (256*self.board_number))(*phases)
+            if torch.is_complex(phases):
+                    phases = torch.angle(phases)
+            to_output = phases[0].squeeze().cpu().detach().tolist()
+
+        phases = (ctypes.c_float * (256*self.board_number *num_geometries))(*to_output)
 
         if amplitudes is not None:
-            amplitudes = (ctypes.c_float * (256*self.board_number))(*amplitudes)
+            amplitudes = (ctypes.c_float * (256*self.board_number*num_geometries))(*amplitudes)
 
         relative_amplitude = ctypes.c_float(relative_amplitude)
 
-        self.set_phase_amplitude(phases, amplitudes, relative_amplitude)
-        self.send_message()
+        self.send_message(phases, amplitudes, relative_amplitude, num_geometries,sleep_ms=sleep_ms)
