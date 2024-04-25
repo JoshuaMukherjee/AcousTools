@@ -2,7 +2,7 @@ if __name__ == '__main__':
     from acoustools.Solvers import wgs
     from acoustools.Utilities import create_points, propagate_abs
 
-    p = create_points(1,1)
+    p = create_points(2,1)
     print(p)
     x = wgs(p)
     print(propagate_abs(x,p))

@@ -1,5 +1,6 @@
 from acoustools.Utilities import *
 from acoustools.Optimise.Constraints import constrain_phase_only
+from acoustools.Constraints import constrain_amplitude, constrain_field, constrain_field_weighted
 import torch
 
 def wgs_solver_unbatched(A, b, K):
@@ -31,20 +32,17 @@ def wgs_solver_batch(A, b, iterations):
     `A` Forward model matrix to use \\ 
     `b` initial guess - normally use `torch.ones(self.N,1).to(device)+0j`\\
     `iterations` number of iterations to run for \\
-    returns (hologram image, point phases, hologram)
+    returns (point pressure ,point phases, hologram)
     '''
     AT = torch.conj(A).mT.to(device)
     b0 = b.to(device)
     x = torch.ones(A.shape[2],1).to(device) + 0j
     for kk in range(iterations):
-        y = torch.matmul(A,x)                                     # forward propagate
-        y = y/torch.max(torch.abs(y),dim=1,keepdim=True).values                           # normalize forward propagated field (useful for next step's division)
-        b = torch.multiply(b0,torch.divide(b,torch.abs(y)))     # update target - current target over normalized field
-        b = b/torch.max(torch.abs(b),dim=1,keepdim=True).values                          # normalize target
-        p = torch.multiply(b,torch.divide(y,torch.abs(y)))      # keep phase, apply target amplitude
-        r = torch.matmul(AT,p)                                  # backward propagate
-        x = torch.divide(r,torch.abs(r))                        # keep phase for hologram  
-                    
+        p = A@x
+        p,b = constrain_field_weighted(p,b0,b)
+        x = AT@p
+        x = constrain_amplitude(x)
+    y =  torch.abs(A@x) 
     return y, p, x
 
 def wgs(points,iter = 200, board = TRANSDUCERS, A = None, b=None, return_components=False):
@@ -55,7 +53,7 @@ def wgs(points,iter = 200, board = TRANSDUCERS, A = None, b=None, return_compone
     `iter` Number of iterations for WGS, default:`200`\\
     `board` The Transducer array, default two 16x16 arrays\\
     `b` initial guess - If none will use `torch.ones(N,1).to(device)+0j`\\
-    `return_components` IF True will return `hologram image, point phases, hologram` else will return `hologram`, default True
+    `return_components` IF True will return `hologram image, point phases, hologram` else will return `hologram`, default False
     returns hologram
     '''
     if len(points.shape) > 2:
@@ -95,7 +93,7 @@ def gspat_solver(R,forward, backward, target, iterations):
     for _ in range(iterations):
         
 #     amplitude constraint, keeps phase imposes desired amplitude ratio among points     
-        target_field = torch.multiply(target,torch.divide(field,torch.abs(field)))  
+        target_field = constrain_field(field, target)
 #     backward and forward propagation at once
         field = torch.matmul(R,target_field)
 #     AFTER THE LOOP
@@ -153,7 +151,7 @@ def naive_solver_batched(points,board=TRANSDUCERS):
     forward = forward_model_batched(points,board)
     back = torch.conj(forward).mT
     trans = back@activation
-    trans_phase=  trans / torch.abs(trans)
+    trans_phase=  constrain_amplitude(trans)
     out = forward@trans_phase
 
     return out, trans_phase
@@ -171,7 +169,7 @@ def naive_solver_unbatched(points,board=TRANSDUCERS):
     forward = forward_model(points,board)
     back = torch.conj(forward).T
     trans = back@activation
-    trans_phase=  trans / torch.abs(trans)
+    trans_phase=  constrain_amplitude(trans)
     out = forward@trans_phase
 
 
