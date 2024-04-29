@@ -370,7 +370,7 @@ def iterative_backpropagation(points,iterations = 200, board = TRANSDUCERS, A = 
     '''
     batched IB solver for transducer phases\\
     `points` Points to use\\
-    `ititerationser` Number of iterations for WGS, default:`200`\\
+    `iterations` Number of iterations for WGS, default:`200`\\
     `board` The Transducer array, default two 16x16 arrays\\
     `A` Forward model matrix to use \\ 
     `b` initial guess - If none will use `torch.ones(N,1).to(device)+0j`\\
