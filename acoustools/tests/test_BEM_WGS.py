@@ -1,5 +1,5 @@
 if __name__ == '__main__':
-    from acoustools.Solvers import wgs_batch
+    from acoustools.Solvers import wgs
     from acoustools.Utilities import create_points, add_lev_sig, generate_pressure_targets, TOP_BOARD, device
     from acoustools.Optimise.Objectives import target_pressure_mse_objective, propagate_abs_sum_objective
     from acoustools.Optimise.Constraints import constrain_phase_only, constrant_normalise_amplitude
@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     E = compute_E(scatterer, p,board=board, path=path)
 
-    _,_,x = wgs_batch(E, torch.ones(1,1).to(device)+0j,200)
+    x = wgs(p,A=E)
 
     A = torch.tensor((-0.09,0, 0.09))
     B = torch.tensor((0.09,0, 0.09))
@@ -34,4 +34,4 @@ if __name__ == '__main__':
     normal = (0,1,0)
     origin = (0,0,0)
 
-    Visualise(A,B,C, x, points=p,vmax=5000,colour_functions=[propagate_BEM_pressure], colour_function_args=[{'scatterer':scatterer,'board':board,'path':path}])
+    Visualise(A,B,C, x, points=p,vmax=5000,colour_functions=[propagate_BEM_pressure], colour_function_args=[{'scatterer':scatterer,'board':board,'path':path}],clr_label="Pressure (Pa)")
