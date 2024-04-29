@@ -52,6 +52,7 @@ def wgs(points,iter = 200, board = TRANSDUCERS, A = None, b=None, return_compone
     `points` Points to use\\
     `iter` Number of iterations for WGS, default:`200`\\
     `board` The Transducer array, default two 16x16 arrays\\
+    `A` Forward model matrix to use \\ 
     `b` initial guess - If none will use `torch.ones(N,1).to(device)+0j`\\
     `return_components` IF True will return `hologram image, point phases, hologram` else will return `hologram`, default False
     returns hologram
@@ -364,4 +365,47 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
 
     return param
     
+
+def iterative_backpropagation(points,iterations = 200, board = TRANSDUCERS, A = None, b=None, return_components=False):
+    '''
+    batched IB solver for transducer phases\\
+    `points` Points to use\\
+    `ititerationser` Number of iterations for WGS, default:`200`\\
+    `board` The Transducer array, default two 16x16 arrays\\
+    `A` Forward model matrix to use \\ 
+    `b` initial guess - If none will use `torch.ones(N,1).to(device)+0j`\\
+    `return_components` IF True will return `hologram image, point phases, hologram` else will return `hologram`, default False
+    returns (point pressure ,point phases, hologram)
+    '''
     
+    if len(points.shape) > 2:
+        N = points.shape[2]
+        batch=True
+    else:
+        N = points.shape[1]
+        batch=False
+
+    if A is None:
+        A = forward_model(points, board)
+    
+    if batch:
+        M = A.shape[2]
+    else:
+        M = A.shape[1]
+
+
+    if b is None:
+        b = torch.ones(N,1).to(device)+0j
+    
+    AT =  torch.conj(A).mT.to(device)
+    x = torch.ones(M,1).to(device) + 0j
+    for kk in range(iterations):
+        p = A@x
+        p = constrain_field(p,b)
+        x = AT@p
+        x = constrain_amplitude(x)
+    y =  torch.abs(A@x) 
+    if return_components:
+        return y, p, x
+    else:
+        return x
