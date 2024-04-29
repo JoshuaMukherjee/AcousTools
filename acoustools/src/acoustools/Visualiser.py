@@ -87,7 +87,7 @@ def Visualise_single(A,B,C,activation,colour_function=propagate_abs, colour_func
     return result
 
 def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colour_function_args=None, 
-              res=(200,200), cmaps=[], add_lines_functions=None, add_line_args=None,vmin=None,vmax=None, matricies = None, show=True,block=True):
+              res=(200,200), cmaps=[], add_lines_functions=None, add_line_args=None,vmin=None,vmax=None, matricies = None, show=True,block=True, clr_label='Pressure (Pa)'):
     '''
     Visalises any numvber of fields generated from activation to the plane ABC and arranges them in a (1,N) grid
     `A` Position of the top left corner of the image\\
@@ -172,7 +172,7 @@ def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colou
         # print(vmax,vmin)
         
         plt.imshow(im.cpu().detach().numpy(),cmap=cmap,vmin=v_min,vmax=v_max)
-        plt.colorbar()
+        plt.colorbar(label=clr_label)
 
         if add_lines_functions is not None:
             AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]])
