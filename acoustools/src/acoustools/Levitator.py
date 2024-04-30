@@ -1,7 +1,7 @@
 from ctypes import CDLL, POINTER
 import ctypes
 
-import torch, os
+import torch, os, signal
 
 from acoustools.Utilities import get_convert_indexes
 
@@ -56,13 +56,13 @@ class LevitatorController():
         self.IDX = get_convert_indexes()
     
     
-    def send_message(self, phases, amplitudes=None, relative_amplitude=1, num_geometries = 1, sleep_ms = 0):
+    def send_message(self, phases, amplitudes=None, relative_amplitude=1, num_geometries = 1, sleep_ms = 0, loop=False):
         '''
         RECCOMENDED NOT TO USE - USE `levitate` INSTEAD\\
         sends messages to levitator
         '''
         self.levitatorLib.send_message.argtypes = [ctypes.c_void_p,POINTER(ctypes.c_float), POINTER(ctypes.c_float), ctypes.c_float, ctypes.c_int, ctypes.c_int]
-        self.levitatorLib.send_message(self.controller,phases,amplitudes,relative_amplitude,num_geometries, sleep_ms)
+        self.levitatorLib.send_message(self.controller,phases,amplitudes,relative_amplitude,num_geometries, sleep_ms, loop)
     
     def disconnect(self):
         '''
@@ -78,14 +78,15 @@ class LevitatorController():
         self.levitatorLib.turn_off.argtypes = [ctypes.c_void_p]
         self.levitatorLib.turn_off(self.controller)
 
-    def levitate(self, phases, amplitudes=None, relative_amplitude=1, permute=True, sleep_ms = 0):
+    def levitate(self, phases, amplitudes=None, relative_amplitude=1, permute=True, sleep_ms = 0, loop=False):
         '''
         Send a single phase map to the levitator - This is the reccomended function to use as will deal with dtype conversions etc\\
         `phases`: `Torch.Tensor` of phases or list of `Torch.Tensor` of phases, expects a batched dimension in dim 0. If phases is complex then ` phases = torch.angle(phases)` will be run, else phases left as is\\
         `amplitudes`: Optional `Torch.Tensor` of amplitudes, same shape as `phases`\\
         `relative_amplitude`: Single value [0,1] to set amplitude to. Default 1\\
         `permute`: Convert between acoustools transducer order and OpenMPD. Default True.\\
-        `sleep_ms`: Time to wait between frames in ms.
+        `sleep_ms`: Time to wait between frames in ms.\\
+        `loop`: If True will restart from the start of phases, default False
         '''
         to_output = []
 
@@ -116,4 +117,4 @@ class LevitatorController():
 
         relative_amplitude = ctypes.c_float(relative_amplitude)
 
-        self.send_message(phases, amplitudes, relative_amplitude, num_geometries,sleep_ms=sleep_ms)
+        self.send_message(phases, amplitudes, relative_amplitude, num_geometries,sleep_ms=sleep_ms,loop=loop)
