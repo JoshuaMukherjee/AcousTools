@@ -38,9 +38,12 @@ if __name__ == '__main__':
     input()
     print('Moving...')
     try:
+        print(len(xs))
         lev.levitate(xs,loop=False)
     except KeyboardInterrupt:
         print('Stopping')
+    except Exception as e:
+        print(e)
     finally:
         print('Finished Moving')
         input()
