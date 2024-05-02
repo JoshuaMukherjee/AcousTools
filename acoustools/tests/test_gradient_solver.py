@@ -2,7 +2,7 @@ if __name__ == "__main__":
     from acoustools.Solvers import gradient_descent_solver
     from acoustools.Utilities import create_points, propagate_abs, add_lev_sig, generate_pressure_targets, generate_gorkov_targets
     from acoustools.Optimise.Objectives import propagate_abs_sum_objective, gorkov_analytical_sum_objective, pressure_abs_gorkov_trapping_stiffness_objective, target_pressure_mse_objective, target_gorkov_mse_objective
-    from acoustools.Optimise.Constraints import constrain_phase_only, constrant_normalise_amplitude
+    from acoustools.Optimise.Constraints import constrain_phase_only, constrant_normalise_amplitude, constrain_sigmoid_amplitude, constrain_clamp_amp, normalise_amplitude_normal
     from acoustools.Gorkov import gorkov_analytical
     from acoustools.Visualiser import Visualise
 
@@ -37,8 +37,8 @@ if __name__ == "__main__":
         import numpy as np
         import scipy 
 
-        N = 4
-        B = 100
+        N = 2
+        B = 200
 
         p = create_points(N,B)
         MIN = 1000
@@ -70,12 +70,12 @@ if __name__ == "__main__":
         import numpy as np
         import scipy 
 
-        N = 4
-        B = 100
+        N = 2
+        B = 200
         p = create_points(N,B)
         targets_u = generate_gorkov_targets(N,B,min_val=-1e-5,max_val=-1e-6)
         x5 = gradient_descent_solver(p,target_gorkov_mse_objective, 
-                                     constrains=constrain_phase_only, lr=1e3, iters=5000, targets=targets_u,log=True,
+                                     constrains=constrain_clamp_amp, lr=1e3, iters=1000, targets=targets_u,log=True,
                                      objective_params={"no_sig":True})
 
         # x5 = add_lev_sig(x5)
@@ -122,5 +122,5 @@ if __name__ == "__main__":
 
 
 
-    test_gorkov_pressure_traps()
+    test_pressure_target()
     

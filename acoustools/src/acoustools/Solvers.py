@@ -330,6 +330,7 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
     if scheduler is not None:
         scheduler = scheduler(optim,**scheduler_args)
 
+
     for epoch in range(iters):
         optim.zero_grad()       
 
@@ -348,7 +349,6 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
             results[epoch] = param.clone().detach()
         elif save_set_n is not None and epoch in save_set_n:
             results[epoch] = param.clone().detach()
-
 
         
         loss.backward(torch.tensor([1]*B).to(device))
