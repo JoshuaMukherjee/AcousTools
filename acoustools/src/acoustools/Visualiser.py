@@ -1,6 +1,11 @@
 import torch
 from acoustools.Utilities import propagate_abs, add_lev_sig, device, create_board
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import art3d
+import matplotlib.colors as clrs
+import matplotlib.cm as cm
+
+
 
 
 def get_point_pos(A,B,C, points, res=(200,200),flip=True):
@@ -248,71 +253,56 @@ def force_quiver_3d(points, U,V,W, scale=1):
 
 
 
-if __name__ == "__main__":
-    # A = torch.tensor((-0.06, 0.06, 0))
-    # B = torch.tensor((0.06, 0.06, 0))
-    # C = torch.tensor((-0.06, -0.06, 0))
+def Visualise_mesh(mesh, colours, points=None, p_pressure=None,vmax=None,vmin=None):
 
-    res=(200,200)
-    # res=(10,10)
 
-    X = 0
-    A = torch.tensor((X,-0.07, 0.07))
-    B = torch.tensor((X,0.07, 0.07))
-    C = torch.tensor((X,-0.07, -0.07))
+    xmin,xmax, ymin,ymax, zmin,zmax = mesh.bounds()
+
+
+    v = mesh.vertices
+    f = torch.tensor(mesh.cells)
+
+
+    fig = plt.figure()
+    ax = fig.add_subplot(projection="3d")
+
+    # norm = plt.Normalize(C.min(), C.max())
+    # colors = plt.cm.viridis(norm(C))
+
+    if vmin is None:
+        vmin = min(colours)
+        if p_pressure < vmin:
+            vmin = p_pressure
     
-    from acoustools.Utilities import create_points, forward_model, device, TOP_BOARD, forward_model_batched, TRANSDUCERS
-    from acoustools.Solvers import wgs_batch
-    from acoustools.Gorkov import gorkov_autograd, gorkov_fin_diff, get_force_axis,compute_force
+    if vmax is None:
+        vmax = max(colours)
+        if p_pressure > vmax:
+            vmax = p_pressure
 
-    from acoustools.BEM import propagate_BEM_pressure, load_scatterer,compute_E, compute_H, get_lines_from_plane, load_multiple_scatterers,propagate_BEM,BEM_gorkov_analytical
-    
-    N = 4
-    points=  create_points(N,x=X)
+    norm = clrs.Normalize(vmin=vmin, vmax=vmax, clip=True)
+    mapper = cm.ScalarMappable(norm, cmap=cm.hot)
 
-    # path = "Media/bunny-lam1.stl"
-    # scatterer = load_scatterer(path,dz=-0.06)
-    # paths = ["Media/flat-lam1.stl","Media/flat-lam1.stl"]
-    # scatterer = load_multiple_scatterers(paths,dzs=[0,-0.06])
-    
-    board = TRANSDUCERS
-    #Side by Side
-    paths = ["Media/flat-lam1.stl","Media/flat-lam1.stl"]
-    scatterer = load_multiple_scatterers(paths,board,dys=[-0.06,0.06],rotxs=[-90,90])
-    # print(scatterer)
+    colour_mapped = []
+    for c in colours:
+        colour_mapped.append(mapper.to_rgba(c))
 
-    #Side, Side, Back
-    # paths = ["Media/flat-lam1.stl","Media/flat-lam1.stl","Media/flat-lam1.stl"]
-    # scatterer = load_multiple_scatterers(paths,dys=[-0.06,0.06,0],dxs=[0,0,0.06],rotxs=[-90,90,0],rotys=[0,0,90])
 
-    origin = (X,0,-0.06)
-    normal = (1,0,0)
-    
+    pc = art3d.Poly3DCollection(v[f], edgecolor="black", linewidth=0.1, facecolors=colour_mapped)
+    ax.add_collection(pc)
 
-    H = compute_H(scatterer,board)
-    E = compute_E(scatterer,points,board,H=H) #E=F+GH
-    
-    # F = forward_model(points[0,:],TOP_BOARD).to(device)
-    # _, _, x = wgs(E[0,:],torch.ones(N,1).to(device)+0j,200)
-    _,_,x = wgs_batch(E,torch.ones(N,1).to(device)+0j,200)
-    x = add_lev_sig(x)
+    scale = mesh.vertices.flatten()
+    ax.auto_scale_xyz(scale, scale, scale)
+    ax.set_xlim([xmin, xmax])
+    ax.set_ylim([ymin, ymax])
+    ax.set_zlim([zmin, zmax])
 
-    line_params = {"scatterer":scatterer,"origin":origin,"normal":normal}
+    if points is not None:
+        if p_pressure is not None:
+            p_c = mapper.to_rgba(p_pressure.squeeze())
+        else:
+            p_c = 'blue'
+        ax.scatter(points[:,0],points[:,1],points[:,2],color=p_c)
 
-    # Visualise(A,B,C,x,colour_functions=[BEM_gorkov_analytical],points=points,res=res,
-    #           colour_function_args=[{"H":H,"scatterer":scatterer,"board":board}],
-    #           add_lines_functions=[get_lines_from_plane],add_line_args=[line_params],vmin=[-1e-5],vmax=[-1e-6])
 
-    # Visualise(A,B,C,x,colour_functions=[propagate_BEM_pressure],points=points,res=res,
-    #           colour_function_args=[{"H":H,"scatterer":scatterer,"board":board}],
-    #           add_lines_functions=[get_lines_from_plane],add_line_args=[line_params],
-    #           vmin=[0],vmax=[15000])
 
-    # Visualise(A,B,C,x,colour_functions=[gorkov_fin_diff],points=points,res=res,
-    #           colour_function_args=[{"prop_function":propagate_BEM,"prop_fun_args":{"H":H,"scatterer":scatterer,"board":TRANSDUCERS}}],
-    #           add_lines_functions=[get_lines_from_plane],add_line_args=[line_params],
-    #           vmin=-1e-5, vmax=-1e-6)
-    
-    # Visualise(A,B,C,x,colour_functions=[propagate_abs],points=points,res=res,colour_function_args=[{"board":TOP_BOARD}])
-
-    Visualise(A,B,C,x,colour_functions=[get_force_axis],points=points,res=res,colour_function_args=[{"board":TRANSDUCERS}])
+    plt.show()
