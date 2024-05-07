@@ -253,7 +253,7 @@ def force_quiver_3d(points, U,V,W, scale=1):
 
 
 
-def Visualise_mesh(mesh, colours, points=None, p_pressure=None,vmax=None,vmin=None):
+def Visualise_mesh(mesh, colours, points=None, p_pressure=None,vmax=None,vmin=None, show=True, subplot=None, fig=None):
 
 
     xmin,xmax, ymin,ymax, zmin,zmax = mesh.bounds()
@@ -262,47 +262,58 @@ def Visualise_mesh(mesh, colours, points=None, p_pressure=None,vmax=None,vmin=No
     v = mesh.vertices
     f = torch.tensor(mesh.cells)
 
-
-    fig = plt.figure()
-    ax = fig.add_subplot(projection="3d")
+    if fig is None:
+        fig = plt.figure()
+    
+    if subplot is None:
+        ax = fig.add_subplot(projection="3d")
+    else:
+        ax = fig.add_subplot(subplot,projection="3d")
 
     # norm = plt.Normalize(C.min(), C.max())
     # colors = plt.cm.viridis(norm(C))
 
     if vmin is None:
         vmin = min(colours)
-        if p_pressure < vmin:
+        if p_pressure is not None and p_pressure < vmin:
             vmin = p_pressure
     
     if vmax is None:
         vmax = max(colours)
-        if p_pressure > vmax:
+        if p_pressure is not None and p_pressure > vmax:
             vmax = p_pressure
 
     norm = clrs.Normalize(vmin=vmin, vmax=vmax, clip=True)
     mapper = cm.ScalarMappable(norm, cmap=cm.hot)
 
+    if points is not None:
+        if p_pressure is not None:
+            p_c = mapper.to_rgba(p_pressure.squeeze().cpu().detach())
+        else:
+            p_c = 'blue'
+        points = points.cpu().detach()
+        ax.scatter(points[:,0],points[:,1],points[:,2],color=p_c)
+
     colour_mapped = []
     for c in colours:
-        colour_mapped.append(mapper.to_rgba(c))
+        colour_mapped.append(mapper.to_rgba(c.cpu().detach()))
 
 
-    pc = art3d.Poly3DCollection(v[f], edgecolor="black", linewidth=0.1, facecolors=colour_mapped)
-    ax.add_collection(pc)
+    pc = art3d.Poly3DCollection(v[f], edgecolor="white", linewidth=0.01, facecolors=colour_mapped)
+    plt_3d = ax.add_collection(pc)
 
     scale = mesh.vertices.flatten()
     ax.auto_scale_xyz(scale, scale, scale)
+    
     ax.set_xlim([xmin, xmax])
     ax.set_ylim([ymin, ymax])
     ax.set_zlim([zmin, zmax])
 
-    if points is not None:
-        if p_pressure is not None:
-            p_c = mapper.to_rgba(p_pressure.squeeze())
-        else:
-            p_c = 'blue'
-        ax.scatter(points[:,0],points[:,1],points[:,2],color=p_c)
 
 
 
-    plt.show()
+
+    if show:
+        plt.show()
+    else:
+        return ax
