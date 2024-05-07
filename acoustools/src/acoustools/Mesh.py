@@ -55,7 +55,8 @@ def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,d
     scatterer.metadata["rotY"] = 0
     scatterer.metadata["rotZ"] = 0
 
-    scatterer.filename = scatterer.filename.split("/")[-1]
+    # scatterer.filename = scatterer.filename.split("/")[-1]
+    scatterer.filename = scatterer_file_name(scatterer)
 
     scatterer.metadata["FILE"] = scatterer.filename.split(".")[0]
 
