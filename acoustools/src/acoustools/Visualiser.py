@@ -253,7 +253,7 @@ def force_quiver_3d(points, U,V,W, scale=1):
 
 
 
-def Visualise_mesh(mesh, colours, points=None, p_pressure=None,vmax=None,vmin=None, show=True, subplot=None, fig=None):
+def Visualise_mesh(mesh, colours=None, points=None, p_pressure=None,vmax=None,vmin=None, show=True, subplot=None, fig=None):
 
 
     xmin,xmax, ymin,ymax, zmin,zmax = mesh.bounds()
@@ -273,12 +273,12 @@ def Visualise_mesh(mesh, colours, points=None, p_pressure=None,vmax=None,vmin=No
     # norm = plt.Normalize(C.min(), C.max())
     # colors = plt.cm.viridis(norm(C))
 
-    if vmin is None:
+    if vmin is None and colours is not None:
         vmin = min(colours)
         if p_pressure is not None and p_pressure < vmin:
             vmin = p_pressure
     
-    if vmax is None:
+    if vmax is None and colours is not None:
         vmax = max(colours)
         if p_pressure is not None and p_pressure > vmax:
             vmax = p_pressure
@@ -294,12 +294,15 @@ def Visualise_mesh(mesh, colours, points=None, p_pressure=None,vmax=None,vmin=No
         points = points.cpu().detach()
         ax.scatter(points[:,0],points[:,1],points[:,2],color=p_c)
 
-    colour_mapped = []
-    for c in colours:
-        colour_mapped.append(mapper.to_rgba(c.cpu().detach()))
+    if colours is not None:
+        colour_mapped = []
+        for c in colours:
+            colour_mapped.append(mapper.to_rgba(c.cpu().detach()))
+    else:
+        colour_mapped=None
 
 
-    pc = art3d.Poly3DCollection(v[f], edgecolor="white", linewidth=0.01, facecolors=colour_mapped)
+    pc = art3d.Poly3DCollection(v[f], edgecolor="black", linewidth=0.01, facecolors=colour_mapped)
     plt_3d = ax.add_collection(pc)
 
     scale = mesh.vertices.flatten()
