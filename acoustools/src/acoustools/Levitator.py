@@ -10,7 +10,7 @@ class LevitatorController():
      Class to enable the manipulation of an acoustic levitator from python. 
     '''
 
-    def __init__(self, bin_path = None, ids = (1000,999), matBoardToWorld=None, print_lines=False):
+    def __init__(self, bin_path = None, ids = (999,1000), matBoardToWorld=None, print_lines=False):
         '''
         Creates the controller\\
         `bin_path`: The path to the binary files needed. If none will use files contained in AcousToosl. NOTE WHEN SET TO NONE THIS CHANGES THE CURRENT WORKING DIRECTORY AND THEN CHANGES IT BACK Default: None.\\
@@ -32,16 +32,16 @@ class LevitatorController():
 
         if matBoardToWorld is None:
             self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number)) (
-                
-                -1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, 1, 0.24,
-                0, 0, 0, 1,
-
                 1, 0, 0, 0,
                 0, 1, 0, 0,
                 0, 0, 1, 0,
                 0, 0, 0, 1,
+
+                -1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, -1, 0.24,
+                0, 0, 0, 1
+
                 
             )
         else:
@@ -56,13 +56,13 @@ class LevitatorController():
         self.IDX = get_convert_indexes()
     
     
-    def send_message(self, phases, amplitudes=None, relative_amplitude=1, num_geometries = 1, sleep_ms = 0, loop=False):
+    def send_message(self, phases, amplitudes=None, relative_amplitude=1, num_geometries = 1, sleep_ms = 0, loop=False, num_loops = 0):
         '''
         RECCOMENDED NOT TO USE - USE `levitate` INSTEAD\\
         sends messages to levitator
         '''
-        self.levitatorLib.send_message.argtypes = [ctypes.c_void_p,POINTER(ctypes.c_float), POINTER(ctypes.c_float), ctypes.c_float, ctypes.c_int, ctypes.c_int]
-        self.levitatorLib.send_message(self.controller,phases,amplitudes,relative_amplitude,num_geometries, sleep_ms, loop)
+        self.levitatorLib.send_message.argtypes = [ctypes.c_void_p,POINTER(ctypes.c_float), POINTER(ctypes.c_float), ctypes.c_float, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        self.levitatorLib.send_message(self.controller,phases,amplitudes,relative_amplitude,num_geometries, sleep_ms, loop, num_loops)
     
     def disconnect(self):
         '''
@@ -77,8 +77,16 @@ class LevitatorController():
         '''
         self.levitatorLib.turn_off.argtypes = [ctypes.c_void_p]
         self.levitatorLib.turn_off(self.controller)
+    
+    def set_frame_rate(self, frame_rate):
+        '''
+        Set a new framerate
+        '''
+        self.levitatorLib.set_new_frame_rate.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        new_frame_rate = self.levitatorLib.set_new_frame_rate(self.controller, frame_rate)
 
-    def levitate(self, phases, amplitudes=None, relative_amplitude=1, permute=True, sleep_ms = 0, loop=False):
+
+    def levitate(self, phases, amplitudes=None, relative_amplitude=1, permute=True, sleep_ms = 0, loop=False, num_loops=0):
         '''
         Send a single phase map to the levitator - This is the reccomended function to use as will deal with dtype conversions etc\\
         `phases`: `Torch.Tensor` of phases or list of `Torch.Tensor` of phases, expects a batched dimension in dim 0. If phases is complex then ` phases = torch.angle(phases)` will be run, else phases left as is\\
@@ -117,4 +125,4 @@ class LevitatorController():
 
         relative_amplitude = ctypes.c_float(relative_amplitude)
 
-        self.send_message(phases, amplitudes, relative_amplitude, num_geometries,sleep_ms=sleep_ms,loop=loop)
+        self.send_message(phases, amplitudes, relative_amplitude, num_geometries,sleep_ms=sleep_ms,loop=loop,num_loops=num_loops)
