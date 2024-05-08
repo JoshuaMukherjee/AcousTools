@@ -7,7 +7,7 @@ if __name__ == '__main__':
     from acoustools.Mesh import load_multiple_scatterers
     from acoustools.BEM import propagate_BEM_pressure, compute_E
 
-    import torch
+    import torch, os
 
     
     def propagate_abs_sum_objective_BEM(transducer_phases, points, board, targets, **objective_params):
@@ -17,7 +17,8 @@ if __name__ == '__main__':
 
     board = TOP_BOARD
 
-    path = "../../BEMMedia"
+    # path = "../../BEMMedia"
+    path = '../BEMMedia'
     paths = [path+"/Sphere-lam2.stl"]
     scatterer = load_multiple_scatterers(paths,dys=[-0.06],dzs=[-0.03])
 

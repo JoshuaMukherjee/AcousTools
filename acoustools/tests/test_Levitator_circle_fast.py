@@ -17,9 +17,9 @@ if __name__ == '__main__':
         for i in range(N):
             t = ((3.1415926*2) / N) * i
             x = radius * math.sin(t)
-            z = radius * math.cos(t)
-            poss.append((x,0,z))
-            p = create_points(1,1,x=x,y=0,z=z)
+            y = radius * math.cos(t)
+            poss.append((x,y,0))
+            p = create_points(1,1,x=x,y=y,z=0)
             x = wgs(p)
             x = add_lev_sig(x)
             xs.append(x)
@@ -30,16 +30,21 @@ if __name__ == '__main__':
         xs = pickle.load(open('acoustools/tests/data/circle' + str(N) + '.pth','rb'))
 
     print('Finished Computing \nConnecting to PAT...')
-
-    lev = LevitatorController()
-    print('Connected')
-    lev.levitate(xs[0])
-    
-    input()
-    print('Moving...')
     try:
+        lev = LevitatorController()
+        print('Connected')
+        lev.levitate(xs[0])
+
+        
+        input()
+        print('Moving...')
+   
         print(len(xs))
-        lev.levitate(xs,loop=False)
+        lev.set_frame_rate(10)
+        lev.levitate(xs,num_loops=1)
+        input()
+        lev.set_frame_rate(10000)
+        lev.levitate(xs,num_loops=10)
     except KeyboardInterrupt:
         print('Stopping')
     except Exception as e:
