@@ -253,10 +253,13 @@ def force_quiver_3d(points, U,V,W, scale=1):
 
 
 
-def Visualise_mesh(mesh, colours=None, points=None, p_pressure=None,vmax=None,vmin=None, show=True, subplot=None, fig=None):
+def Visualise_mesh(mesh, colours=None, points=None, p_pressure=None,vmax=None,vmin=None, show=True, subplot=None, fig=None, buffer_x=0, buffer_y = 0, buffer_z = 0, equalise_axis=False):
 
 
     xmin,xmax, ymin,ymax, zmin,zmax = mesh.bounds()
+    
+    if type(colours) is torch.Tensor:
+        colours=colours.flatten()
 
 
     v = mesh.vertices
@@ -274,12 +277,12 @@ def Visualise_mesh(mesh, colours=None, points=None, p_pressure=None,vmax=None,vm
     # colors = plt.cm.viridis(norm(C))
 
     if vmin is None and colours is not None:
-        vmin = min(colours)
+        vmin = torch.min(colours).item()
         if p_pressure is not None and p_pressure < vmin:
             vmin = p_pressure
     
     if vmax is None and colours is not None:
-        vmax = max(colours)
+        vmax = torch.max(colours).item()
         if p_pressure is not None and p_pressure > vmax:
             vmax = p_pressure
 
@@ -301,16 +304,18 @@ def Visualise_mesh(mesh, colours=None, points=None, p_pressure=None,vmax=None,vm
     else:
         colour_mapped=None
 
-
     pc = art3d.Poly3DCollection(v[f], edgecolor="black", linewidth=0.01, facecolors=colour_mapped)
     plt_3d = ax.add_collection(pc)
 
     scale = mesh.vertices.flatten()
     ax.auto_scale_xyz(scale, scale, scale)
     
-    ax.set_xlim([xmin, xmax])
-    ax.set_ylim([ymin, ymax])
-    ax.set_zlim([zmin, zmax])
+    if not equalise_axis:
+        ax.set_xlim([xmin - buffer_x, xmax +  buffer_x])
+        ax.set_ylim([ymin - buffer_y, ymax + buffer_y])
+        ax.set_zlim([zmin - buffer_z, zmax + buffer_z])
+    else:
+        ax.set_aspect('equal')
 
 
 
