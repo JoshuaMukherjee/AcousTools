@@ -6,8 +6,8 @@ if __name__ == '__main__':
 
     print('Computing...')
     
-    COMPUTE = False
-    N = 2000
+    COMPUTE = True
+    N = 5000
     radius = 0.02
     
     poss=[]
@@ -17,9 +17,9 @@ if __name__ == '__main__':
         for i in range(N):
             t = ((3.1415926*2) / N) * i
             x = radius * math.sin(t)
-            y = radius * math.cos(t)
-            poss.append((x,y,0))
-            p = create_points(1,1,x=x,y=y,z=0)
+            z = radius * math.cos(t)
+            poss.append((x,0,z))
+            p = create_points(1,1,x=x,y=0,z=z)
             x = wgs(p)
             x = add_lev_sig(x)
             xs.append(x)
