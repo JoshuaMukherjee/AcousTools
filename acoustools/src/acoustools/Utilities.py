@@ -380,12 +380,12 @@ def propagate(activations, points,board=TRANSDUCERS, A=None):
     `A` The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`\\
     Returns point activations
     '''
+    batch = is_batched_points(points)
+
     if A is None:
         if len(points.shape)>2:
-            batch = True
             A = forward_model_batched(points,board).to(device)
         else:
-            batch = False
             A = forward_model(points,board).to(device)
     prop = A@activations
     if batch:

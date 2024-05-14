@@ -1,17 +1,19 @@
 if __name__ == '__main__':
 
 
-    from acoustools.Utilities import create_points, propagate_abs, TOP_BOARD, BOTTOM_BOARD
-    from acoustools.Solvers import wgs
+    from acoustools.Utilities import create_points, propagate_abs, TOP_BOARD, BOTTOM_BOARD, TRANSDUCERS
+    from acoustools.Solvers import wgs, gradient_descent_solver
     from acoustools.Visualiser import Visualise_single, Visualise, Visualise_mesh
     from acoustools.Constants import wavelength
     from acoustools.Mesh import load_scatterer, get_lines_from_plane, get_centres_as_points
     from acoustools.BEM import compute_E, propagate_BEM_pressure
+    from acoustools.Levitator import LevitatorController
 
     import torch, vedo
     import matplotlib.pyplot as plt
 
     path = "../BEMMedia/"
+
     card = load_scatterer('Card-lam2.stl',root_path=path, rotx=90)
     # Visualise_mesh(card,buffer_z=0.01)
     # exit()
@@ -19,7 +21,7 @@ if __name__ == '__main__':
 
     X = 0.02
     Y = 0.09
-    Z = 0.002
+    Z = 0.004
     ps = []
     for x in [-1,1]:
         for y in [-1,1]:
@@ -29,13 +31,35 @@ if __name__ == '__main__':
     
 
     ps = torch.cat(ps,dim=2)
+    print(ps.requires_grad)
 
-    E,F,G,H = compute_E(card, ps,return_components=True,path=path)
+    E,F,G,H = compute_E(card, ps,return_components=True,path=path, board=TRANSDUCERS)
     x = wgs(ps,A=E)
+    print(torch.abs(E@x))
 
-    centres = get_centres_as_points(card)
-    pressures = propagate_BEM_pressure(x,centres,H=H, scatterer=card)
-    Visualise_mesh(card, pressures,equalise_axis=True)
+
+
+    # A = torch.tensor((-0.09,Y, 0.09))
+    # B = torch.tensor((0.09,Y, 0.09))
+    # C = torch.tensor((-0.09,Y, -0.09))
+    # normal = (0,1,0)
+    # origin = (0,0,0)
+    # Visualise(A,B,C,x,ps)
+    # exit()
+
+    lev = LevitatorController(ids=(73,53))
+    lev.levitate(x)
+    print('Levitating...')
+    input()
+    print('Stopping...')
+    lev.disconnect()
+    print('Stopped')
+
+
+    # centres = get_centres_as_points(card)
+    # pressures = propagate_BEM_pressure(x,centres,H=H, scatterer=card,board=TRANSDUCERS)
+    # print(pressures.max())
+    # Visualise_mesh(card, pressures,equalise_axis=True)
 
 
     # A = torch.tensor((-0.09,Y, 0.09))

@@ -24,6 +24,18 @@ class LevitatorController():
         
         cwd = os.getcwd()
         os.chdir(self.bin_path)
+        files = os.listdir()
+        data_file = open('board_master.pat','r')
+        data = data_file.read()
+        for id in ids:
+            if 'board_'+str(id)+'.pat' not in files:
+                file = open('board_'+str(id)+'.pat','w')
+                data_id = data.replace('<XXXXXXXX>',str(id))
+                file.write(data_id)
+                file.close()
+        data_file.close()
+
+
         print(os.getcwd())
         self.levitatorLib = CDLL(self.bin_path+'Levitator.dll')
 

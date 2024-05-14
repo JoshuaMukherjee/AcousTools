@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     print('Finished Computing \nConnecting to PAT...')
     try:
-        lev = LevitatorController()
+        lev = LevitatorController(ids=(73,53))
         print('Connected')
         lev.levitate(xs[0])
 
