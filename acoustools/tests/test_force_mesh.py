@@ -1,11 +1,11 @@
 if __name__ == "__main__":
     from acoustools.Force import force_mesh, compute_force, force_fin_diff
     from acoustools.Utilities import create_points, propagate_abs, add_lev_sig, TRANSDUCERS
-    from acoustools.Solvers import wgs_wrapper
+    from acoustools.Solvers import wgs
     from acoustools.Mesh import load_multiple_scatterers, get_normals_as_points, get_centres_as_points, get_areas, get_weight, scale_to_diameter, get_centre_of_mass_as_points,get_lines_from_plane
     from acoustools.BEM import compute_E, BEM_forward_model_grad, propagate_BEM_pressure, BEM_gorkov_analytical, get_cache_or_compute_H_gradients
     import acoustools.Constants as c 
-    from acoustools.Visualiser import Visualise, force_quiver_3d
+    from acoustools.Visualiser import Visualise, force_quiver_3d, force_quiver
 
     import vedo, torch
 
@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     E, F,G,H = compute_E(scatterer, com, TRANSDUCERS, return_components=True, path=path, print_lines=False)
     Hx, Hy, Hz = get_cache_or_compute_H_gradients(scatterer, board,print_lines=False,path=path)
-    x = wgs_wrapper(com, board=board, A=E)
+    x = wgs(com, board=board, A=E)
     x = add_lev_sig(x)
     pres = propagate_BEM_pressure(x,p,scatterer,board=TRANSDUCERS,E=E)
 
@@ -81,13 +81,13 @@ if __name__ == "__main__":
     # A = torch.tensor((0,-0.09, 0.09))
     # B = torch.tensor((0,0.09, 0.09))
     # C = torch.tensor((0,-0.09, -0.09))
-    # normal = (1,0,0)
+    normal = (1,0,0)
     # origin = (0,0,0)
 
 
     line_params = {"scatterer":scatterer,"origin":origin,"normal":normal}
     Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],colour_function_args=[{"scatterer":scatterer,"board":TRANSDUCERS,"path":path}],vmax=9000, show=True,add_lines_functions=[get_lines_from_plane], add_line_args=[line_params])
 
-    # force_quiver_3d(p,force[:,0,:],force[:,1,:],force[:,2,:],scale=500)
+    # force_quiver(p,force[:,0,:],force[:,2,:], normal)
 
 
