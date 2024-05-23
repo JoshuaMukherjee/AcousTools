@@ -481,7 +481,7 @@ def create_points(N,B=1,x=None,y=None,z=None, min_pos=-0.06, max_pos = 0.06):
 
     return points
     
-def add_lev_sig(activation, sig=torch.pi):
+def add_lev_sig(activation, board=TRANSDUCERS, mode='Trap', sig=None, return_sig=False):
     '''
     Adds pi to the top board of a 2x16x16 board setup - converts focal points to traps\\
     `activation` Hologram input for 2x16x16 board\\
@@ -493,12 +493,30 @@ def add_lev_sig(activation, sig=torch.pi):
     s = act.shape
     B = s[0]
 
-    act = torch.reshape(act,(B,2, 256))
+    act = torch.reshape(act,(B,-1, 256))
 
-    act[:,0,:] = torch.e**(1j*(sig + torch.angle(act[:,0,:].clone())))
-    act = torch.reshape(act,s)
+    # act[:,0,:] = torch.e**(1j*(sig + torch.angle(act[:,0,:].clone())))
+    if sig is None:
+        sig = torch.ones_like(act)
+        if mode == 'Trap':
+            sig = torch.cat([torch.ones_like(act[:,0,:]) * torch.pi, torch.zeros_like(act[:,0,:])])
+        if mode == 'Focal':
+            sig = torch.zeros_like(act)
+        if mode == 'Vortex':
+            plane = board[:,0:2]
+            sig = torch.atan2(plane[:,0], plane[:,1]).unsqueeze(0).unsqueeze(2).reshape((B,-1, 256))
+        if mode == 'Twin':
+            plane = board[:,0:2]
+            sig = torch.zeros_like(sig) + torch.pi * (plane[:,0] > 0).unsqueeze(0).unsqueeze(2).reshape((B,-1, 256))
 
-    return act
+
+    x = torch.abs(act) * torch.exp(1j* (torch.angle(act) + sig))
+
+    x = torch.reshape(x,s)
+
+    if return_sig:
+        return x, sig
+    return x
 
 def generate_gorkov_targets(N,B=1, max_val=0, min_val=-1e-4):
     '''
