@@ -140,15 +140,17 @@ def gspat(points=None, board=TRANSDUCERS,A=None,B=None, R=None ,b = None, iterat
     return phase_hologram
 
 
-def naive_solver_batched(points,board=TRANSDUCERS):
+def naive_solver_batched(points,board=TRANSDUCERS, activation=None):
     '''
     Batched naive (backpropagation) algorithm for phase retrieval\\
     `points` Target point positions\\
     `board` The Transducer array, default two 16x16 arrays\\
+    `activation` Initial starting point activation \\
     returns (point activations, hologram)
     '''
-    activation = torch.ones(points.shape[2],1) +0j
-    activation = activation.to(device)
+    if activation is None:
+        activation = torch.ones(points.shape[2],1) +0j
+        activation = activation.to(device)
     forward = forward_model_batched(points,board)
     back = torch.conj(forward).mT
     trans = back@activation
@@ -157,16 +159,17 @@ def naive_solver_batched(points,board=TRANSDUCERS):
 
     return out, trans_phase
 
-def naive_solver_unbatched(points,board=TRANSDUCERS):
+def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None):
     '''
     Unbatched naive (backpropagation) algorithm for phase retrieval\\
     `points` Target point positions\\
     `board` The Transducer array, default two 16x16 arrays\\
+    `activation` Initial starting point activation \\
     returns (point activations, hologram)
     '''
-
-    activation = torch.ones(points.shape[1]) +0j
-    activation = activation.to(device)
+    if activation is None:
+        activation = torch.ones(points.shape[1]) +0j
+        activation = activation.to(device)
     forward = forward_model(points,board)
     back = torch.conj(forward).T
     trans = back@activation
@@ -176,18 +179,19 @@ def naive_solver_unbatched(points,board=TRANSDUCERS):
 
     return out, trans_phase
 
-def naive(points, board = TRANSDUCERS, return_components=False):
+def naive(points, board = TRANSDUCERS, return_components=False, activation=None):
     '''
     Wrapper for naive solver\\
     `points` Target point positions\\
     `board` The Transducer array, default two 16x16 arrays\\
     `return_components` If True will return `hologram, pressure` else will return `hologram`, default True\\
+    `activation` Initial starting point activation \\
     returns hologram
     '''
     if is_batched_points(points):
-        out,act = naive_solver_batched(points,board=board)
+        out,act = naive_solver_batched(points,board=board, activation=activation)
     else:
-        out,act = naive_solver_unbatched(points,board=board)
+        out,act = naive_solver_unbatched(points,board=board, activation=activation)
     if return_components:
         return act, out
     return act
