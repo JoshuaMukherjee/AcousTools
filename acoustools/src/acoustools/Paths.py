@@ -1,3 +1,5 @@
+import torch
+import itertools
 
 def get_numeral(numeral, A, B, C):
     if int(numeral) == 1:
@@ -137,5 +139,31 @@ def numeral_nine(A,B,C):
     points.append(A+ 0.9*AB + 0.9 * AC)
 
     return points
+
+
+def distance(p1, p2):
+    return torch.sqrt(torch.sum((p2 - p1)**2))
     
-    
+def interpolate_points(p1, p2, n):
+    vec = (p2 - p1) / n
+    points = []
+    for i in range(n):
+        points.append(p1 + i * vec)
+
+    return points
+
+def interpolate_path(path, n):
+    points = []
+    total_dist = 0
+    distances = []
+    for p1, p2 in itertools.pairwise(path):
+        d = distance(p1,p2)
+        total_dist +=  d
+        distances.append(d)
+
+    for i,(p1, p2) in enumerate(itertools.pairwise(path)):
+        d = distances[i]
+        num = round((n * (d / total_dist )).item())
+        points += interpolate_points(p1, p2, num)
+
+    return points
