@@ -404,6 +404,18 @@ def propagate_abs(activations, points,board=TRANSDUCERS, A=None):
     out = propagate(activations, points,board,A=A)
     return torch.abs(out)
 
+def propagate_phase(activations, points,board=TRANSDUCERS, A=None):
+    '''
+    Propagates a hologram to target points and returns phase - Same as `torch.angle(propagate(activations, points,board, A))`\\
+    `activations` Hologram to use\\
+    `points` Points to propagate to\\
+    `board` The Transducer array, default two 16x16 arrays\\
+    `A` The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`\\
+    Returns point pressure
+    '''
+    out = propagate(activations, points,board,A=A)
+    return torch.angle(out)
+
 def permute_points(points,index,axis=0):
     '''
     Permutes axis a tensor\\

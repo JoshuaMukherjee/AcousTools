@@ -92,7 +92,7 @@ def Visualise_single(A,B,C,activation,colour_function=propagate_abs, colour_func
     return result
 
 def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colour_function_args=None, 
-              res=(200,200), cmaps=[], add_lines_functions=None, add_line_args=None,vmin=None,vmax=None, matricies = None, show=True,block=True, clr_label='Pressure (Pa)'):
+              res=(200,200), cmaps=[], add_lines_functions=None, add_line_args=None,vmin=None,vmax=None, matricies = None, show=True,block=True, clr_labels=None):
     '''
     Visalises any numvber of fields generated from activation to the plane ABC and arranges them in a (1,N) grid
     `A` Position of the top left corner of the image\\
@@ -110,7 +110,8 @@ def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colou
     `vmax` MAximum value to use across all plots\\
     `matricies` precomputed matricies to plot\\
     `show` If True will call `plt.show(block=block)` else does not. Default True\\
-    `block` Will be passed to `plot.show(block=block)`. Default True
+    `block` Will be passed to `plot.show(block=block)`. Default True\\
+    `clr_label`: Label for colourbar\\
     '''
 
 
@@ -176,6 +177,11 @@ def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colou
 
         # print(vmax,vmin)
         
+        if clr_labels is None:
+            clr_label = 'Pressure (Pa)'
+        else:
+            clr_label = clr_labels[i]
+            
         plt.imshow(im.cpu().detach().numpy(),cmap=cmap,vmin=v_min,vmax=v_max)
         plt.colorbar(label=clr_label)
 
