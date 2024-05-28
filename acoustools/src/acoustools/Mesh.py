@@ -281,6 +281,7 @@ def translate(scatterer, dx=0,dy=0,dz=0):
     `dz` Translation in the z direction\\
     Modifies inplace so does not return a value
     '''
+
     scatterer.shift(np.array([dx,dy,dz]))
     scatterer.filename = scatterer_file_name(scatterer)
 
@@ -333,3 +334,9 @@ def downsample(scatterer, factor=2, n=None, method='quadric', boundaries=False, 
     return scatterer_small
 
 
+def centre_scatterer(scatterer):
+    com = get_centre_of_mass_as_points(scatterer).cpu()
+    correction = [-1*com[:,0].item(), -1*com[:,1].item(), -1*com[:,2].item()]
+    translate(scatterer, dx = correction[0], dy = correction[1], dz=  correction[2])
+
+    return correction
