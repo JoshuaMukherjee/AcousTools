@@ -2,6 +2,10 @@ import torch
 import itertools
 
 def get_numeral(numeral, A, B, C):
+    if type(A) is not torch.Tensor or type(B) is not torch.Tensor or type(C) is not torch.Tensor:
+        A = torch.Tensor(A)
+        B = torch.Tensor(B)
+        C = torch.Tensor(C)
     if int(numeral) == 1:
         return numeral_one(A,B,C)
     if int(numeral) == 2:
