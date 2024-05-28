@@ -401,7 +401,7 @@ def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path
     return Hx, Hy, Hz
 
  
-def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print_lines=False):
+def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print_lines=False, cache_name=None):
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\\
     `scatterer` The mesh used (as a `vedo` `mesh` object)\\
@@ -414,9 +414,10 @@ def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print
 
     if use_cache_H:
         
-        f_name = scatterer.filename+"--"+ board_name(board)
-        f_name = hashlib.md5(f_name.encode()).hexdigest()
-        f_name = path+"/BEMCache/"  +  f_name + ".bin"
+        if cache_name is None:
+            cache_name = scatterer.filename+"--"+ board_name(board)
+            cache_name = hashlib.md5(cache_name.encode()).hexdigest()
+        f_name = path+"/BEMCache/"  +  cache_name + ".bin"
         # print(f_name)
 
         try:
