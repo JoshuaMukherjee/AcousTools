@@ -259,7 +259,7 @@ def force_quiver_3d(points, U,V,W, scale=1):
 
 
 
-def Visualise_mesh(mesh, colours=None, points=None, p_pressure=None,vmax=None,vmin=None, show=True, subplot=None, fig=None, buffer_x=0, buffer_y = 0, buffer_z = 0, equalise_axis=False):
+def Visualise_mesh(mesh, colours=None, points=None, p_pressure=None,vmax=None,vmin=None, show=True, subplot=None, fig=None, buffer_x=0, buffer_y = 0, buffer_z = 0, equalise_axis=False, elev=-45, azim=45):
 
 
     xmin,xmax, ymin,ymax, zmin,zmax = mesh.bounds()
@@ -324,7 +324,7 @@ def Visualise_mesh(mesh, colours=None, points=None, p_pressure=None,vmax=None,vm
         ax.set_aspect('equal')
 
 
-
+    ax.view_init(elev=elev, azim=azim)
 
 
     if show:
