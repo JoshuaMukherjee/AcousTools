@@ -39,8 +39,8 @@ class LevitatorController():
         print(os.getcwd())
         self.levitatorLib = CDLL(self.bin_path+'Levitator.dll')
 
-        self.ids = (ctypes.c_int * 2)(*ids)
         self.board_number = len(ids)
+        self.ids = (ctypes.c_int * self.board_number)(*ids)
 
         if matBoardToWorld is None:
             self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number)) (
@@ -57,15 +57,16 @@ class LevitatorController():
                 
             )
         else:
-            self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number))(matBoardToWorld)
+            self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number))(*matBoardToWorld)
+        
 
+        self.levitatorLib.connect_to_levitator.argtypes =  [POINTER(ctypes.c_int), POINTER(ctypes.c_float), ctypes.c_int, ctypes.c_bool]
         self.levitatorLib.connect_to_levitator.restype = ctypes.c_void_p
         self.controller = self.levitatorLib.connect_to_levitator(self.ids,self.matBoardToWorld,self.board_number,print_lines)
 
-
         os.chdir(cwd)
 
-        self.IDX = get_convert_indexes()
+        self.IDX = get_convert_indexes(256)
     
     
     def send_message(self, phases, amplitudes=None, relative_amplitude=1, num_geometries = 1, sleep_ms = 0, loop=False, num_loops = 0):
@@ -130,6 +131,8 @@ class LevitatorController():
                     phases = torch.angle(phases)
             to_output = phases[0].squeeze().cpu().detach().tolist()
 
+        print(256*self.board_number *num_geometries)
+        print(len(to_output))
         phases = (ctypes.c_float * (256*self.board_number *num_geometries))(*to_output)
 
         if amplitudes is not None:
