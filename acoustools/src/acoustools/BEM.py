@@ -401,7 +401,7 @@ def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path
     return Hx, Hy, Hz
 
  
-def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print_lines=False, cache_name=None):
+def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print_lines=False, cache_name=None,use_LU=True):
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\\
     `scatterer` The mesh used (as a `vedo` `mesh` object)\\
@@ -409,6 +409,7 @@ def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print
     `use_cache_H_grad` If true uses the cache system, otherwise computes H and does not save it\\
     `path` path to folder containing BEMCache/ \\
     `print_lines` if true prints messages detaling progress\\
+    `use_LU` If true use LU decomopsition to solve for H\\
     Returns H
     '''
 
@@ -425,7 +426,7 @@ def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print
             H = pickle.load(open(f_name,"rb")).to(device)
         except FileNotFoundError: 
             if print_lines: print("Not found, computing H...")
-            H = compute_H(scatterer,board)
+            H = compute_H(scatterer,board,use_LU=use_LU)
             f = open(f_name,"wb")
             pickle.dump(H,f)
             f.close()
