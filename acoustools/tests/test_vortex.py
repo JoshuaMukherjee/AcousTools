@@ -39,33 +39,33 @@ fig = plt.figure()
 
 ax_vis = fig.add_subplot(2,3,1)
 img = Visualise_single(A,B,C,x)
-im = ax_vis.matshow(img, cmap='hot')
+im = ax_vis.matshow(img.cpu().detach(), cmap='hot')
 fig.colorbar(im, ax=ax_vis)
 ax_vis.axis('off')
 
 ax_vis_2 = fig.add_subplot(2,3,2)
 img_2 = Visualise_single(D,E,F,x)
-im_2 = ax_vis_2.matshow(img_2, cmap='hot')
+im_2 = ax_vis_2.matshow(img_2.cpu().detach(), cmap='hot')
 fig.colorbar(im, ax=ax_vis_2)
 ax_vis_2.axis('off')
 
 
 
 ax_sig_1 = fig.add_subplot(2,3,3)
-sig_im_vortex = ax_sig_1.matshow(sig.real.reshape(1,-1,16,16)[0,0,:,:].mT, cmap='hsv', vmin=-3.14159, vmax=3.14159)
+sig_im_vortex = ax_sig_1.matshow(sig.real.reshape(1,-1,16,16)[0,0,:,:].mT.cpu().detach(), cmap='hsv', vmin=-3.14159, vmax=3.14159)
 ax_sig_1.axis('off')
 
 
 ax_sig_2 = fig.add_subplot(2,3,4)
-sig_im_vortex_2 = ax_sig_2.matshow(sig.real.reshape(1,-1,16,16)[0,1,:,:].mT, cmap='hsv', vmin=-3.14159, vmax=3.14159)
+sig_im_vortex_2 = ax_sig_2.matshow(sig.real.reshape(1,-1,16,16)[0,1,:,:].mT.cpu().detach(), cmap='hsv', vmin=-3.14159, vmax=3.14159)
 ax_sig_2.axis('off')
 
 ax_holo_1 = fig.add_subplot(2,3,5)
-holo_im_1 = ax_holo_1.matshow(torch.angle(x).reshape(1,-1,16,16)[0,0,:,:].mT, cmap='hsv', vmin=-3.14159, vmax=3.14159)
+holo_im_1 = ax_holo_1.matshow(torch.angle(x).reshape(1,-1,16,16)[0,0,:,:].mT.cpu().detach(), cmap='hsv', vmin=-3.14159, vmax=3.14159)
 ax_holo_1.axis('off')
 
 ax_holo_2 = fig.add_subplot(2,3,6)
-holo_im_2 = ax_holo_2.matshow(torch.angle(x).reshape(1,-1,16,16)[0,1,:,:].mT, cmap='hsv', vmin=-3.14159, vmax=3.14159)
+holo_im_2 = ax_holo_2.matshow(torch.angle(x).reshape(1,-1,16,16)[0,1,:,:].mT.cpu().detach(), cmap='hsv', vmin=-3.14159, vmax=3.14159)
 ax_holo_2.axis('off')
 
 
@@ -96,12 +96,12 @@ def traverse(index):
 
     x = add_lev_sig(x_start,sig=sig)
 
-    im.set_data(Visualise_single(A,B,C,x))
-    im_2.set_data(Visualise_single(D,E,F,x))
-    sig_im_vortex.set_data(sig.real.reshape(1,-1,16,16)[0,0,:,:].mT)
-    sig_im_vortex_2.set_data(sig.real.reshape(1,-1,16,16)[0,1,:,:].mT)
-    holo_im_1.set_data(torch.angle(x).reshape(1,-1,16,16)[0,0,:,:].mT)
-    holo_im_2.set_data(torch.angle(x).reshape(1,-1,16,16)[0,1,:,:].mT)
+    im.set_data(Visualise_single(A,B,C,x).cpu().detach())
+    im_2.set_data(Visualise_single(D,E,F,x).cpu().detach())
+    sig_im_vortex.set_data(sig.real.reshape(1,-1,16,16)[0,0,:,:].mT.cpu().detach())
+    sig_im_vortex_2.set_data(sig.real.reshape(1,-1,16,16)[0,1,:,:].mT.cpu().detach())
+    holo_im_1.set_data(torch.angle(x).reshape(1,-1,16,16)[0,0,:,:].mT.cpu().detach())
+    holo_im_2.set_data(torch.angle(x).reshape(1,-1,16,16)[0,1,:,:].mT.cpu().detach())
 
     
 

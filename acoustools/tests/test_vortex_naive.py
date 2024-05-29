@@ -1,4 +1,4 @@
-from acoustools.Utilities import create_points, propagate_phase, propagate_abs
+from acoustools.Utilities import create_points, propagate_phase, propagate_abs, device
 from acoustools.Solvers import naive
 from acoustools.Visualiser import Visualise
 import acoustools.Constants as c
@@ -17,6 +17,7 @@ print(p)
 # 0 3 1 2
 
 activation = torch.ones(p.shape[2],1) + 0j
+activation= activation.to(device)
 activation[0,:] += torch.e ** (torch.pi/4*1j)
 activation[3,:] += torch.e ** (3*torch.pi/4*1j)
 activation[1,:] += torch.e ** (5*torch.pi/4*1j)
