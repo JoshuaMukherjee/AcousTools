@@ -44,7 +44,7 @@ class LevitatorController():
 
         if matBoardToWorld is None:
             self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number)) (
-                1, 0, 0, 0,
+                -1, 0, 0, 0,
                 0, 1, 0, 0,
                 0, 0, 1, 0,
                 0, 0, 0, 1,
@@ -66,7 +66,7 @@ class LevitatorController():
 
         os.chdir(cwd)
 
-        self.IDX = get_convert_indexes(256)
+        self.IDX = get_convert_indexes(256*self.board_number)
     
     
     def send_message(self, phases, amplitudes=None, relative_amplitude=1, num_geometries = 1, sleep_ms = 0, loop=False, num_loops = 0):
@@ -131,8 +131,7 @@ class LevitatorController():
                     phases = torch.angle(phases)
             to_output = phases[0].squeeze().cpu().detach().tolist()
 
-        print(256*self.board_number *num_geometries)
-        print(len(to_output))
+
         phases = (ctypes.c_float * (256*self.board_number *num_geometries))(*to_output)
 
         if amplitudes is not None:
