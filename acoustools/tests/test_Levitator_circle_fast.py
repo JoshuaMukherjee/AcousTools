@@ -7,7 +7,7 @@ if __name__ == '__main__':
     print('Computing...')
     
     COMPUTE = False
-    N = 200
+    N = 2000
     radius = 0.02
     
     poss=[]
@@ -21,14 +21,14 @@ if __name__ == '__main__':
             poss.append((x,z,0))
             p = create_points(1,1,x=x,y=z,z=0)
             x = wgs(p)
-            # x = add_lev_sig(x)
+            x = add_lev_sig(x)
             xs.append(x)
             if i % 100 == 0:
                 print(i)
         pickle.dump(xs,open('acoustools/tests/data/circle' + str(N) + '.pth','wb'))
     else:
         xs = pickle.load(open('acoustools/tests/data/circle' + str(N) + '.pth','rb'))
-        
+
 
     print('Finished Computing \nConnecting to PAT...')
     try:
@@ -43,10 +43,11 @@ if __name__ == '__main__':
         print(len(xs))
         # lev.set_frame_rate(10)
         # lev.levitate(xs,num_loops=1)
-        # input()
 
-        lev.set_frame_rate(10000)
-        lev.levitate(xs,num_loops=100)
+        input()
+
+        lev.set_frame_rate(40000)
+        lev.levitate(xs,num_loops=1000)
     except KeyboardInterrupt:
         print('Stopping')
     except Exception as e:

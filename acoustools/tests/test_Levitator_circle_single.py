@@ -39,13 +39,13 @@ if __name__ == '__main__':
 
     print('Finished Computing \nConnecting to PAT...')
     try:
-        lev = LevitatorController(ids=(73,),matBoardToWorld=mat_to_world)
+        lev = LevitatorController(ids=(73,),matBoardToWorld=mat_to_world, print_lines=True)
         print('Connected')
         lev.levitate(xs[0])
         input()
         print('Moving...')
 
-        lev.set_frame_rate(10000)
+        lev.set_frame_rate(40000)
         lev.levitate(xs,num_loops=100)
     except KeyboardInterrupt:
         print('Stopping')
@@ -53,7 +53,7 @@ if __name__ == '__main__':
         print(e)
     finally:
         print('Finished Moving')
-        input()
+        input('Press Enter to Drop')
         lev.disconnect()
 
 
