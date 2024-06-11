@@ -35,10 +35,7 @@ if __name__ == '__main__':
         pickle.dump(xs,open('acoustools/tests/data/bottom_circle' + str(N) + '.pth','wb'))
     else:
         xs = pickle.load(open('acoustools/tests/data/bottom_circle' + str(N) + '.pth','rb'))
-    
-    same_32 = []
-    for i in range(32):
-        same_32.append(xs[0])
+
 
     print('Finished Computing \nConnecting to PAT...')
     try:
@@ -47,10 +44,9 @@ if __name__ == '__main__':
         lev.levitate(xs[0])
         input()
         print('Moving...')
-        for i in range(100):
-            lev.levitate(same_32,num_loops=100)
-        # lev.set_frame_rate(10000)
-        # lev.levitate(xs,num_loops=100)
+
+        lev.set_frame_rate(10000)
+        lev.levitate(xs,num_loops=100)
     except KeyboardInterrupt:
         print('Stopping')
     except Exception as e:
