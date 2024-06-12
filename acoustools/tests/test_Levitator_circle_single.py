@@ -45,15 +45,18 @@ if __name__ == '__main__':
         input()
         print('Moving...')
 
-        lev.set_frame_rate(40000)
+        start = time.time_ns()
+        lev.set_frame_rate(200)
         lev.levitate(xs,num_loops=100)
+        end = time.time_ns()
+        print((end-start)/1e9, 'Seconds')
     except KeyboardInterrupt:
         print('Stopping')
     except Exception as e:
         print(e)
     finally:
         print('Finished Moving')
-        input('Press Enter to Drop')
+        # input('Press Enter to Drop')
         lev.disconnect()
 
 

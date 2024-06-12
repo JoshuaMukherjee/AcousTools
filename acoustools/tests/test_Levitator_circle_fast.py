@@ -7,7 +7,7 @@ if __name__ == '__main__':
     print('Computing...')
     
     COMPUTE = False
-    N = 2000
+    N = 200
     radius = 0.02
     
     poss=[]
@@ -44,10 +44,11 @@ if __name__ == '__main__':
         # lev.set_frame_rate(10)
         # lev.levitate(xs,num_loops=1)
 
-        input()
-
-        lev.set_frame_rate(40000)
-        lev.levitate(xs,num_loops=1000)
+        start = time.time_ns()
+        lev.set_frame_rate(500)
+        lev.levitate(xs,num_loops=100)
+        end = time.time_ns()
+        print((end-start)/1e9, 'Seconds')
     except KeyboardInterrupt:
         print('Stopping')
     except Exception as e:
