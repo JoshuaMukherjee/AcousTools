@@ -1,5 +1,5 @@
 import torch
-from acoustools.Utilities import propagate_abs, add_lev_sig, device, create_board
+from acoustools.Utilities import propagate_abs, add_lev_sig, device, create_board, TRANSDUCERS, forward_model
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import art3d
 import matplotlib.colors as clrs
@@ -331,3 +331,26 @@ def Visualise_mesh(mesh, colours=None, points=None, p_pressure=None,vmax=None,vm
         plt.show()
     else:
         return ax
+    
+
+
+
+def Visualise_line(A,B,x, F=None,points=None,steps = 1000, board=TRANSDUCERS, propagate_fun = propagate_abs, propagate_args={}, show=True):
+    if points is None:
+        AB = B-A
+        step = AB / steps
+        points = []
+        for i in range(steps):
+            p = A + i*step
+            points.append(p.unsqueeze(0))
+        
+        points = torch.stack(points, 2).to(device)
+    
+    
+    pressure = propagate_fun(activations=x,points=points, board=board,**propagate_args)
+    if show:
+        plt.plot(pressure.detach().cpu().flatten())
+        plt.show()
+    else:
+        return pressure
+       
