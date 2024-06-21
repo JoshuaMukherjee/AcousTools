@@ -119,7 +119,7 @@ def compute_bs(scatterer, board):
     return bs.to(DTYPE)
 
  
-def compute_H(scatterer, board,use_LU=True):
+def compute_H(scatterer, board,use_LU=True, use_OLS = False):
     '''
     Computes H for the BEM model \\
     `scatterer` The mesh used (as a `vedo` `mesh` object)\\
@@ -127,13 +127,17 @@ def compute_H(scatterer, board,use_LU=True):
     `use_LU` if True computes H with LU decomposition, otherwise solves using standard linear inversion\\
     returns H
     '''
+    
     A = compute_A(scatterer)
     bs = compute_bs(scatterer,board)
-    if not use_LU:
-        H = torch.linalg.solve(A,bs)
-    else:
+    if use_LU:
         LU, pivots = torch.linalg.lu_factor(A)
         H = torch.linalg.lu_solve(LU, pivots, bs)
+    elif use_OLS:
+       
+        H = torch.linalg.lstsq(A,bs).solution    
+    else:
+         H = torch.linalg.solve(A,bs)
 
     return H
 

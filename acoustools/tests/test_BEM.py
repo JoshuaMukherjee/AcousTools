@@ -1,14 +1,14 @@
 if __name__ == "__main__":
     from acoustools.Mesh import load_scatterer, get_lines_from_plane,get_centre_of_mass_as_points, scale_to_diameter
-    from acoustools.BEM import compute_E, propagate_BEM_pressure
+    from acoustools.BEM import compute_E, propagate_BEM_pressure, compute_H
     from acoustools.Utilities import create_points, TOP_BOARD, propagate_abs
-    from acoustools.Solvers import wgs_wrapper
+    from acoustools.Solvers import wgs
     from acoustools.Visualiser import Visualise
     import acoustools.Constants as c
 
     import torch, vedo
 
-    path = "../BEMMedia"
+    path = "../../BEMMedia"
     scatterer = load_scatterer(path+"/Sphere-lam2.stl",dy=-0.06,dz=-0.08)
     # scale_to_diameter(scatterer, 2*c.R)
     # scatterer = load_scatterer(path+"/Bunny-lam2.stl",dz=-0.10, rotz=90)
@@ -21,8 +21,9 @@ if __name__ == "__main__":
     # p = create_points(N,B,y=0)
     
     # E = compute_E(scatterer, p, TOP_BOARD,path=path,use_cache_H=False)
-    E, F, G, H = compute_E(scatterer, p, TOP_BOARD,path=path,use_cache_H=False,return_components=True)
-    x = wgs_wrapper(p,board=TOP_BOARD,A=E)
+    H = compute_H(scatterer, TOP_BOARD)
+    E, F, G, H = compute_E(scatterer, p, TOP_BOARD,path=path,use_cache_H=False,return_components=True,H=H)
+    x = wgs(p,board=TOP_BOARD,A=E)
     # print(x.shape)
     
     A = torch.tensor((-0.12,0, 0.12))
@@ -34,5 +35,5 @@ if __name__ == "__main__":
     line_params = {"scatterer":scatterer,"origin":origin,"normal":normal}
 
     # Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure,propagate_abs],colour_function_args=[{"scatterer":scatterer,"board":TOP_BOARD,"path":path,'H':H},{"board":TOP_BOARD}],vmax=8621, show=True,res=[256,256])
-    Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],colour_function_args=[{"scatterer":scatterer,"board":TOP_BOARD,"path":path,'H':H}],vmax=8621, show=True,res=[256,256])
+    # Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],colour_function_args=[{"scatterer":scatterer,"board":TOP_BOARD,"path":path,'H':H}],vmax=8621, show=True,res=[256,256])
 

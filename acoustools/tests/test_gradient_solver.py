@@ -110,6 +110,8 @@ if __name__ == "__main__":
                                     constrains=constrain_phase_only, log=True, lr=1e-1,iters=1000)
 
         print(propagate_abs(x,p))
+        focal = p[:,:,0]
+        trap  =  p[:,:,1]
         
         
         A = torch.tensor((-0.09,0, 0.09))
@@ -118,9 +120,33 @@ if __name__ == "__main__":
         normal = (0,1,0)
         origin = (0,0,0)
 
-        Visualise(A,B,C, x, points=p)
+        print(p.shape)
+        Visualise(A,B,C, x, points=p, vmax=7000)
+        print(A,B,C)
+
+        WINDOW = 0.01
+        for p in [focal, trap]:
+            A = p.clone().squeeze()
+            A[0] -= WINDOW
+            A[2] += WINDOW
+
+
+            B = p.clone().squeeze()
+            B[0] += WINDOW
+            B[2] += WINDOW
+            
+            C = p.clone().squeeze()
+            C[0] -= WINDOW
+            C[2] -= WINDOW
+
+            print(A,B,C)
+            
+            point = p.unsqueeze(2)
+
+            Visualise(A,B,C, x, points=point, vmax=7000)
+        
 
 
 
-    test_pressure_target()
+    test_gorkov_pressure_traps()
     
