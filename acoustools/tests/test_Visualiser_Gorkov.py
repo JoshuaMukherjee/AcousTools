@@ -1,5 +1,5 @@
 if __name__ == "__main__":
-    from acoustools.Utilities import create_points, add_lev_sig
+    from acoustools.Utilities import create_points, add_lev_sig, propagate_abs
     from acoustools.Solvers import wgs
     from acoustools.Visualiser import Visualise
     from acoustools.Gorkov import gorkov_analytical
@@ -16,4 +16,4 @@ if __name__ == "__main__":
     normal = (0,1,0)
     origin = (0,0,0)
 
-    Visualise(A,B,C, x, points=p, colour_functions=[gorkov_analytical],clr_label='Gor\'kov', res=(300,300))
+    Visualise(A,B,C, x, points=p, colour_functions=[propagate_abs,gorkov_analytical],clr_labels=['Pressure','Gor\'kov'], res=(200,200))
