@@ -27,7 +27,10 @@ def constrain_field_weighted(field, target, current):
     `current` current amplitude of field
     Returns constrained weighted field
     '''
+
     current = target * current / torch.abs(field)
-    current = current / torch.max(torch.abs(current),dim=1).values
+
+
+    current = current / torch.max(torch.abs(current),dim=1,keepdim=True).values
     field = constrain_field(field,current)
     return field, current
