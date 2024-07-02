@@ -392,7 +392,7 @@ def propagate(activations, points,board=TRANSDUCERS, A=None):
         prop = torch.squeeze(prop, 2)
     return prop
 
-def propagate_abs(activations, points,board=TRANSDUCERS, A=None):
+def propagate_abs(activations, points,board=TRANSDUCERS, A=None, A_function=None, A_function_args={}):
     '''
     Propagates a hologram to target points and returns pressure - Same as `torch.abs(propagate(activations, points,board, A))`\\
     `activations` Hologram to use\\
@@ -401,6 +401,9 @@ def propagate_abs(activations, points,board=TRANSDUCERS, A=None):
     `A` The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`\\
     Returns point pressure
     '''
+    if A_function is not None:
+        A = A_function(points, board, **A_function_args)
+
     out = propagate(activations, points,board,A=A)
     return torch.abs(out)
 
@@ -652,151 +655,18 @@ def read_phases_from_file(file, invert=True, top_board=False, ignore_first_line=
     phases_out = torch.stack(phases_out)
     return phases_out
             
+def green_propagator(points, board, k=Constants.k):
 
-
-if __name__ == "__main__":
-    from acoustools.Solvers import wgs,wgs_batch
-    from acoustools.Gorkov import gorkov_fin_diff, gorkov_analytical
-
+    B = points.shape[0]
+    N = points.shape[2]
+    M = board.shape[0]
+    board = board.unsqueeze(0).unsqueeze_(3)
+    points = points.unsqueeze(1)
     
-    points = create_points(4,2)
+    distances_axis = torch.abs(points-board)
+    distances = torch.sum(distances_axis, dim=2)
     
-
-    
-    F = forward_model_batched(points)
-    _, _, x = wgs_batch(F,torch.ones(4,1).to(device)+0j,200)
-
-    Fx, Fy, Fz = forward_model_grad(points)
-    Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points)
-    Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points)
-
-    x = add_lev_sig(x)
-    p = torch.abs(F@x)
-    Px = torch.abs(Fx@x)
-    Py = torch.abs(Fy@x)
-    Pz = torch.abs(Fz@x)
-    Pxx = torch.abs(Fxx@x)
-    Pyy = torch.abs(Fyy@x)
-    Pzz = torch.abs(Fzz@x)
-    Pxy = torch.abs(Fxy@x)
-    Pxz = torch.abs(Fxz@x)
-    Pyz = torch.abs(Fyz@x)
-
-    print(Constants.V,Constants.p_0,Constants.c_0 )
-    
-    K1 = Constants.V / (4*Constants.p_0*Constants.c_0**2)
-    K2 = 3*Constants.V / (4*(2*Constants.f**2 * Constants.p_0))
-
-    # print(K1, K2)
-
-    print(Px, Py, Pz)
-    exit()
-    single_sum = 2*K2*(Pz+Py+Pz)
-    Fx = -1 * (2*p * (K1 * Px - K2*(Pxz+Pxy+Pxx)) - Px*single_sum)
-    Fy = -1 * (2*p * (K1 * Py - K2*(Pyz+Pyy+Pxy)) - Py*single_sum)
-    Fz = -1 * (2*p * (K1 * Pz - K2*(Pzz+Pyz+Pxz)) - Pz*single_sum)
-
-    # print( Pz, Pzz, Pyz, Pxz)
-
-    # print(2*p * (K1 * Pz - K2*(Pzz+Pyz+Pxz)) , Pz*single_sum)
-   
-    force = torch.cat([Fx,Fy,Fz],2)
-    
-    
-    print(p)
-    print(force)
-    
-
-    K1 = Constants.V / (4*Constants.p_0*Constants.c_0**2)
-    K2 = 3*Constants.V / (4*(2*Constants.f**2 * Constants.p_0))
-    U = K1*p**2 - K2*(Px**2+Py**2+Pz**2)
-    print(U)
-    print(K1*p**2)
-    print((Px**2+Py**2+Pz**2))
-
-    # axis="XYZ"
-    # U = gorkov_analytical(x,points,axis=axis)
-    # U_fin = gorkov_fin_diff(x, points,axis=axis)
-    # print("Gradient function",U.squeeze_())
-    # print("Finite differences",U_fin)
+    green = -1* (torch.exp(1j*k*distances)) / (4 * Constants.pi *distances)
 
 
-
-    '''
-
-    A1 = forward_model(points[0,:])
-    _, _, x1 = wgs(A1,torch.ones(4,1).to(device)+0j,200)
-
-    A2 = forward_model(points[1,:])
-    _, _, x2 = wgs(A2,torch.ones(4,1).to(device)+0j,200)
-
-    A = forward_model_batched(points)
-    x = torch.stack([x1,x2])
-    print(A.shape)
-    print(x.shape)
-    print(torch.abs(A@x))
-
-
-
-    A = forward_model(points[0,:])
-    _, _, x = wgs(A,torch.ones(4,1).to(device)+0j,200)
-    x = torch.unsqueeze(x,0)
-    
-    pr = propagate(x,points)
-    print(torch.abs(pr))
-    
-    x2 = add_lev_sig(x)
-    pr2 = propagate(x2,points)
-    print(torch.abs(pr2))
-
-
-    from torch.utils.data import DataLoader 
-    from Dataset import NaiveDataset
-    from Loss_Functions import mse_loss
-
-    net = torch.load("./Models/model_NCNN1_latest.pth")
-    # points=  torch.FloatTensor(3,4).uniform_(-.06,.06).to(device)
-    dataset = torch.load("./Datasets/NaiveDatasetTrain-4-4.pth")
-    data = iter(DataLoader(dataset,1,shuffle=True))
-
-    for p,a,pr,n in data:
-
-        activation_out = do_NCNN(net, p)
-
-        field = propagate(activation_out,p)
-
-        f = torch.unsqueeze(field,0)
-        print(mse_loss(torch.abs(f), torch.abs(pr)))
-        print(torch.abs(field))
-
-    '''
-
-    '''
-    trans_pos(:,2) = flipud(trans_pos(:,2));   
-    trans_pos(n/2+1:end,1) = flipud(trans_pos(n/2+1:end,1));
-    '''
-
-    # board = transducers()
-    # print(board.shape)
-    # board[512//2:,0] = torch.flipud(board[512//2:,0]);
-    # board[:,1] = torch.flipud(board[:,1]);
-    # board[:,2] = torch.flipud(board[:,2]);
-    # indexes = []
-
-    # for t,row in enumerate(board):
-    #     for b,row_b in enumerate(transducers()):
-    #         if torch.all(row == row_b):
-    #             indexes.append(b)
-
-
-    # indexes = torch.as_tensor(indexes)
-    # trans = transducers()
-    # flipped = trans[indexes]
-
-
-    # for i,row in enumerate(flipped):
-    #     print(row)
-
-    
-    
-    # print(torch.reshape(board,(16,16,3)))
+    return green.mT
