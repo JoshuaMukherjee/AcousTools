@@ -663,9 +663,13 @@ def green_propagator(points, board, k=Constants.k):
     board = board.unsqueeze(0).unsqueeze_(3)
     points = points.unsqueeze(1)
     
-    distances_axis = torch.abs(points-board)
-    distances = torch.sum(distances_axis, dim=2)
+    # distances_axis = torch.abs(points-board)
+    distances_axis = (points-board)**2
+    distances = torch.sqrt(torch.sum(distances_axis, dim=2))
+
+
     
+    # green = -1* (torch.exp(1j*k*distances)) / (4 * Constants.pi *distances)
     green = -1* (torch.exp(1j*k*distances)) / (4 * Constants.pi *distances)
 
 
