@@ -8,6 +8,9 @@ if __name__ == "__main__":
 
     import torch, vedo, time
 
+
+    '''Bk 2. Pg 140'''
+
     path = "../../BEMMedia"
     scatterer = load_scatterer(path+"/Sphere-lam2.stl",dy=-0.06,dz=-0.08)
     # scale_to_diameter(scatterer, 2*c.R)
