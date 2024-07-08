@@ -26,3 +26,5 @@ radius = 0.0045
 P_ref = 0.17*20 #3.4
 # P_ref = 5.9983 #Value from Zak
 '''Reference pressure for transducers'''
+angular_frequency = f * 2 * pi 
+'''Angular Frequency of 40kHz sound'''

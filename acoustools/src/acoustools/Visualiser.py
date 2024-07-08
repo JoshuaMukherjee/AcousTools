@@ -64,7 +64,7 @@ def Visualise_single(A,B,C,activation,colour_function=propagate_abs, colour_func
     `flip` Reverses X and Y directions. Default True
     '''
     if len(activation.shape) < 3:
-        activation.unsqueeze_(0)
+        activation = activation.unsqueeze(0)
     
 
     AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]])
