@@ -13,16 +13,17 @@ import matplotlib.pyplot as plt
 
 z = 2*wavelength
 
-path = '../../BEMMedia/'
+path = '../BEMMedia/'
 
 reflector = load_scatterer('flat-lam2.stl',root_path=path, dz=-z)
 
-board = create_board(2,z=z)
+board = create_board(2,z=z).to(device)
 
 
 print(board)
 
 x = torch.ones((1,1)) * torch.e**(1j*0)
+x= x.to(device)
 # x[1,:] = torch.ones((1,1)) * torch.e**(1j*torch.pi)
 
 
