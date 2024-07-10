@@ -6,7 +6,7 @@ if __name__ == '__main__':
 
     print('Computing...')
 
-    mat_to_world = (-1, 0, 0, 0,
+    mat_to_world = (1, 0, 0, 0,
                     0, 1, 0, 0,
                     0, 0, 1, 0,
                     0, 0, 0, 1)
