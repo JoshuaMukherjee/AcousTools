@@ -355,10 +355,11 @@ def Visualise_line(A,B,x, F=None,points=None,steps = 1000, board=TRANSDUCERS, pr
         return pressure
        
 
-def ABC(size, axis = 'z'):
+def ABC(size, plane = 'xz'):
+    if plane == 'xz':
+        A = torch.tensor((-1,0, 1)) * size
+        B = torch.tensor((1,0, 1))* size
+        C = torch.tensor((-1,0, -1))* size
     
-    A = torch.tensor((-1,0, 1)) * size
-    B = torch.tensor((1,0, 1))* size
-    C = torch.tensor((-1,0, -1))* size
 
     return A, B, C
