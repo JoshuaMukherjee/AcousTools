@@ -26,10 +26,10 @@ print(propagate_abs(x,p,A=green))
 green_im =30*Visualise_single(A,B,C,x,propagate_abs,{"A_function":green_propagator, 'board':board})
 pm_im = Visualise_single(A,B,C,x,propagate_abs,{'board':board})
 
-plt.matshow((pm_im/green_im).cpu().detach())
-plt.colorbar()
-plt.show()
+# plt.matshow((pm_im/green_im).cpu().detach())
+# plt.colorbar()
+# plt.show()
 
 
-# Visualise(A,B,C, x, points=p,colour_functions=[propagate_abs,propagate_abs], colour_function_args=[{"A_function":green_propagator, 'board':board},{'board':board}], res=(200,200))
+Visualise(A,B,C, x, points=p,colour_functions=[propagate_abs,propagate_abs], colour_function_args=[{"A_function":green_propagator, 'board':board},{'board':board}], res=(200,200))
 # Visualise(A,B,C, x, points=p,colour_functions=[propagate_abs], colour_function_args=[{"A_function":green_propagator, 'board':board}], res=(400,400))
