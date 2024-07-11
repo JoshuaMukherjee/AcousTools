@@ -5,6 +5,10 @@ from acoustools.Gorkov import gorkov_analytical
 
 import torch
 
+'''
+Bk2 Pg 162
+'''
+
 p = create_points(1,1,max_pos=0.05, y=0)
 board = TRANSDUCERS
 
