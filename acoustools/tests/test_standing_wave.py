@@ -48,4 +48,5 @@ def propagate_abs_norm(activations, points,board=TRANSDUCERS, A=None, A_function
 
 # Visualise(A,B,C, x, points=p,colour_functions=[propagatae_abs,propagate_abs], colour_function_args=[{"A_function":green_propagator},{}], res=(200,200))
 
-im = Visualise(A,B,C, x, colour_functions=[propagate_abs], colour_function_args=[{'board':board}], res=(200,200))
+im = Visualise(A,B,C, x, colour_functions=[propagate_abs, propagate_phase], colour_function_args=[{'board':board},{'board':board}], 
+               res=(200,200), cmaps=['hot','hsv'],clr_labels=['Pressure (Pa)','Phase (rad)'])
