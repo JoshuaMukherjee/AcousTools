@@ -18,57 +18,61 @@ class LevitatorController():
         `matBoardToWorld`: Matric defining the mapping between simulated and real boards. When None uses a default setting. Default None.\\
         `print_lines`: If False supresses some print messages
         '''
-
-        if bin_path is None:
-            self.bin_path = os.path.dirname(__file__)+"/../../bin/x64/"
-        
-        cwd = os.getcwd()
-        os.chdir(self.bin_path)
-        files = os.listdir()
-        
-        for id in ids:
-            if 'board_'+str(id)+'.pat' not in files:
-                data_file = open('board_master.pat','r')
-                data = data_file.read()
-
-                file = open('board_'+str(id)+'.pat','w')
-                data_id = data.replace('<XXXXXXXX>',str(id))
-                file.write(data_id)
-                file.close()
-                data_file.close()
-
-
-        print(os.getcwd())
-        self.levitatorLib = CDLL(self.bin_path+'Levitator.dll')
-
-        self.board_number = len(ids)
-        self.ids = (ctypes.c_int * self.board_number)(*ids)
-
-        if matBoardToWorld is None:
-            self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number)) (
-                -1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, 1, 0,
-                0, 0, 0, 1,
-
-                -1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, -1, 0.24,
-                0, 0, 0, 1
-
-                
-            )
+        self.mode = 1
+        if ids[0] == -1:
+            self.mode = 0
+            print('Virtual Levitator mode - no messages will be sent')
         else:
-            self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number))(*matBoardToWorld)
-        
+            if bin_path is None:
+                self.bin_path = os.path.dirname(__file__)+"/../../bin/x64/"
+            
+            cwd = os.getcwd()
+            os.chdir(self.bin_path)
+            files = os.listdir()
+            
+            for id in ids:
+                if 'board_'+str(id)+'.pat' not in files:
+                    data_file = open('board_master.pat','r')
+                    data = data_file.read()
 
-        self.levitatorLib.connect_to_levitator.argtypes =  [POINTER(ctypes.c_int), POINTER(ctypes.c_float), ctypes.c_int, ctypes.c_bool]
-        self.levitatorLib.connect_to_levitator.restype = ctypes.c_void_p
-        self.controller = self.levitatorLib.connect_to_levitator(self.ids,self.matBoardToWorld,self.board_number,print_lines)
+                    file = open('board_'+str(id)+'.pat','w')
+                    data_id = data.replace('<XXXXXXXX>',str(id))
+                    file.write(data_id)
+                    file.close()
+                    data_file.close()
 
-        os.chdir(cwd)
 
-        self.IDX = get_convert_indexes(256*self.board_number)
+            print(os.getcwd())
+            self.levitatorLib = CDLL(self.bin_path+'Levitator.dll')
+
+            self.board_number = len(ids)
+            self.ids = (ctypes.c_int * self.board_number)(*ids)
+
+            if matBoardToWorld is None:
+                self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number)) (
+                    -1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1,
+
+                    -1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, -1, 0.24,
+                    0, 0, 0, 1
+
+                    
+                )
+            else:
+                self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number))(*matBoardToWorld)
+            
+
+            self.levitatorLib.connect_to_levitator.argtypes =  [POINTER(ctypes.c_int), POINTER(ctypes.c_float), ctypes.c_int, ctypes.c_bool]
+            self.levitatorLib.connect_to_levitator.restype = ctypes.c_void_p
+            self.controller = self.levitatorLib.connect_to_levitator(self.ids,self.matBoardToWorld,self.board_number,print_lines)
+
+            os.chdir(cwd)
+
+            self.IDX = get_convert_indexes(256*self.board_number)
     
     
     def send_message(self, phases, amplitudes=None, relative_amplitude=1, num_geometries = 1, sleep_ms = 0, loop=False, num_loops = 0):
@@ -76,29 +80,33 @@ class LevitatorController():
         RECCOMENDED NOT TO USE - USE `levitate` INSTEAD\\
         sends messages to levitator
         '''
-        self.levitatorLib.send_message.argtypes = [ctypes.c_void_p,POINTER(ctypes.c_float), POINTER(ctypes.c_float), ctypes.c_float, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-        self.levitatorLib.send_message(self.controller,phases,amplitudes,relative_amplitude,num_geometries, sleep_ms, loop, num_loops)
+        if self.mode:
+            self.levitatorLib.send_message.argtypes = [ctypes.c_void_p,POINTER(ctypes.c_float), POINTER(ctypes.c_float), ctypes.c_float, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            self.levitatorLib.send_message(self.controller,phases,amplitudes,relative_amplitude,num_geometries, sleep_ms, loop, num_loops)
     
     def disconnect(self):
         '''
         Disconnects the levitator
         '''
-        self.levitatorLib.disconnect.argtypes = [ctypes.c_void_p]
-        self.levitatorLib.disconnect(self.controller)
+        if self.mode:
+            self.levitatorLib.disconnect.argtypes = [ctypes.c_void_p]
+            self.levitatorLib.disconnect(self.controller)
     
     def turn_off(self):
         '''
         Turns of all transducers
         '''
-        self.levitatorLib.turn_off.argtypes = [ctypes.c_void_p]
-        self.levitatorLib.turn_off(self.controller)
-    
+        if self.mode:
+            self.levitatorLib.turn_off.argtypes = [ctypes.c_void_p]
+            self.levitatorLib.turn_off(self.controller)
+        
     def set_frame_rate(self, frame_rate):
         '''
         Set a new framerate
         '''
-        self.levitatorLib.set_new_frame_rate.argtypes = [ctypes.c_void_p, ctypes.c_int]
-        new_frame_rate = self.levitatorLib.set_new_frame_rate(self.controller, frame_rate)
+        if self.mode:
+            self.levitatorLib.set_new_frame_rate.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            new_frame_rate = self.levitatorLib.set_new_frame_rate(self.controller, frame_rate)
 
 
     def levitate(self, phases, amplitudes=None, relative_amplitude=1, permute=True, sleep_ms = 0, loop=False, num_loops=0):
@@ -111,6 +119,7 @@ class LevitatorController():
         `sleep_ms`: Time to wait between frames in ms.\\
         `loop`: If True will restart from the start of phases, default False
         '''
+
         to_output = []
 
         if type(phases) is list:
@@ -140,5 +149,6 @@ class LevitatorController():
             amplitudes = (ctypes.c_float * (256*self.board_number*num_geometries))(*amplitudes)
 
         relative_amplitude = ctypes.c_float(relative_amplitude)
+        
 
         self.send_message(phases, amplitudes, relative_amplitude, num_geometries,sleep_ms=sleep_ms,loop=loop,num_loops=num_loops)
