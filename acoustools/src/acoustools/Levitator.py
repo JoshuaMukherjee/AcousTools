@@ -119,36 +119,36 @@ class LevitatorController():
         `sleep_ms`: Time to wait between frames in ms.\\
         `loop`: If True will restart from the start of phases, default False
         '''
+        if self.mode:
+            to_output = []
 
-        to_output = []
+            if type(phases) is list:
+                num_geometries = len(phases)
+                for phases_elem in phases:
 
-        if type(phases) is list:
-            num_geometries = len(phases)
-            for phases_elem in phases:
+                    if permute:
+                        phases_elem = phases_elem[:,self.IDX]
 
+                    if torch.is_complex(phases_elem):
+                        phases_elem = torch.angle(phases_elem)
+            
+                    to_output = to_output + phases_elem.squeeze().cpu().detach().tolist()
+            else:
+                num_geometries = 1
                 if permute:
-                    phases_elem = phases_elem[:,self.IDX]
+                        phases = phases[:,self.IDX]
 
-                if torch.is_complex(phases_elem):
-                    phases_elem = torch.angle(phases_elem)
-        
-                to_output = to_output + phases_elem.squeeze().cpu().detach().tolist()
-        else:
-            num_geometries = 1
-            if permute:
-                    phases = phases[:,self.IDX]
-
-            if torch.is_complex(phases):
-                    phases = torch.angle(phases)
-            to_output = phases[0].squeeze().cpu().detach().tolist()
+                if torch.is_complex(phases):
+                        phases = torch.angle(phases)
+                to_output = phases[0].squeeze().cpu().detach().tolist()
 
 
-        phases = (ctypes.c_float * (256*self.board_number *num_geometries))(*to_output)
+            phases = (ctypes.c_float * (256*self.board_number *num_geometries))(*to_output)
 
-        if amplitudes is not None:
-            amplitudes = (ctypes.c_float * (256*self.board_number*num_geometries))(*amplitudes)
+            if amplitudes is not None:
+                amplitudes = (ctypes.c_float * (256*self.board_number*num_geometries))(*amplitudes)
 
-        relative_amplitude = ctypes.c_float(relative_amplitude)
-        
+            relative_amplitude = ctypes.c_float(relative_amplitude)
+            
 
-        self.send_message(phases, amplitudes, relative_amplitude, num_geometries,sleep_ms=sleep_ms,loop=loop,num_loops=num_loops)
+            self.send_message(phases, amplitudes, relative_amplitude, num_geometries,sleep_ms=sleep_ms,loop=loop,num_loops=num_loops)
