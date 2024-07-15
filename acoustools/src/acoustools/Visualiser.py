@@ -361,5 +361,12 @@ def ABC(size, plane = 'xz'):
         B = torch.tensor((1,0, 1))* size
         C = torch.tensor((-1,0, -1))* size
     
+    if plane == 'yz':
+        A = torch.tensor((0,-1, 1)) * size
+        B = torch.tensor((0,1, 1))* size
+        C = torch.tensor((0,-1, -1))* size
+    
+
+    
 
     return A, B, C
