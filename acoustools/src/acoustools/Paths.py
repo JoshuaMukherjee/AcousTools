@@ -156,7 +156,7 @@ def interpolate_points(p1, p2, n):
 
     return points
 
-def interpolate_path(path, n):
+def interpolate_path(path, n, return_distance = False):
     points = []
     total_dist = 0
     distances = []
@@ -170,4 +170,6 @@ def interpolate_path(path, n):
         num = round((n * (d / total_dist )).item())
         points += interpolate_points(p1, p2, num)
 
+    if return_distance:
+        return points, total_dist
     return points
