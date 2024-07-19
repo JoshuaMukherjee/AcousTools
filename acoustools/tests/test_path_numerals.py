@@ -3,9 +3,9 @@ from acoustools.Paths import get_numeral
 import torch
 import matplotlib.pyplot as plt
 
-A = torch.tensor((-0.02, 0.03,0))
-B = torch.tensor((0.02, 0.04,0))
-C = torch.tensor((-0.03, -0.02,0))
+A = torch.tensor((-0.03, 0.03,0))
+B = torch.tensor((0.03, 0.03,0))
+C = torch.tensor((-0.03, -0.03,0))
 
 
 N= 9
