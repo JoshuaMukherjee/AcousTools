@@ -13,6 +13,10 @@ print(p)
 
 green = green_propagator(p, board)
 
+print(green)
+print(green.mH)
+print(green @ green.mH)
+
 x = wgs(p, board=board, A=green)
 # x = add_lev_sig(x)
 
