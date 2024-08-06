@@ -17,7 +17,7 @@ My set of code for working with acoustic fields for levitation etc
 Clone the repo and then run
 
 ```console
-pip install <path-to-clone>/requirements.txt
+pip install -r <path-to-clone>/requirements.txt
 pip install -e <path-to-clone> --config-settings editable_mode=strict
 ```
 
