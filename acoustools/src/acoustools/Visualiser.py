@@ -67,8 +67,8 @@ def Visualise_single(A,B,C,activation,colour_function=propagate_abs, colour_func
         activation = activation.unsqueeze(0)
     
 
-    AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]])
-    AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]])
+    AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]]).to(device)
+    AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]]).to(device)
 
     step_x = AB / res[0]
     step_y = AC / res[1]
@@ -367,6 +367,4 @@ def ABC(size, plane = 'xz'):
         C = torch.tensor((0,-1, -1))* size
     
 
-    
-
-    return A, B, C
+    return A.to(device), B.to(device), C.to(device)
