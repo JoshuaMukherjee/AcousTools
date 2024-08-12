@@ -36,20 +36,23 @@ if __name__ == '__main__':
     else:
         xs = pickle.load(open('acoustools/tests/data/bottom_circle' + str(N) + '.pth','rb'))
 
-
+    diconnected = False
     print('Finished Computing \nConnecting to PAT...')
     try:
         lev = LevitatorController(ids=(73,),matBoardToWorld=mat_to_world, print_lines=True)
+        # lev = LevitatorController(ids=(38,),matBoardToWorld=mat_to_world, print_lines=True)
         print('Connected')
         lev.levitate(xs[0])
-        input()
+        # input()
         print('Moving...')
 
         start = time.time_ns()
         lev.set_frame_rate(200)
-        lev.levitate(xs,num_loops=100)
+        lev.levitate(xs,num_loops=1000)
         end = time.time_ns()
         print((end-start)/1e9, 'Seconds')
+        lev.disconnect()
+        diconnected = True
     except KeyboardInterrupt:
         print('Stopping')
     except Exception as e:
@@ -57,7 +60,8 @@ if __name__ == '__main__':
     finally:
         print('Finished Moving')
         # input('Press Enter to Drop')
-        lev.disconnect()
+        if not diconnected:
+            lev.disconnect()
 
 
 
