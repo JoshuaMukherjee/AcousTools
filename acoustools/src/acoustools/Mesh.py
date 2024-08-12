@@ -47,25 +47,27 @@ def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,d
     Returns the `vedo` `Mesh` of the scatterer
     '''
     scatterer = vedo.load(root_path+path)
-    if compute_areas: scatterer.compute_cell_size()
-    if compute_normals: 
-        scatterer.compute_normals()
+    
+    if scatterer is not None:
+        if compute_areas: scatterer.compute_cell_size()
+        if compute_normals: 
+            scatterer.compute_normals()
 
-    scatterer.metadata["rotX"] = 0
-    scatterer.metadata["rotY"] = 0
-    scatterer.metadata["rotZ"] = 0
+        scatterer.metadata["rotX"] = 0
+        scatterer.metadata["rotY"] = 0
+        scatterer.metadata["rotZ"] = 0
 
-    # scatterer.filename = scatterer.filename.split("/")[-1]
-    scatterer.filename = scatterer_file_name(scatterer)
+        # scatterer.filename = scatterer.filename.split("/")[-1]
+        scatterer.filename = scatterer_file_name(scatterer)
 
-    scatterer.metadata["FILE"] = scatterer.filename.split(".")[0]
+        scatterer.metadata["FILE"] = scatterer.filename.split(".")[0]
 
 
-    rotate(scatterer,(1,0,0),rotx)
-    rotate(scatterer,(0,1,0),roty)
-    rotate(scatterer,(0,0,1),rotz)
+        rotate(scatterer,(1,0,0),rotx)
+        rotate(scatterer,(0,1,0),roty)
+        rotate(scatterer,(0,0,1),rotz)
 
-    translate(scatterer,dx,dy,dz)
+        translate(scatterer,dx,dy,dz)
 
 
     return scatterer
