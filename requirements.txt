@@ -1,4 +1,4 @@
 numpy<2
 torch
-vedo>2023.5.0
-matplotlib>3.8.2
+vedo
+matplotlib
