@@ -5,12 +5,15 @@ import vedo, torch
 import matplotlib.pyplot as plt
 import numpy as np
 
+from torch import Tensor
+from vedo import Mesh
 
-def board_name(board):
+
+def board_name(board:Tensor) -> str:
     '''
-    Returns the name for a board, TOP and/or BOTTOM, used in cache system\\
-    `board` The board to use
-    Returns name of board as `<'TOP'><'BOTTOM'><M>` for `M` transducers in the boards 
+    Returns the name for a board, TOP and/or BOTTOM, used in cache system
+    :param board: The board to use
+    :return: name of board as `<'TOP'><'BOTTOM'><M>` for `M` transducers in the boards 
     '''
     M = board.shape[0]
 
@@ -18,33 +21,32 @@ def board_name(board):
     bottom = "BOTTOM" if -1 in torch.sign(board[:,2]) else ""
     return top+bottom+str(M)
 
-def scatterer_file_name(scatterer):
+def scatterer_file_name(scatterer:Mesh) ->str:
     '''
-    Get a unique name to describe a scatterer position, calls `str(scatterer.coordinates)`\\
-    `scatterer` The Mesh to use\\
-    Returns the name\\
+    Get a unique name to describe a scatterer position, calls `str(scatterer.coordinates)`
     ONLY USE TO SET FILENAME, USE `scatterer.filename` TO GET
+    :param scatterer: The Mesh to use
+    :return: Scatterer name
+    
     '''
 
     f_name = str(scatterer.coordinates)
-
-
     return f_name
 
-def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,dz=0, rotx=0, roty=0, rotz=0, root_path=""):
+def load_scatterer(path:str, compute_areas:bool = True, compute_normals:bool=True, dx:float=0,dy:float=0,dz:float=0, rotx:float=0, roty:float=0, rotz:float=0, root_path:str="") -> Mesh:
     '''
     Loads a scatterer as a `vedo` `Mesh` and applies translations as needed\\
-    `path` The name of the scatterer to load\\
-    `compute_areas` if true will call `scatterer.compute_cell_size()`. Default True\\
-    `compute_normals` if true will call `scatterer.compute_normals()`. Default True\\
-    `dx` Translation in the x direction to apply\\
-    `dy` Translation in the y direction to apply\\
-    `dz` Translation in the z direction to apply\\
-    `rotx` Rotation around the x axis to apply\\
-    `roty` Rotation around the y axis to apply\\
-    `rotz` Rotation around the z axis to apply\\
-    `root_path` The folder containing the file, the scatterer to be loaded will be loaded from `root_path+path`\\
-    Returns the `vedo` `Mesh` of the scatterer
+    :param path: The name of the scatterer to load\\
+    :param compute_areas: if `True` will call `scatterer.compute_cell_size()`. Default `True`\\
+    :param compute_normals: if `True` will call `scatterer.compute_normals()`. Default `True`\\
+    :param dx: Translation in the x direction to apply\\
+    :param dy: Translation in the y direction to apply\\
+    :param dz: Translation in the z direction to apply\\
+    :param rotx: Rotation around the x axis to apply\\
+    :param roty: Rotation around the y axis to apply\\
+    :param rotz: Rotation around the z axis to apply\\
+    :param root_path: The folder containing the file, the scatterer to be loaded will be loaded from `root_path+path`\\
+    :return: The `vedo` `Mesh` of the scatterer
     '''
     scatterer = vedo.load(root_path+path)
     
@@ -72,19 +74,21 @@ def load_scatterer(path, compute_areas = True, compute_normals=True, dx=0,dy=0,d
 
     return scatterer
 
-def load_multiple_scatterers(paths,  compute_areas = True, compute_normals=True, dxs=[],dys=[],dzs=[], rotxs=[], rotys=[], rotzs=[], root_path=""):
+def load_multiple_scatterers(paths:list[str],  compute_areas:bool = True, compute_normals:bool=True, 
+                             dxs:list[int]=[],dys:list[int]=[],dzs:list[int]=[], rotxs:list[int]=[], rotys:list[int]=[], rotzs:list[int]=[], root_path:str="") -> Mesh:
     '''
-    Loads multiple scatterers and combines them into a single scatterer object\\
-    `path` The name of the scatterer to load\\
-    `compute_areas` if true will call `scatterer.compute_cell_size()`. Default True\\
-    `compute_normals` if true will call `scatterer.compute_normals()`. Default True\\
-    `dxs` List of translations in the x direction to apply to each scatterer\\
-    `dys` List of translations in the y direction to apply to each scatterer\\
-    `dzs` List of translations in the z direction to apply to each scatterer\\
-    `rotxs` List pf rotations around the x axis to apply to each scatterer\\
-    `rotys` List pf rotations around the y axis to apply to each scatterer\\
-    `rotzs` List pf rotations around the z axis to apply to each scatterer\\
-    `root_path` The folder containing the file, the scatterer to be loaded will be loaded from `root_path+path`\\
+    Loads multiple scatterers and combines them into a single scatterer object
+    :param path: The name of the scatterers to load
+    :param compute_areas: if true will call `scatterer.compute_cell_size()`. Default True
+    :param compute_normals: if true will call `scatterer.compute_normals()`. Default True
+    :param dxs: List of translations in the x direction to apply to each scatterer
+    :param dys: List of translations in the y direction to apply to each scatterer
+    :param dzs: List of translations in the z direction to apply to each scatterer
+    :param rotxs: List pf rotations around the x axis to apply to each scatterer
+    :param rotys: List pf rotations around the y axis to apply to each scatterer
+    :param rotzs: List pf rotations around the z axis to apply to each scatterer
+    :param root_path: The folder containing the file, the scatterer to be loaded will be loaded from `root_path+path`
+    :return: A merged mesh from all of the paths provided
     '''
     dxs += [0] * (len(paths) - len(dxs))
     dys += [0] * (len(paths) - len(dys))
@@ -101,12 +105,12 @@ def load_multiple_scatterers(paths,  compute_areas = True, compute_normals=True,
     combined = merge_scatterers(*scatterers)
     return combined
 
-def merge_scatterers(*scatterers, flag=False):
+def merge_scatterers(*scatterers:Mesh, flag:bool=False) ->Mesh:
     '''
-    Combines any number of scatterers into a single scatterer\\
-    `scatterers` any number of scatterers to combine\\
-    `flag` Value will be passed to `vedo.merge`\\
-    Returns the combined scatterer
+    Combines any number of scatterers into a single scatterer\n
+    :param scatterers: any number of scatterers to combine
+    :param flag: Value will be passed to `vedo.merge`
+    :return: the combined scatterer
     '''
     names = []
     Fnames = []
@@ -123,12 +127,13 @@ def merge_scatterers(*scatterers, flag=False):
     return combined
 
 
-def scale_to_diameter(scatterer, diameter):
+def scale_to_diameter(scatterer:Mesh , diameter: float) -> None:
     '''
-    Scale a mesh to a given diameter in the x-axis and recomputes normals and areas\\
-    `scatterer` The scatterer to scale\\
-    `diameter` The diameter target\\
-    Modifies scatterer in place so does not return anything.
+    Scale a mesh to a given diameter in the x-axis and recomputes normals and areas \n
+    Modifies scatterer in place so does not return anything.\n
+
+    :param scatterer: The scatterer to scale
+    :param diameter: The diameter target
     '''
     x1,x2,y1,y2,z1,z2 = scatterer.bounds()
     diameter_sphere = x2 - x1
@@ -138,25 +143,25 @@ def scale_to_diameter(scatterer, diameter):
     scatterer.filename = scatterer_file_name(scatterer)
     
 
-def get_plane(scatterer, origin=(0,0,0), normal=(1,0,0)):
+def get_plane(scatterer: Mesh, origin:tuple[int]=(0,0,0), normal:tuple[int]=(1,0,0)) -> Mesh:
     '''
-    Get intersection of a scatterer and a plane\\
-    `scatterer` The scatterer to intersect\\
-    `origin` A point on the plane as a tuple `(x,y,z)`. Default `(0,0,0)`\\
-    `normal` The normal to the plane at `point` as a tuple (x,y,z). Default `(1,0,0)`\\
-    Returns new `Mesh` Containing the intersection of the plane and the scatterer
+    Get intersection of a scatterer and a plane\n
+    :param scatterer: The scatterer to intersect
+    :param origin: A point on the plane as a tuple `(x,y,z)`. Default `(0,0,0)`
+    :param normal: The normal to the plane at `point` as a tuple (x,y,z). Default `(1,0,0)`
+    :return: new `Mesh` Containing the intersection of the plane and the scatterer
     '''
     intersection = scatterer.clone().intersect_with_plane(origin,normal)
     intersection.filename = scatterer.filename + "plane" + str(origin)+str(normal)
     return intersection
 
-def get_lines_from_plane(scatterer, origin=(0,0,0), normal=(1,0,0)):
+def get_lines_from_plane(scatterer:Mesh, origin:tuple[int]=(0,0,0), normal:tuple[int]=(1,0,0)) -> list[int]:
     '''
-    Gets the edges on a plane from the intersection between a scatterer and the plane\\
-    `scatterer` The scatterer to intersect\\
-    `origin` A point on the plane as a tuple `(x,y,z)`. Default `(0,0,0)`\\
-    `normal` The normal to the plane at `point` as a tuple (x,y,z). Default `(1,0,0)`\\
-    Returns a list of edges in the plane 
+    Gets the edges on a plane from the intersection between a scatterer and the plane\n
+    :param scatterer: The scatterer to intersect
+    :param origin: A point on the plane as a tuple `(x,y,z)`. Default `(0,0,0)`
+    :param normal: The normal to the plane at `point` as a tuple (x,y,z). Default `(1,0,0)`
+    :return: a list of edges in the plane 
     '''
 
     mask = [0,0,0]
@@ -175,10 +180,10 @@ def get_lines_from_plane(scatterer, origin=(0,0,0), normal=(1,0,0)):
 
     return connections
 
-def plot_plane(connections):
+def plot_plane(connections:list[int]) -> None:
     '''
-    Plot a set of edges assuming they are co-planar\\
-    `connections` list of connections to plot\\
+    Plot a set of edges assuming they are co-planar\n
+    :param connections: list of connections to plot
     '''
     
     for con in connections:
@@ -190,12 +195,12 @@ def plot_plane(connections):
     plt.ylim((-0.06,0.06))
     plt.show()
 
-def get_normals_as_points(*scatterers, permute_to_points=True):
+def get_normals_as_points(*scatterers:Mesh, permute_to_points:bool=True) -> Tensor:
     '''
-    Returns the normal vectors to the surface of a scatterer as a `torch` `Tensor` as acoustools points\\
-    `scatterers` The scatterer to use\\
-    `permute_to_points` If true will permute the order of coordinates to agree with what acoustools expects.\\
-    returns normals
+    Returns the normal vectors to the surface of a scatterer as a `torch` `Tensor` as acoustools points\n
+    :param scatterers: The scatterer to use
+    :param permute_to_points: If true will permute the order of coordinates to agree with what acoustools expects.
+    :return: normals
     '''
     norm_list = []
     for scatterer in scatterers:
@@ -209,12 +214,12 @@ def get_normals_as_points(*scatterers, permute_to_points=True):
     
     return torch.stack(norm_list)
 
-def get_centre_of_mass_as_points(*scatterers, permute_to_points=True):
+def get_centre_of_mass_as_points(*scatterers:Mesh, permute_to_points:bool=True) ->Tensor:
     '''
-    Returns the centre of mass(es) of a scatterer(s) as a `torch` `Tensor` as acoustools points\\
-    `scatterers` The scatterer(s) to use\\
-    `permute_to_points` If true will permute the order of coordinates to agree with what acoustools expects.\\
-    returns centre of mass(es)
+    Returns the centre of mass(es) of a scatterer(s) as a `torch` `Tensor` as acoustools points\n
+    :param scatterers: The scatterer(s) to use
+    :param permute_to_points: If true will permute the order of coordinates to agree with what acoustools expects.
+    :return: centre of mass(es)
     '''
     centres_list = []
     for scatterer in scatterers:
@@ -228,12 +233,12 @@ def get_centre_of_mass_as_points(*scatterers, permute_to_points=True):
     return torch.real(torch.stack(centres_list))
 
 
-def get_centres_as_points(*scatterers, permute_to_points=True, add_normals=False, normal_scale=0.001):
+def get_centres_as_points(*scatterers:Mesh, permute_to_points:bool=True, add_normals:bool=False, normal_scale:float=0.001) ->Tensor:
     '''
-    Returns the centre of scatterer faces as a `torch` `Tensor` as acoustools points\\
-    `scatterers` The scatterer to use\\
-    `permute_to_points` If true will permute the order of coordinates to agree with what acoustools expects.\\
-    returns centres
+    Returns the centre of scatterer faces as a `torch` `Tensor` as acoustools points\n
+    :param scatterers: The scatterer to use
+    :param permute_to_points: If `True` will permute the order of coordinates to agree with what acoustools expects.
+    :return: centres
     '''
     centre_list = []
     for scatterer in scatterers:
@@ -250,11 +255,11 @@ def get_centres_as_points(*scatterers, permute_to_points=True, add_normals=False
         centres = torch.cat(centre_list,dim=0)
     return centres
 
-def get_areas(*scatterers):
+def get_areas(*scatterers: Mesh) -> Tensor:
     '''
-    Returns the areas of faces of any number of scatterers\\
-    `scatterers` The scatterers to use.
-    Returns areas
+    Returns the areas of faces of any number of scatterers\n
+    :param scatterers: The scatterers to use.
+    :return: areas
     '''
     area_list = []
     for scatterer in scatterers:
@@ -263,39 +268,39 @@ def get_areas(*scatterers):
     
     return torch.stack(area_list)
 
-def get_weight(scatterer, density=Constants.p_p, g=9.81):
+def get_weight(scatterer:Mesh, density:float=Constants.p_p, g:float=9.81) -> float:
     '''
     Get the weight of a scatterer\\
-    `scatterer` The scatterer to use\\
-    `density` The density to use. Default density for EPS\\
-    `g` value for g to use. Default 9.81\\
-    Returns weight
+    :param scatterer: The scatterer to use\\
+    :param density: The density to use. Default density for EPS\\
+    :param g: value for g to use. Default 9.81\\
+    :return: weight
     '''
     mass = scatterer.volume() * density
     return g * mass
 
-def translate(scatterer, dx=0,dy=0,dz=0):
+def translate(scatterer:Mesh, dx:float=0,dy:float=0,dz:float=0) -> None:
     '''
-    Translates a scatterer by (dx,dy,dz)\\
-    `scatterer` The scatterer to use\\
-    `dx` Translation in the x direction\\
-    `dy` Translation in the y direction\\
-    `dz` Translation in the z direction\\
-    Modifies inplace so does not return a value
+    Translates a scatterer by (dx,dy,dz) \n
+    Modifies inplace so does not return a value \n
+    :param scatterer: The scatterer to use
+    :param dx: Translation in the x direction
+    :param dy: Translation in the y direction
+    :param dz: Translation in the z direction
     '''
 
     scatterer.shift(np.array([dx,dy,dz]))
     scatterer.filename = scatterer_file_name(scatterer)
 
-def rotate(scatterer, axis, rot, centre=(0, 0, 0), rotate_around_COM=False):
+def rotate(scatterer:Mesh, axis:tuple[int], rot:float, centre:tuple[int]=(0, 0, 0), rotate_around_COM:bool=False):
     '''
-    Rotates a scatterer in axis by rot\\
-    `scatterer` The scatterer to use\\
-    `axis` The axis to rotate in\\
-    `rot` Angle to rotate in degrees\\
-    `centre` point to rotate around\\
-    `rotate_around_COM` If True will set `centre` to `scatterer`s centre of mass
-    Modifies inplace so does not return a value
+    Rotates a scatterer in axis by rot\n
+    Modifies inplace so does not return a value\n
+    :param scatterer: The scatterer to use
+    :param axis: The axis to rotate in
+    :param rot: Angle to rotate in degrees
+    :param centre: point to rotate around
+    :param rotate_around_COM: If True will set `centre` to `scatterer`s centre of mass
     '''
     if rotate_around_COM:
         centre = vedo.vector(get_centre_of_mass_as_points(scatterer).cpu().detach().squeeze())
@@ -309,16 +314,17 @@ def rotate(scatterer, axis, rot, centre=(0, 0, 0), rotate_around_COM=False):
     scatterer.rotate(rot, axis,point=centre)
     scatterer.filename = scatterer_file_name(scatterer)
 
-
-def downsample(scatterer, factor=2, n=None, method='quadric', boundaries=False, compute_areas=True, compute_normals=True):
+ 
+def downsample(scatterer:Mesh, factor:int=2, n:int|None=None, method:str='quadric', boundaries:bool=False, compute_areas:bool=True, compute_normals:bool=True) -> Mesh:
     '''
-    Downsamples a mesh to have `factor` less elements\\
-    `scatterer` The scatterer to use\\
-    `factor` The factor to downsample\\
-    `method`, `boundaries` - passed to `vedo.decimate`\\
-    `compute_areas` if true will call `scatterer.compute_cell_size()`. Default True\\
-    `compute_normals` if true will call `scatterer.compute_normals()`. Default True\\
-    Returns downsampled mesh
+    Downsamples a mesh to have `factor` less elements\n
+    :param scatterer: The scatterer to use
+    :param factor: The factor to downsample by
+    :param n: The desired number of final points, passed to `Vedo.Mesh.decimate`
+    :param method:, `boundaries` - passed to `vedo.decimate`
+    :param compute_areas: if true will call `scatterer.compute_cell_size()`. Default `True`
+    :param compute_normals: if true will call `scatterer.compute_normals()`. Default `True`
+    :return: downsampled mesh
     '''
     scatterer_small =  scatterer.decimate(1/factor, n, method, boundaries)
     
@@ -336,7 +342,13 @@ def downsample(scatterer, factor=2, n=None, method='quadric', boundaries=False, 
     return scatterer_small
 
 
-def centre_scatterer(scatterer):
+def centre_scatterer(scatterer:Mesh) -> list[int]:
+    '''
+    Translate scatterer so the centre of mass is at (0,0,0)\n
+    Modifies Mesh in
+    :param scatterer: Scatterer to centre
+    :return: Returns the amount needed to move in each direction
+    '''
     com = get_centre_of_mass_as_points(scatterer).cpu()
     correction = [-1*com[:,0].item(), -1*com[:,1].item(), -1*com[:,2].item()]
     translate(scatterer, dx = correction[0], dy = correction[1], dz=  correction[2])
