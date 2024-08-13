@@ -3,25 +3,27 @@ import acoustools.Constants as Constants
 
 torch.cuda.empty_cache()
 
+from typing import Literal
+from types import FunctionType
+from torch import Tensor
 
 DTYPE = torch.complex64
 '''
 Data type to use for matricies - use `.to(DTYPE)` to convert
 '''
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu' 
-'''Constant storing device to use, `cuda` if cuda is available else cpu. \\ 
+device:Literal['cuda','cpu'] = 'cuda' if torch.cuda.is_available() else 'cpu' 
+'''Constant storing device to use, `cuda` if cuda is available else cpu. \n
 Use -cpu when running python to force cpu use'''
 device = device if '-cpu' not in sys.argv else 'cpu'
 
 
-def create_board(N, z): 
+def create_board(N:int, z:float) -> Tensor: 
     '''
-    Create a single transducer array \\
-    `N` Number of transducers + 1 per side eg for 16 transducers `N=17`\\
-    `z` z-coordinate of board\\
-    Returns tensor of transducer positions\\
-    Written by Giorgos Christopoulos, 2022
+    Create a single transducer array \n
+    :param N: Number of transducers + 1 per side eg for 16 transducers `N=17`
+    :param z: z-coordinate of board
+    :return: tensor of transducer positions
     '''
     pitch=0.0105
     grid_vec=pitch*(torch.arange(-N/2+1, N/2, 1)).to(device)
@@ -34,45 +36,51 @@ def create_board(N, z):
     trans_pos=torch.cat((trans_x, trans_y, trans_z), axis=1)
     return trans_pos
   
-def transducers():
+def transducers() -> Tensor:
   '''
-  Returns the 'standard' transducer arrays with 2 16x16 boards at `z = +-234/2 `\\
-  Written by Giorgos Christopoulos, 2022
+  :return: the 'standard' transducer arrays with 2 16x16 boards at `z = +-234/2 `
   '''
   return torch.cat((create_board(17,BOARD_POSITIONS),create_board(17,-1*BOARD_POSITIONS)),axis=0).to(device)
 
 # BOARD_POSITIONS = .234/2
-BOARD_POSITIONS = 0.2365/2
+BOARD_POSITIONS:float = 0.2365/2
 '''
 Static variable for the z-position of the boards, positive for top board, negative for bottom board
 '''
 
-TRANSDUCERS = transducers()
+TRANSDUCERS:Tensor = transducers()
 '''
 Static variable for `transducers()` result
 '''
-TOP_BOARD = create_board(17,BOARD_POSITIONS)
+TOP_BOARD:Tensor = create_board(17,BOARD_POSITIONS)
 '''
 Static variable for a 16x16 array at `z=.234/2` - top board of a 2 array setup
 '''
-BOTTOM_BOARD = create_board(17,-1*BOARD_POSITIONS)
+BOTTOM_BOARD:Tensor = create_board(17,-1*BOARD_POSITIONS)
 '''
 Static variable for a 16x16 array at `z=-.234/2` - bottom board of a 2 array setup
 '''
 
-def is_batched_points(points):
+def is_batched_points(points:Tensor) -> bool:
+    '''
+    :param points: `Tensor` of points
+    :return: `True` is points has a batched shape
+    '''
     if len(points.shape)> 2 :
         return True
     else:
         return False
 
-def forward_model(points, transducers = TRANSDUCERS):
+def forward_model(points:Tensor, transducers:Tensor|None = None) -> Tensor:
     '''
-    wrapper to create the forward model for points and transducers\\
-    `points` Point position to compute propagation to \\
-    `transducers` The Transducer array, default two 16x16 arrays \\
+    Create the piston model forward propagation matrix for points and transducers\\
+    :param points: Point position to compute propagation to \\
+    :param transducers: The Transducer array, default two 16x16 arrays \\
     Returns forward propagation matrix \\
     '''
+    if transducers is None:
+        transducers = TRANSDUCERS
+
     if is_batched_points(points):
         return forward_model_batched(points, transducers)
     else:
@@ -80,6 +88,7 @@ def forward_model(points, transducers = TRANSDUCERS):
 
 def forward_model_unbatched(points, transducers = TRANSDUCERS):
     '''
+    @private
     Compute the piston model for acoustic wave propagation NOTE: Unbatched, use `forward_model_batched` for batched computation \\
     `points` Point position to compute propagation to \\
     `transducers` The Transducer array, default two 16x16 arrays \\
@@ -119,6 +128,7 @@ def forward_model_unbatched(points, transducers = TRANSDUCERS):
 def forward_model_batched(points, transducers = TRANSDUCERS):
 
     '''
+    @private
     computed batched piston model for acoustic wave propagation
     `points` Point position to compute propagation to \\
     `transducers` The Transducer array, default two 16x16 arrays \\
@@ -150,6 +160,7 @@ def forward_model_batched(points, transducers = TRANSDUCERS):
 
 def compute_gradients(points, transducers = TRANSDUCERS):
     '''
+    @private
     Computes the components to be used in the analytical gradient of the piston model, shouldnt be useed use `forward_model_grad` to get the gradient \\
     `points` Point position to compute propagation to \\
     `transducers` The Transducer array, default two 16x16 arrays \\
@@ -206,25 +217,32 @@ def compute_gradients(points, transducers = TRANSDUCERS):
 
     return F,G,H, partialFpartialX, partialGpartialX, partialHpartialX, partialFpartialU, partialUpartiala
 
-def forward_model_grad(points, transducers = TRANSDUCERS):
+def forward_model_grad(points:Tensor, transducers:Tensor|None = None) -> tuple[Tensor]:
     '''
-    Computes the analytical gradient of the piston model\\
-    `points` Point position to compute propagation to \\
-    `transducers` The Transducer array, default two 16x16 arrays \\
-    Returns derivative of forward model wrt x,y,z position
+    Computes the analytical gradient of the piston model\n
+    :param points: Point position to compute propagation to 
+    :param transducers: The Transducer array, default two 16x16 arrays 
+    :return: derivative of forward model wrt x,y,z position
     '''
+    if transducers is None:
+        transducers=TRANSDUCERS
+
     F,G,H, partialFpartialX, partialGpartialX, partialHpartialX,_,_ = compute_gradients(points, transducers)
     derivative = G*(H*partialFpartialX + F*partialHpartialX) + F*H*partialGpartialX
 
     return derivative[:,:,0,:].permute((0,2,1)), derivative[:,:,1,:].permute((0,2,1)), derivative[:,:,2,:].permute((0,2,1))
 
-def forward_model_second_derivative_unmixed(points, transducers = TRANSDUCERS):
+def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|None = None) ->Tensor:
     '''
-    Computes the second degree unmixed analytical gradient of the piston model\\
-    `points` Point position to compute propagation to \\
-    `transducers` The Transducer array, default two 16x16 arrays \\
-    Returns second degree unmixed derivatives of forward model wrt x,y,z position Pxx, Pyy, Pzz
+    Computes the second degree unmixed analytical gradient of the piston model\n
+    :param points: Point position to compute propagation to 
+    :param transducers: The Transducer array, default two 16x16 arrays 
+    :return: second degree unmixed derivatives of forward model wrt x,y,z position Pxx, Pyy, Pzz
     '''
+
+    if transducers is None:
+        transducers= TRANSDUCERS
+
     F,G,H, partialFpartialX, partialGpartialX, partialHpartialX , partialFpartialU, partialUpartialX = compute_gradients(points, transducers)
 
     B = points.shape[0]
@@ -274,13 +292,16 @@ def forward_model_second_derivative_unmixed(points, transducers = TRANSDUCERS):
     
     return derivative[:,:,0,:].permute((0,2,1)), derivative[:,:,1,:].permute((0,2,1)), derivative[:,:,2,:].permute((0,2,1))
 
-def forward_model_second_derivative_mixed(points, transducers = TRANSDUCERS):
+def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|None = None)->Tensor:
     '''
-    Computes the second degree mixed analytical gradient of the piston model\\
-    `points` Point position to compute propagation to \\
-    `transducers` The Transducer array, default two 16x16 arrays \\
+    Computes the second degree mixed analytical gradient of the piston model\n
+    :param points: Point position to compute propagation to 
+    :param transducers: The Transducer array, default two 16x16 arrays 
     Returns second degree mixed derivatives of forward model wrt x,y,z position - Pxy, Pxz, Pyz
     '''
+
+    if transducers is None:
+        transducers= TRANSDUCERS
     
     F,G,H, Fa, Ga, Ha , Fu, Ua = compute_gradients(points, transducers)
 
@@ -371,15 +392,17 @@ def forward_model_second_derivative_mixed(points, transducers = TRANSDUCERS):
 
     return Pxy.permute(0,2,1),Pxz.permute(0,2,1), Pyz.permute(0,2,1)
     
-def propagate(activations, points,board=TRANSDUCERS, A=None):
+def propagate(activations: Tensor, points: Tensor,board: Tensor|None=None, A:Tensor|None=None) -> Tensor:
     '''
-    Propagates a hologram to target points\\
-    `activations` Hologram to use\\
-    `points` Points to propagate to\\
-    `board` The Transducer array, default two 16x16 arrays\\
-    `A` The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`\\
-    Returns point activations
+    Propagates a hologram to target points\n
+    :param activations: Hologram to use
+    :param points: Points to propagate to
+    :param board: The Transducer array, default two 16x16 arrays
+    :param A: The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`
+    :return: point activations
     '''
+    if board is None:
+        board  = TRANSDUCERS
     batch = is_batched_points(points)
 
     if A is None:
@@ -392,40 +415,44 @@ def propagate(activations, points,board=TRANSDUCERS, A=None):
         prop = torch.squeeze(prop, 2)
     return prop
 
-def propagate_abs(activations, points,board=TRANSDUCERS, A=None, A_function=None, A_function_args={}):
+def propagate_abs(activations: Tensor, points: Tensor,board:Tensor|None=None, A:Tensor|None=None, A_function:FunctionType=None, A_function_args:dict={}) -> Tensor:
     '''
-    Propagates a hologram to target points and returns pressure - Same as `torch.abs(propagate(activations, points,board, A))`\\
-    `activations` Hologram to use\\
-    `points` Points to propagate to\\
-    `board` The Transducer array, default two 16x16 arrays\\
-    `A` The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`\\
-    Returns point pressure
+    Propagates a hologram to target points and returns pressure - Same as `torch.abs(propagate(activations, points,board, A))`\n
+    :param activations: Hologram to use
+    :param points: Points to propagate to
+    :param board: The Transducer array, default two 16x16 arrays
+    :param A: The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`
+    :return: point pressure
     '''
+    if board is None:
+        board = TRANSDUCERS
     if A_function is not None:
         A = A_function(points, board, **A_function_args)
 
     out = propagate(activations, points,board,A=A)
     return torch.abs(out)
 
-def propagate_phase(activations, points,board=TRANSDUCERS, A=None):
+def propagate_phase(activations:Tensor, points:Tensor,board:Tensor|None=None, A:Tensor|None=None) -> Tensor:
     '''
-    Propagates a hologram to target points and returns phase - Same as `torch.angle(propagate(activations, points,board, A))`\\
-    `activations` Hologram to use\\
-    `points` Points to propagate to\\
-    `board` The Transducer array, default two 16x16 arrays\\
-    `A` The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`\\
-    Returns point pressure
+    Propagates a hologram to target points and returns phase - Same as `torch.angle(propagate(activations, points,board, A))`\n
+    :param activations: Hologram to use
+    :param points: Points to propagate to
+    :param board: The Transducer array, default two 16x16 arrays
+    :param A: The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`
+    :return: point phase
     '''
+    if board is None:
+        board = TRANSDUCERS
     out = propagate(activations, points,board,A=A)
     return torch.angle(out)
 
-def permute_points(points,index,axis=0):
+def permute_points(points: Tensor,index: int,axis:int=0) -> Tensor:
     '''
-    Permutes axis a tensor\\
-    'points' Tensor to permute\\
-    'index' Indexes describing order to perumte to \\
-    'axis' Axis to permute. Default `0`\\
-    Returns permuted points
+    Permutes axis of a tensor \n
+    :param points: Tensor to permute
+    :param index: Indexes describing order to perumte to 
+    :param axis: Axis to permute. Default `0`
+    :return: permuted points
     '''
     if axis == 0:
         return points[index,:,:,:]
@@ -437,6 +464,9 @@ def permute_points(points,index,axis=0):
         return points[:,:,:,index]
 
 def swap_output_to_activations(out_mat,points):
+    '''
+    @private
+    '''
     acts = None
     for i,out in enumerate(out_mat):
         out = out.T.contiguous()
@@ -448,11 +478,11 @@ def swap_output_to_activations(out_mat,points):
             acts = torch.stack((acts,A.T @ pressures),0)
     return acts
 
-def convert_to_complex(matrix):
+def convert_to_complex(matrix: Tensor) -> Tensor:
     '''
-    Comverts a real tensor of shape `B x M x N` to a complex tensor of shape `B x M/2 x N` \\
-    `matrix` Matrix to convert\\
-    Returns converted complex tensor
+    Comverts a real tensor of shape `B x M x N` to a complex tensor of shape `B x M/2 x N` 
+    :param matrix: Matrix to convert
+    :return: converted complex tensor
     '''
     # B x 1024 x N (real) -> B x N x 512 x 2 -> B x 512 x N (complex)
     matrix = torch.permute(matrix,(0,2,1))
@@ -460,11 +490,12 @@ def convert_to_complex(matrix):
     matrix = torch.view_as_complex(matrix.contiguous())
     return torch.permute(matrix,(0,2,1))
 
-def get_convert_indexes(n=512):
+def get_convert_indexes(n:int=512) -> Tensor:
     '''
-    Gets indexes to swap between transducer order for acoustools and OpenMPD for two boards\\
-    Use: `row = row[:,FLIP_INDEXES]` and invert with `_,INVIDX = torch.sort(IDX)` \\
-    Returns Indexes
+    Gets indexes to swap between transducer order for acoustools and OpenMPD for two boards\n
+    Use: `row = row[:,FLIP_INDEXES]` and invert with `_,INVIDX = torch.sort(IDX)` 
+    :param n: number of Transducers
+    :return: Indexes
     '''
 
     indexes = torch.arange(0,n)
@@ -476,14 +507,16 @@ def get_convert_indexes(n=512):
 
 
 
-def create_points(N,B=1,x=None,y=None,z=None, min_pos=-0.06, max_pos = 0.06):
+def create_points(N:int,B:int=1,x:float|None=None,y:float|None=None,z:float|None=None, min_pos:float=-0.06, max_pos:float = 0.06) -> Tensor:
     '''
-    Creates a random set of N points in B batches in shape `Bx3xN`\\
-    `N` Number of points per batch\\
-    `B` Number of Batches\\
-    `x` if not None all points will have this as their x position. Default: `None`\\
-    `y` if not None all points will have this as their y position. Default: `None`\\
-    `z` if not None all points will have this as their z position. Default: `None`\\
+    Creates a random set of N points in B batches in shape `Bx3xN` \n
+    :param N: Number of points per batch
+    :param B: Number of Batches
+    :param x: if not None all points will have this as their x position. Default: `None`
+    :param y: if not None all points will have this as their y position. Default: `None`
+    :param z: if not None all points will have this as their z position. Default: `None`
+    :param min_pos: Minimum position
+    :param max_pos: Maximum position
     '''
     points = torch.FloatTensor(B, 3, N).uniform_(min_pos,max_pos).to(device)
     if x is not None:
@@ -497,13 +530,23 @@ def create_points(N,B=1,x=None,y=None,z=None, min_pos=-0.06, max_pos = 0.06):
 
     return points
     
-def add_lev_sig(activation, board=TRANSDUCERS, mode='Trap', sig=None, return_sig=False):
+def add_lev_sig(activation:Tensor, board:Tensor|None=None, 
+                mode:Literal['Focal', 'Trap', 'Vortex','Twin']='Trap', sig:Tensor|None=None, return_sig:bool=False) -> Tensor:
     '''
-    Adds pi to the top board of a 2x16x16 board setup - converts focal points to traps\\
-    `activation` Hologram input for 2x16x16 board\\
-    `sig` signature to add to top board. Default: `pi`\\
-    Returns hologram with signature added
+    Adds signature to hologram for a board \n
+    :param activation: Hologram input
+    :param board: Board to use
+    :param mode: Type of signature to add, should be one of
+    * Focal: No signature
+    * Trap: Add $\\pi$ to the top board - creates a trap
+    * Vortex: Add a circular signature to create a circular trap
+    * Twin: Add $\\pi$ to half of the board laterally to create a twin trap
+    :param sig: signature to add to top board. If `None` then value is determined by value of `mode`
+    :return: hologram with signature added
     '''
+    if board is None:
+        board = TRANSDUCERS
+
     act = activation.clone().to(device)
 
     s = act.shape
@@ -534,15 +577,15 @@ def add_lev_sig(activation, board=TRANSDUCERS, mode='Trap', sig=None, return_sig
         return x, sig
     return x
 
-def generate_gorkov_targets(N,B=1, max_val=0, min_val=-1e-4):
+def generate_gorkov_targets(N:int,B:int=1, max_val:float=0, min_val:float=-1e-4) -> Tensor:
     '''
-    Generates a tensor of random Gor'kov potential values\\
-    If `B=0` will return tensor with shape of `Nx1` else  will have shape `BxNx1`\\
-    `N` Number of values per batch\\
-    `B` Number of batches to produce\\
-    `max_val` Maximum value that can be generated. Default: `0`\\
-    `max_val` Minimum value that can be generated. Default: `-1e-4`\\
-    Returns tensor of values
+    Generates a tensor of random Gor'kov potential values\n
+    If `B=0` will return tensor with shape of `Nx1` else  will have shape `BxNx1`\n
+    :param N: Number of values per batch
+    :param B: Number of batches to produce
+    :param max_val: Maximum value that can be generated. Default: `0`
+    :param min_val: Minimum value that can be generated. Default: `-1e-4`
+    :return: tensor of values
     '''
     if B > 0:
         targets = torch.FloatTensor(B, N,1).uniform_(min_val,max_val).to(device)
@@ -550,13 +593,13 @@ def generate_gorkov_targets(N,B=1, max_val=0, min_val=-1e-4):
          targets = torch.FloatTensor(N,1).uniform_(min_val,max_val).to(device)
     return targets
 
-def generate_pressure_targets(N,B=1, max_val=5000, min_val=3000):
+def generate_pressure_targets(N:int,B:int=1, max_val:float=5000, min_val:float=3000) -> Tensor:
     '''
     Generates a tensor of random pressure values\\
-    `N` Number of values per batch\\
-    `B` Number of batches to produce\\
-    `max_val` Maximum value that can be generated. Default: `10000`\\
-    `max_val` Minimum value that can be generated. Default: `7000`\\
+    :param N: Number of values per batch
+    :param B: Number of batches to produce
+    :param max_val: Maximum value that can be generated. Default: `5000`
+    :param min_val: Minimum value that can be generated. Default: `3000`
     Returns tensor of values
     '''
     targets = torch.FloatTensor(B, N,1).uniform_(min_val,max_val).to(device)
@@ -564,18 +607,19 @@ def generate_pressure_targets(N,B=1, max_val=5000, min_val=3000):
 
 def return_matrix(x,y,mat=None):
     '''
+    @private
     Returns value of parameter `mat` - For compatibility with other functions
     '''
     return mat
 
-def write_to_file(activations,fname,num_frames, num_transducers=512, flip=True):
+def write_to_file(activations:Tensor,fname:str,num_frames:int, num_transducers:int=512, flip:bool=True) -> None:
     '''
-    Writes each hologram in `activations` to the csv `fname` in order expected by OpenMPD\\
-    `activations` List of holograms\\
-    `fname` Name of file to write to, expected to end in `.csv`\\
-    `num_frames` Number of frames in `activations` \\
-    `num_transducers` Number of transducers in the boards used. Default:512\\
-    `flip`: If True uses `get_convert_indexes` to swap order of transducers to be the same as OpenMPD expects. Default: `True`\\ 
+    Writes each hologram in `activations` to the csv `fname` in order expected by OpenMPD \n
+    :param activations: List of holograms
+    :param fname: Name of file to write to, expected to end in `.csv`
+    :param num_frames: Number of frames in `activations` 
+    :param num_transducers: Number of transducers in the boards used. Default:512
+    :param flip: If True uses `get_convert_indexes` to swap order of transducers to be the same as OpenMPD expects. Default: `True`
     '''
     output_f = open(fname,"w")
     output_f.write(str(num_frames)+","+str(num_transducers)+"\n")
@@ -600,6 +644,7 @@ def write_to_file(activations,fname,num_frames, num_transducers=512, flip=True):
 
 def get_rows_in(a_centres, b_centres, expand = True):
     '''
+    @private
     Takes two tensors and returns a mask for `a_centres` where a value of true means that row exists in `b_centres` \\
     Asssumes in form 1x3xN -> returns mask over dim 1\\
     `a_centres` Tensor of points to check for inclusion in `b_centres` \\
@@ -622,14 +667,14 @@ def get_rows_in(a_centres, b_centres, expand = True):
     else:
         return mask
 
-def read_phases_from_file(file, invert=True, top_board=False, ignore_first_line=True):
+def read_phases_from_file(file: str, invert:bool=True, top_board:bool=False, ignore_first_line:bool=True):
     '''
     Gets phases from a csv file, expects a csv with each row being one geometry
-    `file` The file path to read from\\
-    `invert` Convert transducer order from OpenMPD -> Acoustools order. Default True\\
-    `top_board` if True assumes only the top board. Default False\\
-    `ignore_first_line` If true assumes header is the first line\\
-    Returns phases
+    :param file: The file path to read from
+    :param invert: Convert transducer order from OpenMPD -> Acoustools order. Default True
+    :param top_board: if True assumes only the top board. Default False
+    :param ignore_first_line: If true assumes header is the first line
+    :return: phases
     '''
     phases_out = []
     line_one = True
@@ -655,7 +700,14 @@ def read_phases_from_file(file, invert=True, top_board=False, ignore_first_line=
     phases_out = torch.stack(phases_out)
     return phases_out
             
-def green_propagator(points, board, k=Constants.k):
+def green_propagator(points:Tensor, board:Tensor, k:float=Constants.k) -> Tensor:
+    '''
+    Computes the Green's function propagation matrix from `board` to `points` \n
+    :param points: Points to use
+    :param board: transducers to use
+    :param k: Wavenumber of sound to use
+    :return: Green propagation matrix
+    '''
 
     B = points.shape[0]
     N = points.shape[2]
