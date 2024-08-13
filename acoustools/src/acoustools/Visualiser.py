@@ -5,17 +5,21 @@ from mpl_toolkits.mplot3d import art3d
 import matplotlib.colors as clrs
 import matplotlib.cm as cm
 
+from torch import Tensor
+from types import FunctionType
+from typing import Literal
+from vedo import Mesh
 
 
-
-def get_point_pos(A,B,C, points, res=(200,200),flip=True):
+def get_point_pos(A:Tensor,B:Tensor,C:Tensor, points:Tensor, res:tuple[int]=(200,200),flip:bool=True) -> list[int]:
     '''
-    converts point positions in 3D to pixel locations in the plane defined by ABC\\
-    `A` Position of the top left corner of the image\\
-    `B` Position of the top right corner of the image\\
-    `C` Position of the bottom left corner of the image\\
-    `res` Number of pixels as a tuple (X,Y). Default (200,200)\\
-    `flip` Reverses X and Y directions. Default True
+    converts point positions in 3D to pixel locations in the plane defined by ABC\n
+    :param A: Position of the top left corner of the image
+    :param B: Position of the top right corner of the image
+    :param C: Position of the bottom left corner of the image
+    :param res: Number of pixels as a tuple (X,Y). Default (200,200)
+    :param flip: Reverses X and Y directions. Default True
+    :return: List of point positions
     '''
     AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]])
     AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]])
@@ -51,17 +55,20 @@ def get_point_pos(A,B,C, points, res=(200,200),flip=True):
 
     return pts_norm
 
-def Visualise_single(A,B,C,activation,colour_function=propagate_abs, colour_function_args={}, res=(200,200), flip=True):
+def Visualise_single(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
+                     colour_function:FunctionType=propagate_abs, colour_function_args:dict={}, 
+                     res:tuple[int]=(200,200), flip:bool=True) -> Tensor:
     '''
     Visalises field generated from activation to the plane ABC
-    `A` Position of the top left corner of the image\\
-    `B` Position of the top right corner of the image\\
-    `C` Position of the bottom left corner of the image\\
-    `activation` The transducer activation to use\\
-    `colour_function` Function to call at each position. Should return a value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`\\
-    `colour_function_args` The arguments to pass to `colour_function`\\
-    `res` Number of pixels as a tuple (X,Y). Default (200,200)\\
-    `flip` Reverses X and Y directions. Default True
+    :param A: Position of the top left corner of the image
+    :param B: Position of the top right corner of the image
+    :param C: Position of the bottom left corner of the image
+    :param activation: The transducer activation to use
+    :param colour_function: Function to call at each position. Should return a value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`
+    :param colour_function_args: The arguments to pass to `colour_function`
+    :param res: Number of pixels as a tuple (X,Y). Default (200,200)
+    :param flip: Reverses X and Y directions. Default True
+    :return: Tensor of values of propagated field
     '''
     if len(activation.shape) < 3:
         activation = activation.unsqueeze(0)
@@ -91,27 +98,30 @@ def Visualise_single(A,B,C,activation,colour_function=propagate_abs, colour_func
     
     return result
 
-def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colour_function_args=None, 
-              res=(200,200), cmaps=[], add_lines_functions=None, add_line_args=None,vmin=None,vmax=None, matricies = None, show=True,block=True, clr_labels=None):
+def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|Tensor=[],
+              colour_functions:list[FunctionType]|None=[propagate_abs], colour_function_args:list[dict]|None=None, 
+              res:tuple[int]=(200,200), cmaps:list[str]=[], add_lines_functions:list[FunctionType]|None=None, 
+              add_line_args:list[dict]|None=None,vmin:int|list[int]|None=None,vmax:int|list[int]|None=None, 
+              matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None) -> None:
     '''
-    Visalises any numvber of fields generated from activation to the plane ABC and arranges them in a (1,N) grid
-    `A` Position of the top left corner of the image\\
-    `B` Position of the top right corner of the image\\
-    `C` Position of the bottom left corner of the image\\
-    `activation` The transducer activation to use\\
-    `points` List of point positions to add crosses for each plot. Positions should be given in their position in 3D\\
-    `colour_functions` List of function to call at each position for each plot. Should return a value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`\\
-    `colour_function_args` The arguments to pass to `colour_functions`\\
-    `res` Number of pixels as a tuple (X,Y). Default (200,200)\\
-    `cmaps` The cmaps to pass to plot\\
-    `add_lines_functions` List of functions to extract lines and add to the image\\
-    `add_line_args` List of parameters to add to `add_lines_functions`\\
-    `vmin` Minimum value to use across all plots\\
-    `vmax` MAximum value to use across all plots\\
-    `matricies` precomputed matricies to plot\\
-    `show` If True will call `plt.show(block=block)` else does not. Default True\\
-    `block` Will be passed to `plot.show(block=block)`. Default True\\
-    `clr_label`: Label for colourbar\\
+    Visualises any number of fields generated from activation to the plane ABC and arranges them in a (1,N) grid \n
+    :param A: Position of the top left corner of the image
+    :param B: Position of the top right corner of the image
+    :param C: Position of the bottom left corner of the image
+    :param activation: The transducer activation to use
+    :param points: List of point positions to add crosses for each plot. Positions should be given in their position in 3D
+    :param colour_functions: List of function to call at each position for each plot. Should return a value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`
+    :param colour_function_args: The arguments to pass to `colour_functions`
+    :param res: Number of pixels as a tuple (X,Y). Default (200,200)
+    :param cmaps: The cmaps to pass to plot
+    :param add_lines_functions: List of functions to extract lines and add to the image
+    :param add_line_args: List of parameters to add to `add_lines_functions`
+    :param vmin: Minimum value to use across all plots
+    :param vmax: MAximum value to use across all plots
+    :param matricies: precomputed matricies to plot
+    :param show: If True will call `plt.show(block=block)` else does not. Default True
+    :param block: Will be passed to `plot.show(block=block)`. Default True
+    :param clr_label: Label for colourbar
     '''
 
 
@@ -210,7 +220,22 @@ def Visualise(A,B,C,activation,points=[],colour_functions=[propagate_abs], colou
     else:
         return plt
 
-def force_quiver(points, U,V,norm, ylims=None, xlims=None,log=False,show=True,colour=None, reciprocal = False, block=True):
+def force_quiver(points: Tensor, U:Tensor,V:Tensor,norm:Tensor, ylims:int|None=None, xlims:int|None=None,
+                 log:bool=False,show:bool=True,colour:str|None=None, reciprocal:bool = False, block:bool=True) -> None:
+    '''
+    Plot the force on a mesh as a quiver plot\n
+    :param points: The centre of the mesh faces
+    :param U: Force in first axis
+    :param V: Force in second axis
+    :param norm:
+    :param ylims: limit of y axis
+    :param zlims: limit of x axis
+    :param log: if `True` take the log of the values before plotting
+    :param show: if `True` call `plt.show()`
+    :param colour: colour of arrows
+    :param reciprocal: if `True` plot reciprocal of values
+    :param block: passed into `plt.show`
+    '''
 
     B = points.shape[0]
     N = points.shape[2]
@@ -251,7 +276,16 @@ def force_quiver(points, U,V,norm, ylims=None, xlims=None,log=False,show=True,co
     
 
 
-def force_quiver_3d(points, U,V,W, scale=1):
+def force_quiver_3d(points:Tensor, U:Tensor,V:Tensor,W:Tensor, scale:float=1) ->None:
+    '''
+    Plot the force on a mesh in 3D
+    :param points: The centre of the mesh faces
+    :param U: Force in first axis
+    :param V: Force in second axis
+    :param W: Force in third axis
+    :param scale: value to scale result by
+    '''
+    
     ax = plt.figure().add_subplot(projection='3d')
     ax.quiver(points[:,0,:].cpu().detach().numpy(), points[:,1,:].cpu().detach().numpy(), points[:,2,:].cpu().detach().numpy(), U.cpu().detach().numpy()* scale, V.cpu().detach().numpy()* scale, W.cpu().detach().numpy()* scale)
     plt.show()
@@ -259,8 +293,27 @@ def force_quiver_3d(points, U,V,W, scale=1):
 
 
 
-def Visualise_mesh(mesh, colours=None, points=None, p_pressure=None,vmax=None,vmin=None, show=True, subplot=None, fig=None, buffer_x=0, buffer_y = 0, buffer_z = 0, equalise_axis=False, elev=-45, azim=45):
-
+def Visualise_mesh(mesh:Mesh, colours:Tensor|None=None, points:Tensor|None=None, p_pressure:Tensor|None=None,
+                   vmax:int|None=None,vmin:int|None=None, show:bool=True, subplot:int|plt.Axes|None=None, fig:plt.Figure|None=None, 
+                   buffer_x:int=0, buffer_y:int = 0, buffer_z:int = 0, equalise_axis:bool=False, elev:float=-45, azim:float=45) ->None:
+    '''
+    Plot a mesh in 3D and colour the mesh faces
+    :param mesh: Mesh to plot
+    :param colours: Colours for each face
+    :param points: Positions of points to also plot
+    :param p_pressure: Values to colour points with
+    :param vmax: Maximum colour to plot
+    :param vmin: Minimum colour to plot
+    :param show: If `True` call `plot.show()`
+    :param subplot: Optionally use existing subplot
+    :param fig: Optionally use existing fig
+    :param buffer_x: Amount of whitesapce to add in x direction
+    :param buffer_y: Amount of whitesapce to add in y direction
+    :param buffer_z: Amount of whitesapce to add in z direction
+    :param equalise_axis: If `True` call `ax.set_aspect('equal')`
+    :param elev: elevation angle
+    :param azim: azimuth angle
+    '''
 
     xmin,xmax, ymin,ymax, zmin,zmax = mesh.bounds()
     
@@ -335,7 +388,24 @@ def Visualise_mesh(mesh, colours=None, points=None, p_pressure=None,vmax=None,vm
 
 
 
-def Visualise_line(A,B,x, F=None,points=None,steps = 1000, board=TRANSDUCERS, propagate_fun = propagate_abs, propagate_args={}, show=True):
+def Visualise_line(A:Tensor,B:Tensor,x:Tensor, F:Tensor|None=None,points:Tensor|None=None,steps:int = 1000, 
+                   board:Tensor|None=None, propagate_fun:FunctionType = propagate_abs, propagate_args:dict={}, show:bool=True) -> None:
+    '''
+    Plot the field across a line from A->B\n
+    :param A: Start of line
+    :param B: End of line
+    :param x: Hologram
+    :param F: Optionally, propagation matrix
+    :param points: Optionally, pass the points on line AB instead of computing them
+    :param steps: Number of points along line
+    :param board: Transducers to use
+    :param propagate_fun: Function to use to propagate hologram
+    :propagate_args: arguments for `propagate_fun`
+    :show: If `True` call `plt.show()`
+    '''
+    if board is None:
+        board = TRANSDUCERS
+    
     if points is None:
         AB = B-A
         step = AB / steps
@@ -355,7 +425,16 @@ def Visualise_line(A,B,x, F=None,points=None,steps = 1000, board=TRANSDUCERS, pr
         return pressure
        
 
-def ABC(size, plane = 'xz'):
+def ABC(size:int, plane:Literal['xz'] = 'xz') -> tuple[Tensor]:
+    '''
+    Get ABC values for visualisation
+    * A top right corner
+    * B bottom right corner
+    * C top left corner
+    :param size: The size of the window
+    :param plane: Plane (currently only xz plane allowed)
+    :return: A,B,C 
+    '''
     if plane == 'xz':
         A = torch.tensor((-1,0, 1)) * size
         B = torch.tensor((1,0, 1))* size
