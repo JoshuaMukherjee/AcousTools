@@ -4,21 +4,48 @@ import ctypes
 import torch, os, signal
 
 from acoustools.Utilities import get_convert_indexes
+from torch import Tensor
 
 class LevitatorController():
     '''
-     Class to enable the manipulation of an acoustic levitator from python. 
+     Class to enable the manipulation of an OpenMPD style acoustic levitator from python. 
     '''
 
-    def __init__(self, bin_path = None, ids = (999,1000), matBoardToWorld=None, print_lines=False):
+    def __init__(self, bin_path:str|None = None, ids:tuple[int] = (999,1000), matBoardToWorld:list[int]|None=None, print_lines:bool=False):
         '''
-        Creates the controller\\
-        `bin_path`: The path to the binary files needed. If none will use files contained in AcousToosl. NOTE WHEN SET TO NONE THIS CHANGES THE CURRENT WORKING DIRECTORY AND THEN CHANGES IT BACK Default: None.\\
-        `ids`: IDs of boards. Default `(1000,999)`\\
-        `matBoardToWorld`: Matric defining the mapping between simulated and real boards. When None uses a default setting. Default None.\\
-        `print_lines`: If False supresses some print messages
+        Creates the controller\n
+        ```python
+        from acoustools.Levitator import LevitatorController
+        from acoustools.Utilities import create_points, add_lev_sig, propagate_abs
+        from acoustools.Solvers import wgs
+
+        lev = LevitatorController(ids=(73,53))
+
+        p = create_points(1,1,x=0,y=0,z=0)
+        x = wgs(p)
+        print(propagate_abs(x,p))
+        x = add_lev_sig(x)
+
+        lev.levitate(x)
+        print('Levitating...')
+        input()
+        print('Stopping...')
+        lev.disconnect()
+        print('Stopped')
+
+        ```
+        THIS CHANGES THE CURRENT WORKING DIRECTORY AND THEN CHANGES IT BACK \n
+        :param bin_path: The path to the binary files needed. If `None` will use files contained in AcousTools. Default: None.
+        :param ids: IDs of boards. Default `(1000,999)` if `-1` then all messages will be ignored. Use when testing code but no device is conncted 
+        :param matBoardToWorld: Matric defining the mapping between simulated and real boards. When `None` uses a default setting. Default `None`.
+        :param print_lines: If False supresses some print messages
         '''
+        
         self.mode = 1
+        '''
+        @private
+        '''
+
         if ids[0] == -1:
             self.mode = 0
             print('Virtual Levitator mode - no messages will be sent')
@@ -78,6 +105,7 @@ class LevitatorController():
     def send_message(self, phases, amplitudes=None, relative_amplitude=1, num_geometries = 1, sleep_ms = 0, loop=False, num_loops = 0):
         '''
         RECCOMENDED NOT TO USE - USE `levitate` INSTEAD\\
+        @private
         sends messages to levitator
         '''
         if self.mode:
@@ -100,24 +128,26 @@ class LevitatorController():
             self.levitatorLib.turn_off.argtypes = [ctypes.c_void_p]
             self.levitatorLib.turn_off(self.controller)
         
-    def set_frame_rate(self, frame_rate):
+    def set_frame_rate(self, frame_rate:int):
         '''
         Set a new framerate
+        :param frame_rate: The new frame rate to use. Note OpenMPD cannot use framerates below 157Hz
         '''
         if self.mode:
             self.levitatorLib.set_new_frame_rate.argtypes = [ctypes.c_void_p, ctypes.c_int]
             new_frame_rate = self.levitatorLib.set_new_frame_rate(self.controller, frame_rate)
 
 
-    def levitate(self, phases, amplitudes=None, relative_amplitude=1, permute=True, sleep_ms = 0, loop=False, num_loops=0):
+    def levitate(self, phases:list[Tensor]|Tensor, amplitudes:Tensor=None, relative_amplitude:int=1, permute:bool=True, sleep_ms:float = 0, loop:bool=False, num_loops:int=0):
         '''
-        Send a single phase map to the levitator - This is the reccomended function to use as will deal with dtype conversions etc\\
-        `phases`: `Torch.Tensor` of phases or list of `Torch.Tensor` of phases, expects a batched dimension in dim 0. If phases is complex then ` phases = torch.angle(phases)` will be run, else phases left as is\\
-        `amplitudes`: Optional `Torch.Tensor` of amplitudes, same shape as `phases`\\
-        `relative_amplitude`: Single value [0,1] to set amplitude to. Default 1\\
-        `permute`: Convert between acoustools transducer order and OpenMPD. Default True.\\
-        `sleep_ms`: Time to wait between frames in ms.\\
-        `loop`: If True will restart from the start of phases, default False
+        Send a single phase map to the levitator - This is the recomended function to use as will deal with dtype conversions etc
+        :param phases: `Torch.Tensor` of phases or list of `Torch.Tensor` of phases, expects a batched dimension in dim 0. If phases is complex then ` phases = torch.angle(phases)` will be run, else phases left as is
+        :param amplitudes: Optional `Torch.Tensor` of amplitudes, same shape as `phases`
+        :param relative_amplitude: Single value [0,1] to set amplitude to. Default 1
+        :param permute: Convert between acoustools transducer order and OpenMPD. Default True.
+        :param sleep_ms: Time to wait between frames in ms.
+        :param loop: If True will restart from the start of phases, default False
+        :param num_loops: A set number of times to repeat the phases
         '''
         if self.mode:
             to_output = []
