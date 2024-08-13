@@ -4,17 +4,24 @@ import acoustools.Constants as c
 from acoustools.BEM import grad_2_H, grad_H, get_cache_or_compute_H, get_cache_or_compute_H_gradients
 from acoustools.Mesh import translate, get_centre_of_mass_as_points, get_centres_as_points, get_normals_as_points, get_areas, merge_scatterers
 
-def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False,board=TRANSDUCERS,**params):
+from torch import Tensor
+from types import FunctionType
+
+def gorkov_autograd(activation:Tensor, points:Tensor, K1:float|None=None, K2:float|None=None, 
+                    retain_graph:bool=False,board:Tensor|None=None,**params) -> Tensor:
     '''
-    Computes the Gorkov potential using pytorch's autograd system\\
-    `activation` The transducer activations to use \\
-    `points` The points to compute the potential at\\
-    `K1` The value for K1 in the Gorkov equation, if None will use `c.V / (4*c.p_0*c.c_0**2)`
-    `K2` The value for K2 in the Gorkov equation, if None will use `3*c.V / (4*(2*c.f**2 * c.p_0))`\\
-    `board` The transducer boards to use\\
-    `retain_graph` Value will be passed to autograd\\
-    Returns gorkov potential at each point
+    Computes the Gorkov potential using pytorch's autograd system\n
+    :param activation: The transducer activations to use 
+    :param points: The points to compute the potential at. if `None` will use `TRANSDUCERS`
+    :param K1: The value for K1 in the Gorkov equation, if `None` will use `c.V / (4*c.p_0*c.c_0**2)`
+    :param K2: The value for K2 in the Gorkov equation, if `None` will use `3*c.V / (4*(2*c.f**2 * c.p_0))`
+    :param board: The transducer boards to use
+    :param retain_graph: Value will be passed to autograd
+    :return: gorkov potential at each point
     '''
+
+    if board is None:
+        board = TRANSDUCERS
 
     var_points = torch.autograd.Variable(points.data, requires_grad=True).to(device).to(DTYPE)
 
@@ -39,13 +46,13 @@ def gorkov_autograd(activation, points, K1=None, K2=None, retain_graph=False,boa
     gorkov = K1 * torch.abs(pressure) **2 - K2 * torch.sum((torch.abs(grad_pos)**2),1)
     return gorkov
 
-def get_finite_diff_points(points, axis, stepsize = 0.000135156253):
+def get_finite_diff_points(points:Tensor , axis:Tensor, stepsize:float = 0.000135156253) -> Tensor:
     '''
-    Gets points for finite difference calculations in one axis\\
-    `points` Points around which to find surrounding points\\
-    `axis` The axis to add points in\\
-    `stepsize` The distance aroud points to add, default 0.000135156253\\
-    Returns points 
+    Gets points for finite difference calculations in one axis\n
+    :param points: Points around which to find surrounding points
+    :param axis: The axis to add points in
+    :param stepsize: The distance aroud points to add, default 0.000135156253
+    :return: points 
     '''
     #points = Bx3x4
     points_h = points.clone()
@@ -55,13 +62,13 @@ def get_finite_diff_points(points, axis, stepsize = 0.000135156253):
 
     return points_h, points_neg_h
 
-def get_finite_diff_points_all_axis(points,axis="XYZ", stepsize = 0.000135156253):
+def get_finite_diff_points_all_axis(points: Tensor,axis: str="XYZ", stepsize:float = 0.000135156253) -> Tensor:
     '''
     Gets points for finite difference calculations\\
-    `points` Points around which to find surrounding points\\
-    `axis` The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis\\
-    `stepsize` The distance aroud points to add, default 0.000135156253\\
-    Returns Points
+    :param points: Points around which to find surrounding points\\
+    :param axis: The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis\\
+    :param stepsize: The distance aroud points to add, default 0.000135156253\\
+    :return: Points
     '''
     B = points.shape[0]
     D = len(axis)
@@ -92,21 +99,24 @@ def get_finite_diff_points_all_axis(points,axis="XYZ", stepsize = 0.000135156253
     
     return fin_diff_points
 
-def gorkov_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K1=None, K2=None,prop_function=propagate,prop_fun_args={}, board=TRANSDUCERS):
+def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize:float = 0.000135156253,K1:float|None=None, K2:float|None=None,
+                    prop_function:FunctionType=propagate,prop_fun_args:dict={}, board:Tensor|None=None) -> Tensor:
     '''
-    Computes the Gorkov potential using finite differences to compute derivatives\\
-    `activation` The transducer activations to use \\
-    `points` The points to compute the potential at\\
-    `axis` The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis\\
-    `stepsize` The distance aroud points to add, default 0.000135156253\\
-    `K1` The value for K1 in the Gorkov equation, if None will use `c.V / (4*c.p_0*c.c_0**2)`
-    `K2` The value for K2 in the Gorkov equation, if None will use `3*c.V / (4*(2*c.f**2 * c.p_0))`
-    `prop_function` Function to use to compute pressure\\
-    `prop_fun_args` Arguments to pass to `prop_function`\\
-    `board` The transducer boards to use\\
-    Returns gorkov potential at each point
+    Computes the Gorkov potential using finite differences to compute derivatives \n
+    :param activation: The transducer activations to use 
+    :param points: The points to compute the potential at
+    :param axis: The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis
+    :param stepsize: The distance aroud points to add, default 0.000135156253
+    :param K1: The value for K1 in the Gorkov equation, if `None` will use `c.V / (4*c.p_0*c.c_0**2)`
+    :param K2: The value for K2 in the Gorkov equation, if `None` will use `3*c.V / (4*(2*c.f**2 * c.p_0))`
+    :param prop_function: Function to use to compute pressure
+    :param prop_fun_args: Arguments to pass to `prop_function`
+    :param board: The transducer boards to use if `None` use `TRANSDUCERS`
+    :return: gorkov potential at each point
     '''
     # torch.autograd.set_detect_anomaly(True)
+    if board is None:
+        board = TRANSDUCERS
     B = points.shape[0]
     D = len(axis)
     N = points.shape[2]
@@ -149,15 +159,18 @@ def gorkov_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K
     
     return U
 
-def gorkov_analytical(activations, points,board=TRANSDUCERS, axis="XYZ"):
+def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ") -> Tensor:
     '''
-    Computes the Gorkov potential using analytical derivative of the piston model\\
-    `activation` The transducer activations to use \\
-    `points` The points to compute the potential at\\
-    `board` The transducer boards to use\\
-    `axis` The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis\\
-    Returns gorkov potential at each point
+    Computes the Gorkov potential using analytical derivative of the piston model \n
+    :param activation: The transducer activations to use 
+    :param points: The points to compute the potential at
+    :param board: The transducer boards to use
+    :param axis: The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis
+    :return: gorkov potential at each point
     '''
+
+    if board is None:
+        board = TRANSDUCERS
 
     Fx, Fy, Fz = forward_model_grad(points)
     F = forward_model_batched(points,board)
@@ -185,38 +198,3 @@ def gorkov_analytical(activations, points,board=TRANSDUCERS, axis="XYZ"):
     U = K1*p - K2*(grad_x+grad_y+grad_z)
 
     return U
-
-
-
-if __name__ == "__main__":
-    from acoustools.Utilities import create_points, forward_model
-    from acoustools.Solvers import wgs_wrapper, wgs
-    import matplotlib.pyplot as plt
-
-    N=1
-    B=1
-    F_As = []
-    F_FDs = []
-    F_aFDs = []
-    axis=0
-    for _ in range(1):
-        points = create_points(N,B)
-        x = wgs_wrapper(points)
-        # x = add_lev_sig(x)
-        
-        U_ag = gorkov_autograd(x,points)
-        # F_aFD = force_fin_diff(x,points,U_function=gorkov_autograd).squeeze()
-        # F_aFDs.append(F_aFD[axis].cpu().detach().numpy())
-
-        U_fd = gorkov_fin_diff(x,points)
-        # F = force_fin_diff(x,points).squeeze()
-        # F_FDs.append(F[axis].cpu().detach().numpy())
-
-        U_a = gorkov_analytical(x,points)
-        # F_a = compute_force(x,points).squeeze()
-        # F_As.append(F_a[axis].cpu().detach().numpy())
-
-        # print(U_ag,U_fd,U_a, sep='\n')
-        # print(F_aFD, F, F_a, sep='\n')
-    # plt.scatter(F_FDs, F_aFDs)
-    # plt.show()
