@@ -4,7 +4,7 @@ from torch import Tensor
 
 def constrain_amplitude(x:Tensor) -> Tensor:
     '''
-    Constrains the amplitude of a hologram to be 1, χ(x) in AcousTools\n
+    Constrains the amplitude of a hologram to be 1, χ(x) in AcousTools Paper\n
     :param x: Hologram
     :return: constrained hologram
     '''
