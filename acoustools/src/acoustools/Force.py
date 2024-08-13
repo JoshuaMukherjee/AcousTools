@@ -5,19 +5,22 @@ from acoustools.BEM import grad_H, grad_2_H, get_cache_or_compute_H, get_cache_o
 from acoustools.Mesh import translate, merge_scatterers, get_centres_as_points, get_areas, get_normals_as_points
 
 import torch
+from torch import Tensor
+from types import FunctionType
 
-def force_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K1=None, K2=None,U_function=gorkov_fin_diff,U_fun_args={}):
+def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:float= 0.000135156253,K1:float|None=None, 
+                   K2:float|None=None,U_function:FunctionType=gorkov_fin_diff,U_fun_args:dict={}) -> Tensor:
     '''
-    Returns the force on a particle using finite differences to approximate the derivative of the gor'kov potential\\
-    `activations` Transducer hologram\\
-    `points` Points to propagate to\\
-    `axis` string containing `X`, `Y` or `Z` defining the axis to take into account eg `XYZ` considers all 3 axes and `YZ` considers only the y and z-axes\\
-    `stepsize` stepsize to use for finite differences \\
-    `K1` Value for K1 to be used in the gor'kov computation, see `Holographic acoustic elements for manipulation of levitated objects` for more information\\
-    `K2` Value for K1 to be used in the gor'kov computation, see `Holographic acoustic elements for manipulation of levitated objects` for more information\\
-    `U_function` The funvtion used to compute the gor'kov potential\\
-    `U_fun_args` arguments for `U_function` \\
-    Returns Force
+    Returns the force on a particle using finite differences to approximate the derivative of the gor'kov potential\n
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param axis: string containing `X`, `Y` or `Z` defining the axis to take into account eg `XYZ` considers all 3 axes and `YZ` considers only the y and z-axes
+    :param stepsize: stepsize to use for finite differences 
+    :param K1: Value for K1 to be used in the gor'kov computation, see `Holographic acoustic elements for manipulation of levitated objects` for more information
+    :param K2: Value for K1 to be used in the gor'kov computation, see `Holographic acoustic elements for manipulation of levitated objects` for more information
+    :param U_function: The function used to compute the gor'kov potential
+    :param U_fun_args: arguments for `U_function` 
+    :return: Force
     '''
     B = points.shape[0]
     D = len(axis)
@@ -33,15 +36,17 @@ def force_fin_diff(activations, points, axis="XYZ", stepsize = 0.000135156253,K1
     return F
 
 
-def compute_force(activations, points,board=TRANSDUCERS,return_components=False):
+def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
-    Returns the force on a particle using the analytical derivative of the Gor'kov potential and the piston model\\  
-    `activations` Transducer hologram\\
-    `points` Points to propagate to\\
-    `board` Transducers to use \\
-    `return_components` If true returns force as one tensor otherwise returns Fx, Fy, Fz\\
-    Returns force  
+    Returns the force on a particle using the analytical derivative of the Gor'kov potential and the piston model\n
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param board: Transducers to use, if `None` uses `TRANSDUCERS`
+    :param return_components: If true returns force as one tensor otherwise returns Fx, Fy, Fz
+    :return: force  
     '''
+    if board is None:
+        board = TRANSDUCERS
     
     F = forward_model_batched(points,transducers=board)
     Fx, Fy, Fz = forward_model_grad(points,transducers=board)
@@ -77,37 +82,41 @@ def compute_force(activations, points,board=TRANSDUCERS,return_components=False)
         force = torch.cat([force_x, force_y, force_z],2)
         return force
     
-def get_force_axis(activations, points,board=TRANSDUCERS, axis=2):
+def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axis:int=2) -> Tensor:
     '''
-    Returns the force in one axis on a particle using the analytical derivative of the Gor'kov potential and the piston model\\  
-    `activations` Transducer hologram\\
-    `points` Points to propagate to\\
-    `board` Transducers to use \\
-    `axis` Axis to take the force in\\
-    Equivalent to `compute_force(activations, points,return_components=True)[axis]` \\
-    Returns force  
+    Returns the force in one axis on a particle using the analytical derivative of the Gor'kov potential and the piston model \n
+    Equivalent to `compute_force(activations, points,return_components=True)[axis]` \n 
+
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param board: Transducers to use if `None` uses `TRANSDUCERS`
+    :param axis: Axis to take the force in
+    :return: force  
     '''
-    forces = compute_force(activations, points,return_components=True)
+    if board is None:
+        board = TRANSDUCERS
+    forces = compute_force(activations, points,return_components=True, board=board)
     force = forces[axis]
 
     return force
 
 
-def force_mesh(activations, points, norms, areas, board, grad_function=forward_model_grad, grad_function_args={},F=None, Ax=None, Ay=None,Az=None):
+def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, board:Tensor, grad_function:FunctionType=forward_model_grad, 
+               grad_function_args:dict={},F:Tensor|None=None, Ax:Tensor|None=None, Ay:Tensor|None=None,Az:Tensor|None=None) -> Tensor:
     '''
-    Returns the force on a mesh using a discritised version of Eq. 1 in `Acoustical boundary hologram for macroscopic rigid-body levitation`\\
-    `activations` Transducer hologram\\
-    `points` Points to propagate to\\
-    `norms` The normals to the mesh faces\\
-    `areas` The areas of the mesh points\\
-    `board` Transducers to use \\
-    `grad_function` The function to use to compute the gradient of pressure\\
-    `grad_function_args` The argument to pass to `grad_function`\\
-    `F` A precomputed forward propagation matrix, if None will be computed\\
-    `Ax` The gradient of F wrt x, if None will be computed\\
-    `Ay` The gradient of F wrt y, if None will be computed\\
-    `Az` The gradient of F wrt z, if None will be computed\\
-    Returns the force on each mesh element\\
+    Returns the force on a mesh using a discritised version of Eq. 1 in `Acoustical boundary hologram for macroscopic rigid-body levitation`\n
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param norms: The normals to the mesh faces
+    :param areas: The areas of the mesh points
+    :param board: Transducers to use 
+    :param grad_function: The function to use to compute the gradient of pressure
+    :param grad_function_args: The argument to pass to `grad_function`
+    :param F: A precomputed forward propagation matrix, if None will be computed
+    :param Ax: The gradient of `F` wrt x, if None will be computed
+    :param Ay: The gradient of `F` wrt y, if None will be computed
+    :param Az: The gradient of `F` wrt z, if None will be computed
+    :return: the force on each mesh element
     '''
     activations= activations
     p = propagate(activations,points,board,A=F)
