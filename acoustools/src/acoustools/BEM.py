@@ -1,5 +1,7 @@
 import torch
 import pickle
+from vedo import Mesh
+from torch import Tensor
 
 import matplotlib.pyplot as plt
 
@@ -10,17 +12,17 @@ from acoustools.Mesh import scatterer_file_name, load_scatterer, load_multiple_s
 import hashlib
 
  
-def compute_green_derivative(y,x,norms,B,N,M, return_components=False):
+def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False) -> Tensor:
     '''
-    Computes the derivative of greens function\\
-    `y` y in greens function\\
-    `x` x in greens function\\
-    `norms` norms to y\\
-    `B` BAtch dimension\\
-    `N` size of x\\
-    `M` size of y\\
-    `return_components` if true will return the subparts used to compute the derivative\\
-    returns the partial derivative of greeens fucntion wrt y
+    Computes the derivative of greens function \n
+    :param y: y in greens function - location of the source of sound
+    :param x: x in greens function - location of the point to be propagated to
+    :param norms: norms to y 
+    :param B: Batch dimension
+    :param N: size of x
+    :param M: size of y
+    :param return_components: if true will return the subparts used to compute the derivative \n
+    :return: returns the partial derivative of greeens fucntion wrt y
     '''
     distance = torch.sqrt(torch.sum((x - y)**2,dim=3))
 
@@ -43,12 +45,12 @@ def compute_green_derivative(y,x,norms,B,N,M, return_components=False):
     return partial_greens
 
  
-def compute_G(points, scatterer):
+def compute_G(points: Tensor, scatterer: Mesh) -> Tensor:
     '''
-    Computes G in the BEM model\\
-    `points` The points to propagate to\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    Returns G
+    Computes G in the BEM model\n
+    :param points: The points to propagate to
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :return G: `torch.Tensor` of G
     '''
     areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
     B = points.shape[0]
@@ -78,11 +80,11 @@ def compute_G(points, scatterer):
     return G
 
  
-def compute_A(scatterer):
+def compute_A(scatterer: Mesh) -> Tensor:
     '''
-    Computes A for the computation of H in the BEM model\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    Returns A
+    Computes A for the computation of H in the BEM model\n
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :return A: A tensor
     '''
 
     areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
@@ -107,25 +109,25 @@ def compute_A(scatterer):
     return A.to(DTYPE)
 
  
-def compute_bs(scatterer, board):
+def compute_bs(scatterer: Mesh, board:Tensor) -> Tensor:
     '''
-    Computes B for the computation of H in the BEM model\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `board` Transducers to use \\
-    Returns B
+    Computes B for the computation of H in the BEM model\n
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Transducers to use 
+    :return B: B tensor
     '''
     centres = torch.tensor(scatterer.cell_centers).to(device).T.unsqueeze_(0)
     bs = forward_model_batched(centres,board)
     return bs.to(DTYPE)
 
  
-def compute_H(scatterer, board,use_LU=True, use_OLS = False):
+def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False) -> Tensor:
     '''
-    Computes H for the BEM model \\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `board` Transducers to use \\
-    `use_LU` if True computes H with LU decomposition, otherwise solves using standard linear inversion\\
-    returns H
+    Computes H for the BEM model \n
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Transducers to use 
+    :param use_LU: if True computes H with LU decomposition, otherwise solves using standard linear inversion
+    :return H: H
     '''
     
     A = compute_A(scatterer)
@@ -142,13 +144,14 @@ def compute_H(scatterer, board,use_LU=True, use_OLS = False):
     return H
 
  
-def grad_H(points, scatterer, transducers, return_components = False):
+def grad_H(points: Tensor, scatterer: Mesh, transducers: Tensor, return_components:bool = False) ->tuple[Tensor,Tensor, Tensor] | tuple[Tensor,Tensor, Tensor, Tensor,Tensor, Tensor, Tensor]:
     '''
-    Computes the gradient of H wrt scatterer centres\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `transducers` Transducers to use \\
-    `return_components` if true will return the subparts used to compute the derivative\\
+    Computes the gradient of H wrt scatterer centres\n
     Ignores `points` - for compatability with other gradient functions, takes centres of the scatterers
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param transducers: Transducers to use 
+    :param return_components: if true will return the subparts used to compute the derivative
+    :return grad_H: The gradient of the H matrix wrt the position of the mesh
     '''
     centres = torch.tensor(scatterer.cell_centers).to(device).T.unsqueeze_(0)
 
@@ -198,17 +201,19 @@ def grad_H(points, scatterer, transducers, return_components = False):
         return Hx, Hy, Hz
 
  
-def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, Ay = None, Az = None):
+def grad_2_H(points: Tensor, scatterer: Mesh, transducers: Tensor, A:Tensor|None = None, 
+             A_inv:Tensor|None = None, Ax:Tensor|None = None, Ay:Tensor|None = None, Az:Tensor|None = None) -> Tensor:
     '''
-    Computes the second derivative of H wrt scatterer centres\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `transducers` Transducers to use \\
-    `A` The result of a call to `compute_A`\\
-    `A_inv` The inverse of `A`\\
-    `Ax` The gradient of A wrt the x position of scatterer centres\\
-    `Ay` The gradient of A wrt the y position of scatterer centres\\
-    `Az` The gradient of A wrt the z position of scatterer centres\\
+    Computes the second derivative of H wrt scatterer centres\n
     Ignores `points` - for compatability with other gradient functions, takes centres of the scatterers
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param transducers: Transducers to use 
+    :param A: The result of a call to `compute_A`
+    :param A_inv: The inverse of `A`
+    :param Ax: The gradient of A wrt the x position of scatterer centres
+    :param Ay: The gradient of A wrt the y position of scatterer centres
+    :param Az: The gradient of A wrt the z position of scatterer centres
+    :return Haa: second order unmixed gradient of H wrt scatterer positions
     '''
 
     centres = get_centres_as_points(scatterer)
@@ -337,15 +342,15 @@ def grad_2_H(points, scatterer, transducers, A = None, A_inv = None, Ax = None, 
     return Haa
 
  
-def get_cache_or_compute_H_2_gradients(scatterer,board,use_cache_H_grad=True, path="Media", print_lines=False):
+def get_cache_or_compute_H_2_gradients(scatterer:Mesh,board:Tensor,use_cache_H_grad:bool=True, path:str="Media", print_lines:bool=False) -> Tensor:
     '''
-    Get second derivatives of H using cache system. Expects a folder named BEMCache in `path`\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `board` Transducers to use \\
-    `use_cache_H_grad` If true uses the cache system, otherwise computes H and does not save it\\
-    `path` path to folder containing BEMCache/ \\
-    `print_lines` if true prints messages detaling progress\\
-    Returns second derivatives of H
+    Get second derivatives of H using cache system. Expects a folder named BEMCache in `path`\n
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Transducers to use 
+    :param use_cache_H_grad: If true uses the cache system, otherwise computes H and does not save it
+    :param path: path to folder containing `BEMCache/ `
+    :param print_lines: if true prints messages detaling progress
+    :return: second derivatives of H
     '''
     if use_cache_H_grad:
         
@@ -370,14 +375,14 @@ def get_cache_or_compute_H_2_gradients(scatterer,board,use_cache_H_grad=True, pa
     return Haa
 
  
-def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path="Media", print_lines=False):
+def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path="Media", print_lines=False) -> tuple[Tensor, Tensor, Tensor]:
     '''
     Get derivatives of H using cache system. Expects a folder named BEMCache in `path`\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `board` Transducers to use \\
-    `use_cache_H_grad` If true uses the cache system, otherwise computes H and does not save it\\
-    `path` path to folder containing BEMCache/ \\
-    `print_lines` if true prints messages detaling progress\\
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)\\
+    :param board: Transducers to use \\
+    :param use_cache_H_grad: If true uses the cache system, otherwise computes H and does not save it\\
+    :param path: path to folder containing BEMCache/ \\
+    :param print_lines: if true prints messages detaling progress\\
     Returns derivatives of H
     '''
     if use_cache_H_grad:
@@ -405,16 +410,17 @@ def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path
     return Hx, Hy, Hz
 
  
-def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print_lines=False, cache_name=None,use_LU=True):
+def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
+                           print_lines:bool=False, cache_name:str|None=None,use_LU:bool=True) -> Tensor:
     '''
-    Get H using cache system. Expects a folder named BEMCache in `path`\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `board` Transducers to use \\
-    `use_cache_H_grad` If true uses the cache system, otherwise computes H and does not save it\\
-    `path` path to folder containing BEMCache/ \\
-    `print_lines` if true prints messages detaling progress\\
-    `use_LU` If true use LU decomopsition to solve for H\\
-    Returns H
+    Get H using cache system. Expects a folder named BEMCache in `path`\n
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param  board: Transducers to use 
+    :param use_cache_H_grad: If true uses the cache system, otherwise computes H and does not save it
+    :param path: path to folder containing `BEMCache/ `
+    :param print_lines: if true prints messages detaling progress
+    :param use_LU: If true use LU decomopsition to solve for H
+    :return H: H tensor
     '''
 
     if use_cache_H:
@@ -440,20 +446,22 @@ def get_cache_or_compute_H(scatterer,board,use_cache_H=True, path="Media", print
 
     return H
  
-def compute_E(scatterer, points, board=TOP_BOARD, use_cache_H=True, print_lines=False, H=None,path="Media", return_components=False):
+def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
+               H:Tensor|None=None,path:str="Media", return_components:bool=False) -> Tensor:
     '''
-    Computes E in the BEM model\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `board` Transducers to use \\
-    `use_cache_H_grad` If true uses the cache system, otherwise computes H and does not save it\\
-    `print_lines` if true prints messages detaling progress\\
-    `H` Precomputed H - if None H will be computed\\ 
-    `path` path to folder containing BEMCache/ \\
-    `return_components` if true will return the subparts used to compute, F,G,H\\
-    Returns E
+    Computes E in the BEM model\n
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Transducers to use, if `None` then `TOP_BOARD` is used
+    :param use_cache_H_grad: If true uses the cache system, otherwise computes H and does not save it
+    :param print_lines: if true prints messages detaling progress
+    :param H: Precomputed H - if None H will be compute
+    :param path: path to folder containing `BEMCache/`
+    :param return_components: if true will return the subparts used to compute, F,G,H
+    :return E: Propagation matrix for BEM E
+    '''
+    if board is None:
+        board = TOP_BOARD
 
-    Returns second derivatives of H
-    '''
     if print_lines: print("H...")
     
     if H is None:
@@ -474,20 +482,24 @@ def compute_E(scatterer, points, board=TOP_BOARD, use_cache_H=True, print_lines=
     return E.to(DTYPE)
 
  
-def propagate_BEM(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None,path="Media", use_cache_H=True,print_lines=False):
+def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
+                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False) ->Tensor:
     '''
-    Propagates transducer phases to points using BEM\\
-    `activations` Transducer hologram\\
-    `points` Points to propagate to\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `board` Transducers to use \\
-    `H` Precomputed H - if None H will be computed\\ 
-    `E` Precomputed E - if None E will be computed\\ 
-    `path` path to folder containing BEMCache/ \\
-    `use_cache_H` If True uses the cache system to load and save the H matrix. Default `True`\\
-    `print_lines` if true prints messages detaling progress\\
-    Returns complex pressure at points
+    Propagates transducer phases to points using BEM\n
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Transducers to use, if `None` then uses `TOP_BOARD` 
+    :param H: Precomputed H - if None H will be computed
+    :param E: Precomputed E - if None E will be computed
+    :param path: path to folder containing `BEMCache/ `
+    :param use_cache_H: If True uses the cache system to load and save the H matrix. Default `True`
+    :param print_lines: if true prints messages detaling progress
+    :return pressure: complex pressure at points
     '''
+    if board is None:
+        board = TOP_BOARD
+
     if E is None:
         if type(scatterer) == str:
             scatterer = load_scatterer(scatterer)
@@ -497,36 +509,44 @@ def propagate_BEM(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=Non
     return out
 
  
-def propagate_BEM_pressure(activations,points,scatterer=None,board=TOP_BOARD,H=None,E=None, path="Media",use_cache_H=True, print_lines=False):
+def propagate_BEM_pressure(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:
+                           Tensor|None=None,E:Tensor|None=None, path:str="Media",use_cache_H:bool=True, print_lines:bool=False) -> Tensor:
     '''
-    Propagates transducer phases to points using BEM and returns absolute value of complex pressure\\
-    `activations` Transducer hologram\\
-    `points` Points to propagate to\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `board` Transducers to use \\
-    `H` Precomputed H - if None H will be computed\\ 
-    `E` Precomputed E - if None E will be computed\\ 
-    `path` path to folder containing BEMCache/ \\
-    Returns complex pressure at points\\
-    `use_cache_H` If True uses the cache system to load and save the H matrix. Default `True`\\
-    `print_lines` if true prints messages detaling progress\\
-    Equivalent to `torch.abs(propagate_BEM(activations,points,scatterer,board,H,E,path))
+    Propagates transducer phases to points using BEM and returns absolute value of complex pressure\n
+    Equivalent to `torch.abs(propagate_BEM(activations,points,scatterer,board,H,E,path))` \n
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Transducers to use 
+    :param H: Precomputed H - if None H will be computed
+    :param E: Precomputed E - if None E will be computed 
+    :param path: path to folder containing `BEMCache/ `
+    
+    :param use_cache_H: If True uses the cache system to load and save the H matrix. Default `True`
+    :param print_lines: if true prints messages detaling progress
+    
+    :return pressure: real pressure at points
     '''
+    if board is None:
+        board = TOP_BOARD
+
     point_activations = propagate_BEM(activations,points,scatterer,board,H,E,path,use_cache_H=use_cache_H,print_lines=print_lines)
     pressures =  torch.abs(point_activations)
     return pressures
 
  
-def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False):
+def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False) -> tuple[Tensor, Tensor, Tensor]:
     '''
-    Computes gradient of the G matrix in BEM
-    `points` Points to propagate to\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `board` Transducers to use \\
-    `return_components` if true will return the subparts used to compute\\
-    Returns gradient of the G matrix in BEM
+    Computes gradient of the G matrix in BEM \n
+    :param points: Points to propagate to
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Transducers to use, if `None` will use `TRANSDUCERS`
+    :param return_components: if true will return the subparts used to compute
+    :return: Gradient of the G matrix in BEM
     '''
     #Bk1. Page 273
+    if board is None:
+        board = TRANSDUCERS
     areas = get_areas(scatterer)
     centres = get_centres_as_points(scatterer)
 
@@ -552,18 +572,23 @@ def get_G_partial(points, scatterer, board=TRANSDUCERS, return_components=False)
     return grad_G[:,0,:], grad_G[:,1,:], grad_G[:,2,:]
 
  
-def BEM_forward_model_grad(points, scatterer, transducers=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None, return_components=False,path="Media"):
+def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor|Mesh=None, use_cache_H:bool=True, 
+                           print_lines:bool=False, H:Tensor|None=None, return_components:bool=False,
+                           path:str="Media") -> tuple[Tensor, Tensor, Tensor] | tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     '''
-    Computes the gradient of the forward propagation for BEM\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `transducers` Transducers to use \\
-    `use_cache_H_grad` If true uses the cache system, otherwise computes H and does not save it\\
-    `print_lines` if true prints messages detaling progress\\
-    `H` Precomputed H - if None H will be computed\\ 
-    `return_components` if true will return the subparts used to compute\\
-    `path` path to folder containing BEMCache/ \\
-    Returns Ex, Ey, Ez\\
+    Computes the gradient of the forward propagation for BEM\n
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param transducers: Transducers to use, if `None` uses `TRANSDUCERS`
+    :param use_cache_H_grad: If true uses the cache system, otherwise computes `H` and does not save it
+    :param print_lines: if true prints messages detaling progress
+    :param H: Precomputed `H` - if `None` `H` will be computed
+    :param return_components: if true will return the subparts used to compute
+    :param path: path to folder containing `BEMCache/` 
+    :return: Ex, Ey, Ez
     '''
+    if board is None:
+        board = TRANSDUCERS
+
     B = points.shape[0]
     if H is None:
         H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines)
@@ -592,188 +617,23 @@ def BEM_forward_model_grad(points, scatterer, transducers=TRANSDUCERS, use_cache
         return Ex.to(DTYPE), Ey.to(DTYPE), Ez.to(DTYPE), Fx, Fy, Fz, Gx, Gy, Gz, H
     else:
         return Ex.to(DTYPE), Ey.to(DTYPE), Ez.to(DTYPE)
-    
-# def BEM_forward_model_second_derivative_unmixed(points, scatterer, board=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None, return_components=False,path="Media"):
-#     '''
-#     Potentially Not correct 
-#     '''
-#     B = points.shape[0]
-#     N = points.shape[2]
-
-#     if H is None:
-#         H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines)
-    
-#     centres = torch.tensor(scatterer.cell_centers).to(device)
-#     M = centres.shape[0]
-    
-#     p = torch.permute(points,(0,2,1))
-#     p = torch.unsqueeze(p,2).expand((-1,-1,M,-1))
-
-#     vecs = p-centres #Centres -> Points
-#     # norms = torch.tensor(scatterer.cell_normals).to(device)
-#     norms = get_normals_as_points(scatterer,permute_to_points=False)
-#     norms = norms.expand(B,N,-1,-1)
-
-#     norm_norms = torch.norm(norms,2,dim=3)
-#     vec_norms = torch.norm(vecs,2,dim=3)
-#     vec_norms_cube = vec_norms**3
-#     vec_norms_five = vec_norms**5
-
-#     distance = torch.sqrt(torch.sum(vecs**2,dim=3))
-#     vecs_square = vecs **2
-#     distance_exp = torch.unsqueeze(distance,3)
-#     distance_exp = distance_exp.expand(-1,-1,-1,3)
-    
-#     distance_exp_cube = distance_exp**3
-
-#     distaa = torch.zeros_like(distance_exp)
-#     distaa[:,:,:,0] = (vecs_square[:,:,:,1] + vecs_square[:,:,:,2]) 
-#     distaa[:,:,:,1] = (vecs_square[:,:,:,0] + vecs_square[:,:,:,2]) 
-#     distaa[:,:,:,2] = (vecs_square[:,:,:,1] + vecs_square[:,:,:,0])
-#     distaa = distaa / distance_exp_cube
-
-#     dista = vecs / distance_exp
 
 
-#     Aaa = (-1 * torch.exp(1j*Constants.k * distance_exp) * (distance_exp*(1-1j*Constants.k*distance_exp))*distaa + dista*(Constants.k**2 * distance_exp**2 + 2*1j*Constants.k * distance_exp -2)) / (4*torch.pi * distance_exp_cube)
-    
-#     Baa = (distance_exp * distaa - 2*dista**2) / distance_exp_cube
-
-#     Caa = torch.zeros_like(distance_exp).to(device)
-
-#     vec_dot_norm = vecs[:,:,:,0]*norms[:,:,:,0]+vecs[:,:,:,1]*norms[:,:,:,1]+vecs[:,:,:,2]*norms[:,:,:,2]
-
-#     Caa[:,:,:,0] = ((( (3 * vecs[:,:,:,0]**2) / (vec_norms_five) - (1)/(vec_norms_cube))*(vec_dot_norm)) / norm_norms) - ((2*vecs[:,:,:,0]*norms[:,:,:,0]) / (norm_norms*vec_norms_cube**3))
-#     Caa[:,:,:,1] = ((( (3 * vecs[:,:,:,1]**2) / (vec_norms_five) - (1)/(vec_norms_cube))*(vec_dot_norm)) / norm_norms) - ((2*vecs[:,:,:,1]*norms[:,:,:,1]) / (norm_norms*vec_norms_cube**3))
-#     Caa[:,:,:,2] = ((( (3 * vecs[:,:,:,2]**2) / (vec_norms_five) - (1)/(vec_norms_cube))*(vec_dot_norm)) / norm_norms) - ((2*vecs[:,:,:,2]*norms[:,:,:,2]) / (norm_norms*vec_norms_cube**3))
-    
-#     Gx, Gy, Gz, A, B, C, Aa, Ba, Ca = get_G_partial(points, scatterer, board, return_components=True)
-
-#     Gaa = 2*Ca*(B*Aa + A*Ba) + C*(B*Aaa + 2*Aa*Ba + A*Baa)+ A*B*Caa
-#     Gaa = Gaa.to(DTYPE)
-
-#     areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
-#     areas = torch.unsqueeze(areas,0)
-#     areas = torch.unsqueeze(areas,0)
-#     areas = torch.unsqueeze(areas,3)
-
-#     Gaa = Gaa * areas
-
-#     Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points)
-
-#     Exx = Fxx + Gaa[:,:,:,0]@H
-#     Eyy = Fyy + Gaa[:,:,:,1]@H
-#     Ezz = Fzz + Gaa[:,:,:,2]@H
-
-#     if return_components:
-#         return Exx, Eyy, Ezz, Fxx, Fyy, Fzz, Gx, Gy, Gz, A, B, C, Aa, Ba, Ca, H
-#     else:    
-#         return Exx, Eyy, Ezz
-
-# def BEM_forward_model_second_derivative_mixed(points, scatterer, board=TRANSDUCERS, use_cache_H=True, print_lines=False, H=None,path="Media"):
-#     '''
-#     Potentially Not correct 
-#     '''
-#     if H is None:
-#         H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines)
-    
-#     Batch = points.shape[0]
-#     N = points.shape[2]
-#     centres = torch.tensor(scatterer.cell_centers).to(device)
-#     M = centres.shape[0]
-    
-#     p = torch.permute(points,(0,2,1))
-#     p = torch.unsqueeze(p,2).expand((-1,-1,M,-1))
-
-#     vecs = p-centres #Centres -> Points
-#     # norms = torch.tensor(scatterer.cell_normals).to(device)
-#     norms = get_normals_as_points(scatterer,permute_to_points=False)
-#     norms = norms.expand(Batch,N,-1,-1)
-
-#     distance = torch.sqrt(torch.sum(vecs**2,dim=3))
-#     distance_square = distance**2
-#     distance_cube = distance**3
-    
-#     distance_exp = torch.unsqueeze(distance,3)
-#     distance_exp = distance_exp.expand(-1,-1,-1,3)
-#     distance_exp_square = distance_exp**2
-#     distance_exp_cube = distance_exp**3
-
-#     distances_ab = torch.zeros(Batch,N,M,3).to(device) #0 -> xy, 1 -> xz, 2 -> yz
-#     distances_ab[:,:,:,0] = vecs[:,:,:,0]*vecs[:,:,:,1] 
-#     distances_ab[:,:,:,1] = vecs[:,:,:,0]*vecs[:,:,:,2]
-#     distances_ab[:,:,:,2] = vecs[:,:,:,1]*vecs[:,:,:,2]
-#     distances_ab = distances_ab/distance_exp_cube
-
-#     distance_a = torch.zeros(Batch,N,M,3).to(device)
-#     distance_a[:,:,:,0] = vecs[:,:,:,0]
-#     distance_a[:,:,:,1] = vecs[:,:,:,0]
-#     distance_a[:,:,:,2] = vecs[:,:,:,1]
-#     distance_a  = distance_a / distance_exp_cube
-
-#     Aab_term_1 = (1/(4*torch.pi*distance_cube)) * torch.e**(1j *Constants.k*distance)
-#     Aab = torch.zeros(Batch,N,M,3).to(device) +0j #0 -> xy, 1 -> xz, 2 -> yz
-#     Aab[:,:,:,0] = -1 * Aab_term_1 * (distance_a[:,:,:,0] * distance_a[:,:,:,1] * (Constants.k**2 * 2 * distance_square + 1j * Constants.k * distance - 2) + distance * distances_ab[:,:,:,0] * (1-1j*Constants.k*distance))
-#     Aab[:,:,:,1] = -1 * Aab_term_1 * (distance_a[:,:,:,0] * distance_a[:,:,:,2] * (Constants.k**2 * 2 * distance_square + 1j * Constants.k * distance - 2) + distance * distances_ab[:,:,:,1] * (1-1j*Constants.k*distance))
-#     Aab[:,:,:,2] = -1 * Aab_term_1 * (distance_a[:,:,:,1] * distance_a[:,:,:,2] * (Constants.k**2 * 2 * distance_square + 1j * Constants.k * distance - 2) + distance * distances_ab[:,:,:,2] * (1-1j*Constants.k*distance))
-
-#     Bab = torch.zeros(Batch,N,M,3).to(device) +0j #0 -> xy, 1 -> xz, 2 -> yz
-#     Bab[:,:,:,0] = (distance*distances_ab[:,:,:,0] - 2*distance_a[:,:,:,0]*distance_a[:,:,:,1]) / (distance_cube)
-#     Bab[:,:,:,1] = (distance*distances_ab[:,:,:,1] - 2*distance_a[:,:,:,0]*distance_a[:,:,:,2]) / (distance_cube)
-#     Bab[:,:,:,2] = (distance*distances_ab[:,:,:,2] - 2*distance_a[:,:,:,1]*distance_a[:,:,:,2]) / (distance_cube)
-
-#     vec_norm_prod = vecs*norms
-
-#     norm_norms = torch.norm(norms,2,dim=3)
-#     vec_norms = torch.norm(vecs,2,dim=3)
-#     vec_norms_cube = vec_norms**3
-#     vec_norms_five = vec_norms**5
-    
-#     denom_1 = norm_norms*vec_norms_cube
-#     denom_2 = norm_norms*vec_norms_five
-
-#     Cab = torch.zeros(Batch,N,M,3).to(device) +0j #0 -> xy, 1 -> xz, 2 -> yz
-#     Cab[:,:,:,0] = (2*vec_norm_prod[:,:,:,1] - vec_norm_prod[:,:,:,0])/denom_1 - ((3*vecs[:,:,:,1] * (norms[:,:,:,1]*(vecs[:,:,:,2]**2 + vecs[:,:,:,1]**2) - vecs[:,:,:,0]*(vec_norm_prod[:,:,:,2]+vec_norm_prod[:,:,:,1])))) / denom_2
-#     Cab[:,:,:,1] = (2*vec_norm_prod[:,:,:,2] - vec_norm_prod[:,:,:,0])/denom_1 - ((3*vecs[:,:,:,2] * (norms[:,:,:,2]*(vecs[:,:,:,1]**2 + vecs[:,:,:,2]**2) - vecs[:,:,:,0]*(vec_norm_prod[:,:,:,1]+vec_norm_prod[:,:,:,2])))) / denom_2
-#     Cab[:,:,:,2] = (2*vec_norm_prod[:,:,:,2] - vec_norm_prod[:,:,:,1])/denom_1 - ((3*vecs[:,:,:,2] * (norms[:,:,:,1]*(vecs[:,:,:,0]**2 + vecs[:,:,:,2]**2) - vecs[:,:,:,1]*(vec_norm_prod[:,:,:,0]+vec_norm_prod[:,:,:,2])))) / denom_2
-
-
-#     # Exx, Eyy, Ezz, Fxx, Fyy, Fzz, Gx, Gy, Gz, A, B, C, Aa, Ba, Ca, H = BEM_forward_model_second_derivative_unmixed(points, scatterer, board, use_cache_H, print_lines, H, return_components=True)
-#     Gx, Gy, Gz, A, B, C, Aa, Ba, Ca = get_G_partial(points, scatterer,board,True)
-
-#     Gxy = C[:,:,:,0]*(Aa[:,:,:,0]*Ba[:,:,:,1] + Aa[:,:,:,1]*Ba[:,:,:,0] + Aab[:,:,:,0]*B[:,:,:,0] + A[:,:,:,0]*Bab[:,:,:,0]) + B[:,:,:,0] * (Aa[:,:,:,0] * Ca[:,:,:,1] + Aa[:,:,:,1] * Ca[:,:,:,0] + A[:,:,:,0]*Cab[:,:,:,0]) + A[:,:,:,0] * (Ba[:,:,:,0]*Ca[:,:,:,1] + Ba[:,:,:,1]*Ca[:,:,:,0])
-#     Gxz = C[:,:,:,0]*(Aa[:,:,:,0]*Ba[:,:,:,2] + Aa[:,:,:,2]*Ba[:,:,:,0] + Aab[:,:,:,1]*B[:,:,:,0] + A[:,:,:,0]*Bab[:,:,:,1]) + B[:,:,:,0] * (Aa[:,:,:,0] * Ca[:,:,:,2] + Aa[:,:,:,2] * Ca[:,:,:,0] + A[:,:,:,0]*Cab[:,:,:,1]) + A[:,:,:,0] * (Ba[:,:,:,0]*Ca[:,:,:,2] + Ba[:,:,:,2]*Ca[:,:,:,0])
-#     Gyz = C[:,:,:,0]*(Aa[:,:,:,1]*Ba[:,:,:,2] + Aa[:,:,:,2]*Ba[:,:,:,1] + Aab[:,:,:,2]*B[:,:,:,0] + A[:,:,:,0]*Bab[:,:,:,2]) + B[:,:,:,0] * (Aa[:,:,:,1] * Ca[:,:,:,2] + Aa[:,:,:,2] * Ca[:,:,:,1] + A[:,:,:,0]*Cab[:,:,:,2]) + A[:,:,:,0] * (Ba[:,:,:,1]*Ca[:,:,:,2] + Ba[:,:,:,2]*Ca[:,:,:,1])
-
-#     Gxy = Gxy.to(DTYPE)
-#     Gxz = Gxz.to(DTYPE)
-#     Gyz = Gyz.to(DTYPE)
-
-#     areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
-
-#     Gxy = Gxy * areas
-#     Gxz = Gxz * areas
-#     Gyz = Gyz * areas
-
-#     Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points, board)
-
-#     Exy = Fxy + Gxy@H
-#     Exz = Fxz + Gxz@H
-#     Eyz = Fyz + Gyz@H
-
-#     return Exy, Exz, Eyz
-
- 
-def BEM_gorkov_analytical(activations,points,scatterer=None,board=TRANSDUCERS,H=None,E=None,**params):
+def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|str=None,
+                          board:Tensor|None=None,H:Tensor|None=None,E:Tensor|None=None,
+                          **params) -> Tensor:
     '''
-    Returns Gor'kov potential computed analytically from the BEM model\\
-    `activations` Transducer hologram\\
-    `points` Points to propagate to\\
-    `scatterer` The mesh used (as a `vedo` `mesh` object)\\
-    `board` Transducers to use \\
-    `H` Precomputed H - if None H will be computed\\ 
-    `E` Precomputed E - if None H will be computed\\ 
+    Returns Gor'kov potential computed analytically from the BEM model\n
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param scatterer: The mesh used (as a `vedo` `mesh` object) or string of path to mesh
+    :param board: Transducers to use 
+    :param H: Precomputed H - if None H will be computed
+    :param E: Precomputed E - if None E will be computed
+    :return: Gor'kov potential at point U
     '''
+    if board is None:
+        board = TRANSDUCERS
     if type(scatterer) == str:
             scatterer = load_scatterer(scatterer)
     
@@ -796,59 +656,3 @@ def BEM_gorkov_analytical(activations,points,scatterer=None,board=TRANSDUCERS,H=
     U = K1 * torch.abs(p)**2 - K2*(torch.abs(px)**2 + torch.abs(py)**2 + torch.abs(pz)**2)
 
     return U
-
-# def BEM_force_analytical(activations,points,scatterer=None,board=TRANSDUCERS,H=None,E=None,return_components=False, axis=None):
-#     '''
-#     Potentially Not correct 
-#     '''
-#     E = compute_E(scatterer, points, board)
-#     Exx, Eyy, Ezz = BEM_forward_model_second_derivative_unmixed(points,scatterer,board)
-#     Exy, Exz, Eyz = BEM_forward_model_second_derivative_mixed(points,scatterer,board)
-#     Ex, Ey, Ez = BEM_forward_model_grad(points,scatterer,board)
-
-#     p = E@activations
-#     px = Ex@activations
-#     py = Ey@activations
-#     pz = Ez@activations
-#     pxx = Exx@activations
-#     pyy = Eyy@activations
-#     pzz = Ezz@activations
-#     pxy = Exy@activations
-#     pxz = Exz@activations
-#     pyz = Eyz@activations
-
-#     K1 = Constants.V / (4*Constants.p_0*Constants.c_0**2)
-#     K2 = 3*Constants.V / (4*(2*Constants.f**2 * Constants.p_0))
-
-#     P = torch.abs(p) 
-#     Px = torch.abs(px) 
-#     Py = torch.abs(py) 
-#     Pz = torch.abs(pz) 
-    
-#     Pxx = torch.abs(pxx) 
-#     Pyy = torch.abs(pyy) 
-#     Pzz = torch.abs(pzz) 
-#     Pxy = torch.abs(pxy) 
-#     Pxz = torch.abs(pxz) 
-#     Pyz = torch.abs(pyz)
-
-
-#     single_sum = 2*K2*(Pz+Py+Pz)
-#     force_x = -1 * (2*P * (K1 * Px - K2*(Pxz+Pxy+Pxx)) - Px*single_sum)
-#     force_y = -1 * (2*P * (K1 * Py - K2*(Pyz+Pyy+Pxy)) - Py*single_sum)
-#     force_z = -1 * (2*P * (K1 * Pz - K2*(Pzz+Pyz+Pxz)) - Pz*single_sum)
-
-#     force = torch.cat([force_x, force_y, force_z],2)
-
-#     if axis is not None:
-#         return force[:,:,axis]
-
-#     if return_components:
-#         return force_x, force_y, force_z
-#     else:
-#         return force
-
-    
-
-
-
