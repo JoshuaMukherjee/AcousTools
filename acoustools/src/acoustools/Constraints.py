@@ -1,31 +1,32 @@
 import torch
+from torch import Tensor
 
 
-def constrain_amplitude(x):
+def constrain_amplitude(x:Tensor) -> Tensor:
     '''
-    Constrains the amplitude of a hologram to be 1, χ(x) in AcousTools\\
-    `x`: Hologram\\
-    Returns constrained hologram
+    Constrains the amplitude of a hologram to be 1, χ(x) in AcousTools\n
+    :param x: Hologram
+    :return: constrained hologram
     '''
     return x / torch.abs(x)
 
-def constrain_field(field, target):
+def constrain_field(field:Tensor, target:Tensor) -> Tensor:
     '''
-    Constrains the amplitude of points in field to be the same as target\\
-    `field` propagated hologram-> points \\
-    `target` complex number with target amplitude\\
-    Returns constrained field
+    Constrains the amplitude of points in field to be the same as target\n
+    :param field: propagated hologram-> points 
+    :param target: complex number with target amplitude
+    :return: constrained field
     '''
     target_field = torch.multiply(target,torch.divide(field,torch.abs(field)))  
     return target_field
 
-def constrain_field_weighted(field, target, current):
+def constrain_field_weighted(field:Tensor, target:Tensor, current:Tensor) -> tuple[Tensor, Tensor]:
     '''
-    Constrains the amplitude of points in field to be the same as target with weighting\\
-    `field` propagated hologram-> points \\
-    `target` complex number with target amplitude\\
-    `current` current amplitude of field
-    Returns constrained weighted field
+    Constrains the amplitude of points in field to be the same as target with weighting\n
+    :param field: propagated hologram-> points 
+    :param target: complex number with target amplitude
+    :param current: current amplitude of field
+    :return: constrained weighted field
     '''
 
     current = target * current / torch.abs(field)
