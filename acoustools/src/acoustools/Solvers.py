@@ -3,8 +3,12 @@ from acoustools.Optimise.Constraints import constrain_phase_only
 from acoustools.Constraints import constrain_amplitude, constrain_field, constrain_field_weighted
 import torch
 
+from torch import Tensor
+from types import FunctionType
+
 def wgs_solver_unbatched(A, b, K):
     '''
+    @private
     unbatched WGS solver for transducer phases, better to use `wgs_solver_batch` \\
     `A` Forward model matrix to use \\ 
     `b` initial guess - normally use `torch.ones(N,1).to(device)+0j`\\
@@ -28,6 +32,7 @@ def wgs_solver_unbatched(A, b, K):
 
 def wgs_solver_batch(A, b, iterations):
     '''
+    @private
     batched WGS solver for transducer phases\\
     `A` Forward model matrix to use \\ 
     `b` initial guess - normally use `torch.ones(self.N,1).to(device)+0j`\\
@@ -48,18 +53,20 @@ def wgs_solver_batch(A, b, iterations):
     y =  torch.abs(A@x) 
     return y, p, x
 
-def wgs(points,iter = 200, board = TRANSDUCERS, A = None, b=None, return_components=False):
+def wgs(points:Tensor,iter:int = 200, board:Tensor|None = None, A:Tensor|None = None, b:Tensor|None=None, return_components:bool=False) -> Tensor:
     '''
-    Simple WGS interface\\
-    Wrapper for wgs_batch, creates forward model within itself\\
-    `points` Points to use\\
-    `iter` Number of iterations for WGS, default:`200`\\
-    `board` The Transducer array, default two 16x16 arrays\\
-    `A` Forward model matrix to use \\ 
-    `b` initial guess - If none will use `torch.ones(N,1).to(device)+0j`\\
-    `return_components` IF True will return `hologram image, point phases, hologram` else will return `hologram`, default False
-    returns hologram
+    Weighted-GS algorithm\n
+    :param points: Points to use
+    :param iter: Number of iterations for WGS, default:`200`
+    :param board: The Transducer array, If `None` uses default two 16x16 arrays
+    :param A: Forward model matrix to use 
+    :param b: initial guess - If none will use `torch.ones(N,1).to(device)+0j`
+    :param return_components: IF True will return `hologram image, point phases, hologram` else will return `hologram`, default False
+    :return: hologram
     '''
+    if board is None:
+        board = TRANSDUCERS
+
     if len(points.shape) > 2:
         N = points.shape[2]
         batch=True
@@ -83,6 +90,7 @@ def wgs(points,iter = 200, board = TRANSDUCERS, A = None, b=None, return_compone
 
 def gspat_solver(R,forward, backward, target, iterations):
     '''
+    @private
     GS-PAT Solver for transducer phases\\
     `R` R Matrix\\
     `forward` forward propagation matrix\\
@@ -111,18 +119,23 @@ def gspat_solver(R,forward, backward, target, iterations):
 
     return phase_hologram, points
 
-def gspat(points=None, board=TRANSDUCERS,A=None,B=None, R=None ,b = None, iterations=200, return_components=False):
+def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:Tensor|None=None, 
+          R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False) -> Tensor:
     '''
-    Wrapper for GSPAT Solver only needing points as input\\
-    `points` Target point positions\\
-    `board` The Transducer array, default two 16x16 arrays\\
-    `A` The Forward propagation matrix, if `None` will be computed \\
-    `B` The backwards propagation matrix, if `None` will be computed \\
-    `R` The R propagation matrix, if `None` will be computed \\
-    `b` initial guess - If None will use `torch.ones(N,1).to(device)+0j`\\
-    `iterations` Number of iterations to use\\
-    `return_components` IF True will return `hologram, pressure` else will return `hologram`, default True\\
+    GSPAT Solver\n
+    :param points: Target point positions
+    :param board: The Transducer array, if None uses default two 16x16 arrays
+    :param A: The Forward propagation matrix, if `None` will be computed 
+    :param B: The backwards propagation matrix, if `None` will be computed 
+    :param R: The R propagation matrix, if `None` will be computed 
+    :param b: initial guess - If None will use `torch.ones(N,1).to(device)+0j`
+    :param iterations: Number of iterations to use
+    :param return_components: IF True will return `hologram, pressure` else will return `hologram`, default True
+    :return: Hologram
     '''
+
+    if board is None:
+        board = TRANSDUCERS
 
     if A is None:
         A = forward_model(points,board)
@@ -145,6 +158,7 @@ def gspat(points=None, board=TRANSDUCERS,A=None,B=None, R=None ,b = None, iterat
 
 def naive_solver_batched(points,board=TRANSDUCERS, activation=None):
     '''
+    @private
     Batched naive (backpropagation) algorithm for phase retrieval\\
     `points` Target point positions\\
     `board` The Transducer array, default two 16x16 arrays\\
@@ -164,6 +178,7 @@ def naive_solver_batched(points,board=TRANSDUCERS, activation=None):
 
 def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None):
     '''
+    @private
     Unbatched naive (backpropagation) algorithm for phase retrieval\\
     `points` Target point positions\\
     `board` The Transducer array, default two 16x16 arrays\\
@@ -182,15 +197,17 @@ def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None):
 
     return out, trans_phase
 
-def naive(points, board = TRANSDUCERS, return_components=False, activation=None):
+def naive(points:Tensor, board:Tensor|None = None, return_components:bool=False, activation:Tensor|None=None) -> Tensor:
     '''
-    Wrapper for naive solver\\
-    `points` Target point positions\\
-    `board` The Transducer array, default two 16x16 arrays\\
-    `return_components` If True will return `hologram, pressure` else will return `hologram`, default True\\
-    `activation` Initial starting point activation \\
-    returns hologram
+    Naive solver\n
+    :param points: Target point positions
+    :param board: The Transducer array, default two 16x16 arrays
+    :param return_components: If `True` will return `hologram, pressure` else will return `hologram`, default True
+    :param activation: Initial starting point activation 
+    :return: hologram
     '''
+    if board is None:
+        board = TRANSDUCERS
     if is_batched_points(points):
         out,act = naive_solver_batched(points,board=board, activation=activation)
     else:
@@ -201,6 +218,7 @@ def naive(points, board = TRANSDUCERS, return_components=False, activation=None)
 
 def ph_thresh(z_last,z,threshold):
     '''
+    @private
     Phase threshhold between two timesteps point phases, clamps phase changes above `threshold` to be `threshold`\\
     `z_last` point activation at timestep t-1\\
     `z` point activation at timestep t\\
@@ -224,6 +242,7 @@ def ph_thresh(z_last,z,threshold):
 
 def soft(x,threshold):
     '''
+    @private
     Soft threshold for a set of phase changes, will return the change - threshold if change > threshold else 0\\
     `x` phase changes\\
     `threshold` Maximum allowed hologram phase change\\
@@ -235,6 +254,7 @@ def soft(x,threshold):
 
 def ph_soft(x_last,x,threshold):
     '''
+    @private
     Soft thresholding for holograms \\
     `x_last` Hologram from timestep t-1\\
     `x` Hologram from timestep t \\
@@ -254,21 +274,21 @@ def ph_soft(x_last,x,threshold):
     x = abs(x)*torch.exp(1j*ph2)
     return x
 
-def temporal_wgs(A, y, K,ref_in, ref_out,T_in,T_out):
+def temporal_wgs(A:Tensor, y:Tensor, K:int,ref_in:Tensor, ref_out:Tensor,T_in:float,T_out:float) -> Tensor:
     '''
     Based off `
     Giorgos Christopoulos, Lei Gao, Diego Martinez Plasencia, Marta Betcke, 
     Ryuji Hirayama, and Sriram Subramanian. 2023. 
-    Temporal acoustic point holography.(under submission) (2023)` \\
-    WGS solver for hologram where the phase change between frames is constrained\\
-    `A` Forward model  to use\\
-    `y` initial guess to use normally use `torch.ones(self.N,1).to(device)+0j`\\
-    `K` Number of iterations to use\\
-    `ref_in` Previous timesteps hologram\\
-    `ref_out` Previous timesteps point activations\\
-    `T_in` Hologram phase change threshold\\
-    `T_out` Point activations phase change threshold\\
-    returns (hologram image, point phases, hologram)
+    Temporal acoustic point holography. (2024) https://doi.org/10.1145/3641519.3657443 \n
+    WGS solver for hologram where the phase change between frames is constrained \n
+    :param A: Forward model  to use
+    :param y: initial guess to use normally use `torch.ones(self.N,1).to(device)+0j`
+    :param K: Number of iterations to use
+    :param ref_in: Previous timesteps hologram
+    :param ref_out: Previous timesteps point activations
+    :param T_in: Hologram phase change threshold
+    :param T_out: Point activations phase change threshold
+    :return: (hologram image, point phases, hologram)
     '''
     #ref_out -> points
     #ref_in-> transducers
@@ -293,31 +313,34 @@ def temporal_wgs(A, y, K,ref_in, ref_out,T_in,T_out):
 
 
 
-def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torch.optim.Adam, lr=0.01, 
-                            objective_params={}, start=None, iters=200, 
-                            maximise=False, targets=None, constrains=constrain_phase_only, log=False, return_loss=False,
-                            scheduler=None, scheduler_args=None, save_each_n = 0, save_set_n = None):
+def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tensor|None=None, optimiser:torch.optim.Optimizer=torch.optim.Adam, lr: float=0.01, 
+                            objective_params:dict={}, start:Tensor|None=None, iters:int=200, 
+                            maximise:bool=False, targets:Tensor=None, constrains:FunctionType=constrain_phase_only, log:bool=False, return_loss:bool=False,
+                            scheduler:torch.optim.lr_scheduler.LRScheduler=None, scheduler_args:dict=None, save_each_n:int = 0, save_set_n:list[int] = None) -> Tensor:
     '''
-    Solves phases using gradient descent\\
-    `points` Target point positions \\
-    `objective` Objective function - must take have an input of (`transducer_phases, points, board, targets, **objective_params`), `targets` may be `None` for unsupervised\\
-    `board` The Transducer array, default two 16x16 arrays\\
-    `optimiser` Optimiser to use (should be compatable with the interface from from `torch.optim`). Default: `torch.optim.Adam`\\
-    `lr` Learning Rate to use. Default `0.01`\\
-    `objective_params` Any parameters to be passed to `objective` as a dictionary of `{parameter_name:parameter_value}` pairs. Default: `{}`\\
-    `start` Initial guess. If None will default to a random initilsation of phases \\
-    `iters`: Number of optimisation Iterations. Default: 200\\
-    `maximise` Set to `True` to maximise the objective, else minimise. Default: `False`\\
-    `targets` Targets to optimise towards for supervised optimisation, unsupervised if set to `None`. Default `None`\\
-    `constrains` Constraints to apply to result \\
-    `log` If `True` prints the objective values at each step. Default: `False`\\
-    `return_loss`: If `True` save and return objective values for each step as well as the optimised result \\
-    `scheduler` Learning rate scheduler to use, if `None` no scheduler is used. Default: `None` \\
-    `scheduler_args`: Parameters to pass to `scheduler`\\
-    `save_each_n`: For n>0 will save the optimiser results at every n steps. Set either `save_each_n` or `save_set_iters`\\
-    `save_set_iters`: List containing exact iterations to save optimiser results at. Set either `save_each_n` or `save_set_iters`\\
-    Returns optimised result and optionally the objective values and results (see `return_loss`, `save_each_n` and `save_set_iters`). If either are returned both will be returned but maybe empty if not asked for
+    Solves phases using gradient descent\n
+    :param points: Target point positions 
+    :param objective: Objective function - must take have an input of (`transducer_phases, points, board, targets, **objective_params`), `targets` may be `None` for unsupervised
+    :param board: The Transducer array, default two 16x16 arrays
+    :param optimiser: Optimiser to use (should be compatable with the interface from from `torch.optim`). Default `torch.optim.Adam`
+    :param lr: Learning Rate to use. Default `0.01`
+    :param objective_params: Any parameters to be passed to `objective` as a dictionary of `{parameter_name:parameter_value}` pairs. Default `{}`
+    :param start: Initial guess. If None will default to a random initilsation of phases 
+    :param iters: Number of optimisation Iterations. Default 200
+    :param maximise: Set to `True` to maximise the objective, else minimise. Default `False`
+    :param targets: Targets to optimise towards for supervised optimisation, unsupervised if set to `None`. Default `None`
+    :param constrains: Constraints to apply to result 
+    :param log: If `True` prints the objective values at each step. Default `False`
+    :param return_loss: If `True` save and return objective values for each step as well as the optimised result 
+    :param scheduler: Learning rate scheduler to use, if `None` no scheduler is used. Default `None` 
+    :param scheduler_args: Parameters to pass to `scheduler`
+    :param save_each_n: For n>0 will save the optimiser results at every n steps. Set either `save_each_n` or `save_set_iters`
+    :param save_set_iters: List containing exact iterations to save optimiser results at. Set either `save_each_n` or `save_set_iters`
+    :return: optimised result and optionally the objective values and results (see `return_loss`, `save_each_n` and `save_set_iters`). If either are returned both will be returned but maybe empty if not asked for
     ''' 
+
+    if board is None:
+        board = TRANSDUCERS
 
     losses = []
     results = {}
@@ -373,17 +396,20 @@ def gradient_descent_solver(points, objective, board=TRANSDUCERS, optimiser=torc
     return param
     
 
-def iterative_backpropagation(points,iterations = 200, board = TRANSDUCERS, A = None, b=None, return_components=False):
+def iterative_backpropagation(points:Tensor,iterations:int = 200, board:Tensor|None = None, A:Tensor|None = None, b:Tensor|None=None, return_components: bool=False) -> list[Tensor]:
     '''
-    batched IB solver for transducer phases\\
-    `points` Points to use\\
-    `iterations` Number of iterations for WGS, default:`200`\\
-    `board` The Transducer array, default two 16x16 arrays\\
-    `A` Forward model matrix to use \\ 
-    `b` initial guess - If none will use `torch.ones(N,1).to(device)+0j`\\
-    `return_components` IF True will return `hologram image, point phases, hologram` else will return `hologram`, default False
-    returns (point pressure ,point phases, hologram)
+    IB solver for transducer phases\n
+    :param points: Points to use
+    :param iterations: Number of iterations for WGS, default`200`
+    :param board: The Transducer array, default two 16x16 arrays
+    :param A: Forward model matrix to use 
+    :param b: initial guess - If none will use `torch.ones(N,1).to(device)+0j`
+    :param return_components: IF True will return `hologram image, point phases, hologram` else will return `hologram`, default False
+    :return: (point pressure ,point phases, hologram)
     '''
+
+    if board is None:
+        board  = TRANSDUCERS
     
     if len(points.shape) > 2:
         N = points.shape[2]
