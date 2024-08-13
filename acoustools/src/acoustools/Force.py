@@ -7,6 +7,7 @@ from acoustools.Mesh import translate, merge_scatterers, get_centres_as_points, 
 import torch
 from torch import Tensor
 from types import FunctionType
+from vedo import Mesh
 
 def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:float= 0.000135156253,K1:float|None=None, 
                    K2:float|None=None,U_function:FunctionType=gorkov_fin_diff,U_fun_args:dict={}) -> Tensor:
@@ -112,10 +113,10 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     :param board: Transducers to use 
     :param grad_function: The function to use to compute the gradient of pressure
     :param grad_function_args: The argument to pass to `grad_function`
-    :param F: A precomputed forward propagation matrix, if None will be computed
-    :param Ax: The gradient of `F` wrt x, if None will be computed
-    :param Ay: The gradient of `F` wrt y, if None will be computed
-    :param Az: The gradient of `F` wrt z, if None will be computed
+    :param F: A precomputed forward propagation matrix, if `None` will be computed
+    :param Ax: The gradient of `F` wrt x, if `None` will be computed
+    :param Ay: The gradient of `F` wrt y, if `None` will be computed
+    :param Az: The gradient of `F` wrt z, if `None` will be computed
     :return: the force on each mesh element
     '''
     activations= activations
@@ -159,23 +160,25 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
 
     return force
 
-def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=None, grad_function=forward_model_grad,grad_function_args={},F=None, Ax=None, Ay=None,Az=None):
+def torque_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, centre_of_mass:Tensor, board:Tensor,force:Tensor|None=None, 
+                grad_function:FunctionType=forward_model_grad,grad_function_args:dict={},F:Tensor|None=None, 
+                Ax:Tensor|None=None, Ay:Tensor|None=None,Az:Tensor|None=None) -> Tensor:
     '''
-    Returns the torque on a mesh using a discritised version of Eq. 1 in `Acoustical boundary hologram for macroscopic rigid-body levitation`\\
-    `activations` Transducer hologram\\
-    `points` Points to propagate to\\
-    `norms` The normals to the mesh faces\\
-    `areas` The areas of the mesh points\\
-    `centre_of_mass` The position of the centre of mass of the mesh\\
-    `board` Transducers to use \\
-    `force` Precomputed force on the mesh faces, if None will be computed\\
-    `grad_function` The function to use to compute the gradient of pressure\\
-    `grad_function_args` The argument to pass to `grad_function`\\
-    `F` A precomputed forward propagation matrix, if None will be computed\\
-    `Ax` The gradient of F wrt x, if None will be computed\\
-    `Ay` The gradient of F wrt y, if None will be computed\\
-    `Az` The gradient of F wrt z, if None will be computed\\
-    Returns the force on each mesh element\\        
+    Returns the torque on a mesh using a discritised version of Eq. 1 in `Acoustical boundary hologram for macroscopic rigid-body levitation`\n
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param norms: The normals to the mesh faces
+    :param areas: The areas of the mesh points
+    :param centre_of_mass: The position of the centre of mass of the mesh
+    :param board: Transducers to use 
+    :param force: Precomputed force on the mesh faces, if `None` will be computed
+    :param grad_function: The function to use to compute the gradient of pressure
+    :param grad_function_args: The argument to pass to `grad_function`
+    :param F: A precomputed forward propagation matrix, if `None` will be computed
+    :param Ax: The gradient of F wrt x, if `None` will be computed
+    :param Ay: The gradient of F wrt y, if `None` will be computed
+    :param Az: The gradient of F wrt z, if `None` will be computed
+    :return: the force on each mesh element
     '''
 
     if force is None:
@@ -190,6 +193,9 @@ def torque_mesh(activations, points, norms, areas, centre_of_mass, board,force=N
 
 
 def force_mesh_derivative(activations, points, norms, areas, board, scatterer,Hx = None, Hy=None, Hz=None, Haa=None):
+    '''
+    @private
+    '''
     print("Warning probably not correct...")
     if Hx is None or Hy is None or Hz is None:
         Hx, Hy, Hz, A, A_inv, Ax, Ay, Az = grad_H(points, scatterer, board, True)
@@ -213,25 +219,28 @@ def force_mesh_derivative(activations, points, norms, areas, board, scatterer,Hx
 
     Faa =areas * k1 * (Pa * norms - 2*k2*norms*Pa*Paa)
 
-    return Faa
+    return Faa#
 
-def get_force_mesh_along_axis(start,end, activations, scatterers, board, mask=None, steps=200, path="Media",print_lines=False, use_cache=True, Hs = None, Hxs=None, Hys=None, Hzs=None):
+def get_force_mesh_along_axis(start:Tensor,end:Tensor, activations:Tensor, scatterers:list[Mesh], board:Tensor, mask:Tensor|None=None, steps:int=200, 
+                              path:str="Media",print_lines:bool=False, use_cache:bool=True, 
+                              Hs:Tensor|None = None, Hxs:Tensor|None=None, Hys:Tensor|None=None, Hzs:Tensor|None=None) -> tuple[list[Tensor],list[Tensor],list[Tensor]]:
     '''
-    Computes the force on a mesh at each point from `start` to `end` with number of samples = `steps`  \\
-    `start` The starting position\\
-    `end` The ending position\\
-    `activations` Transducer hologram\\
-    `scatterers` First element is the mesh to move, rest is considered static reflectors \\
-    `board` Transducers to use \\
-    `mask` The mask to apply to filter force for only the mesh to move\\
-    `steps` Number of steps to take from start to end\\
-    `path` path to folder containing BEMCache/ \\
-    `print_lines` if true prints messages detaling progress\\
-    `use_cache` If true uses the cache system, otherwise computes H and does not save it\\
-    `Hs` List of precomputed forward propagation matricies\\
-    `Hxs` List of precomputed derivative of forward propagation matricies wrt x\\
-    `Hys` List of precomputed derivative of forward propagation matricies wrt y\\
-    `Hzs` List of precomputed derivative of forward propagation matricies wrt z\\
+    Computes the force on a mesh at each point from `start` to `end` with number of samples = `steps`  \n
+    :param start: The starting position
+    :param end: The ending position
+    :param activations: Transducer hologram
+    :param scatterers: First element is the mesh to move, rest is considered static reflectors 
+    :param board: Transducers to use 
+    :param mask: The mask to apply to filter force for only the mesh to move
+    :param steps: Number of steps to take from start to end
+    :param path: path to folder containing BEMCache/ 
+    :param print_lines: if true prints messages detaling progress
+    :param use_cache: If true uses the cache system, otherwise computes H and does not save it
+    :param Hs: List of precomputed forward propagation matricies
+    :param Hxs: List of precomputed derivative of forward propagation matricies wrt x
+    :param Hys: List of precomputed derivative of forward propagation matricies wrt y
+    :param Hzs: List of precomputed derivative of forward propagation matricies wrt z
+    :return: list for each axis of the force at each position
     '''
     # if Ax is None or Ay is None or Az is None:
     #     Ax, Ay, Az = grad_function(points=points, transducers=board, **grad_function_args)
