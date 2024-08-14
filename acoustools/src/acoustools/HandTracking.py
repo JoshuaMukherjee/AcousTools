@@ -8,7 +8,6 @@ class HandTracker():
     ```python
     from acoustools.HandTracking import HandTracker
 
-
     tracker = HandTracker()
 
     with tracker.connection.open():
@@ -28,18 +27,20 @@ class HandTracker():
                     print()
             else:
                 print('no hand')
-
-        input()
         ```
-
-
     '''
 
     def __init__(self):
         self.listener:HandListener = HandListener()
+        '''
+        @private
+        '''
 
 
         self.connection:leap.Connection = leap.Connection()
+        '''
+        @private
+        '''
         self.connection.add_listener(self.listener)
 
     
