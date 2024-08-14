@@ -11,93 +11,6 @@ from typing import Literal
 from vedo import Mesh
 
 
-def get_point_pos(A:Tensor,B:Tensor,C:Tensor, points:Tensor, res:tuple[int]=(200,200),flip:bool=True) -> list[int]:
-    '''
-    converts point positions in 3D to pixel locations in the plane defined by ABC\n
-    :param A: Position of the top left corner of the image
-    :param B: Position of the top right corner of the image
-    :param C: Position of the bottom left corner of the image
-    :param res: Number of pixels as a tuple (X,Y). Default (200,200)
-    :param flip: Reverses X and Y directions. Default True
-    :return: List of point positions
-    '''
-    AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]])
-    AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]])
-
-    ab_dir = AB!=0
-    ac_dir = AC!=0
-
-    step_x = AB / res[0]
-    step_y = AC / res[1]
-
-    if points.shape[2] > 1:
-        points = torch.split(points.squeeze().T,1)
-        points = [pt.squeeze() for pt in points]
-    # print(points)
-
-    pts_norm = []
-
-    for pt in points:
-        Apt =  torch.tensor([pt[0] - A[0], pt[1] - A[1], pt[2] - A[2]])
-        px = Apt / step_x
-        py = Apt / step_y
-        pt_pos = torch.zeros((2))
-        if not flip:
-            pt_pos[0]= torch.round(px[ab_dir])
-            pt_pos[1]=torch.round(py[ac_dir])
-        else:
-            pt_pos[1]= torch.round(px[ab_dir])
-            pt_pos[0]=torch.round(py[ac_dir])
-        
-        pts_norm.append(pt_pos)
-
-   
-
-    return pts_norm
-
-def Visualise_single(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
-                     colour_function:FunctionType=propagate_abs, colour_function_args:dict={}, 
-                     res:tuple[int]=(200,200), flip:bool=True) -> Tensor:
-    '''
-    Visalises field generated from activation to the plane ABC
-    :param A: Position of the top left corner of the image
-    :param B: Position of the top right corner of the image
-    :param C: Position of the bottom left corner of the image
-    :param activation: The transducer activation to use
-    :param colour_function: Function to call at each position. Should return a value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`
-    :param colour_function_args: The arguments to pass to `colour_function`
-    :param res: Number of pixels as a tuple (X,Y). Default (200,200)
-    :param flip: Reverses X and Y directions. Default True
-    :return: Tensor of values of propagated field
-    '''
-    if len(activation.shape) < 3:
-        activation = activation.unsqueeze(0)
-    
-
-    AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]]).to(device)
-    AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]]).to(device)
-
-    step_x = AB / res[0]
-    step_y = AC / res[1]
-
-    positions = torch.zeros((1,3,res[0]*res[1])).to(device)
-
-    for i in range(0,res[0]):
-        for j in range(res[1]):
-            positions[:,:,i*res[0]+j] = A + step_x * i + step_y * j
-    
-    # print(positions.shape)
-    # print(colour_function_args)
-    field_val = colour_function(activation,positions,**colour_function_args)
-    # print(field_val.shape)
-    result = torch.reshape(field_val, res)
-
-    if flip:
-        result = torch.rot90(torch.fliplr(result))
-    
-    
-    return result
-
 def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|Tensor=[],
               colour_functions:list[FunctionType]|None=[propagate_abs], colour_function_args:list[dict]|None=None, 
               res:tuple[int]=(200,200), cmaps:list[str]=[], add_lines_functions:list[FunctionType]|None=None, 
@@ -122,6 +35,26 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     :param show: If True will call `plt.show(block=block)` else does not. Default True
     :param block: Will be passed to `plot.show(block=block)`. Default True
     :param clr_label: Label for colourbar
+
+    ```Python
+    from acoustools.Utilities import create_points, add_lev_sig
+    from acoustools.Solvers import wgs
+    from acoustools.Visualiser import Visualise
+
+    import torch
+
+    p = create_points(1,1,x=0,y=0,z=0)
+    x = wgs(p)
+    x = add_lev_sig(x)
+
+    A = torch.tensor((-0.09,0, 0.09))
+    B = torch.tensor((0.09,0, 0.09))
+    C = torch.tensor((-0.09,0, -0.09))
+    normal = (0,1,0)
+    origin = (0,0,0)
+
+    Visualise(A,B,C, x, points=p)
+    ```
     '''
 
 
@@ -219,6 +152,94 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
         plt.show(block=block)
     else:
         return plt
+    
+
+def get_point_pos(A:Tensor,B:Tensor,C:Tensor, points:Tensor, res:tuple[int]=(200,200),flip:bool=True) -> list[int]:
+    '''
+    converts point positions in 3D to pixel locations in the plane defined by ABC\n
+    :param A: Position of the top left corner of the image
+    :param B: Position of the top right corner of the image
+    :param C: Position of the bottom left corner of the image
+    :param res: Number of pixels as a tuple (X,Y). Default (200,200)
+    :param flip: Reverses X and Y directions. Default True
+    :return: List of point positions
+    '''
+    AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]])
+    AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]])
+
+    ab_dir = AB!=0
+    ac_dir = AC!=0
+
+    step_x = AB / res[0]
+    step_y = AC / res[1]
+
+    if points.shape[2] > 1:
+        points = torch.split(points.squeeze().T,1)
+        points = [pt.squeeze() for pt in points]
+    # print(points)
+
+    pts_norm = []
+
+    for pt in points:
+        Apt =  torch.tensor([pt[0] - A[0], pt[1] - A[1], pt[2] - A[2]])
+        px = Apt / step_x
+        py = Apt / step_y
+        pt_pos = torch.zeros((2))
+        if not flip:
+            pt_pos[0]= torch.round(px[ab_dir])
+            pt_pos[1]=torch.round(py[ac_dir])
+        else:
+            pt_pos[1]= torch.round(px[ab_dir])
+            pt_pos[0]=torch.round(py[ac_dir])
+        
+        pts_norm.append(pt_pos)
+
+   
+
+    return pts_norm
+
+def Visualise_single(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
+                     colour_function:FunctionType=propagate_abs, colour_function_args:dict={}, 
+                     res:tuple[int]=(200,200), flip:bool=True) -> Tensor:
+    '''
+    Visalises field generated from activation to the plane ABC
+    :param A: Position of the top left corner of the image
+    :param B: Position of the top right corner of the image
+    :param C: Position of the bottom left corner of the image
+    :param activation: The transducer activation to use
+    :param colour_function: Function to call at each position. Should return a value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`
+    :param colour_function_args: The arguments to pass to `colour_function`
+    :param res: Number of pixels as a tuple (X,Y). Default (200,200)
+    :param flip: Reverses X and Y directions. Default True
+    :return: Tensor of values of propagated field
+    '''
+    if len(activation.shape) < 3:
+        activation = activation.unsqueeze(0)
+    
+
+    AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]]).to(device)
+    AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]]).to(device)
+
+    step_x = AB / res[0]
+    step_y = AC / res[1]
+
+    positions = torch.zeros((1,3,res[0]*res[1])).to(device)
+
+    for i in range(0,res[0]):
+        for j in range(res[1]):
+            positions[:,:,i*res[0]+j] = A + step_x * i + step_y * j
+    
+    # print(positions.shape)
+    # print(colour_function_args)
+    field_val = colour_function(activation,positions,**colour_function_args)
+    # print(field_val.shape)
+    result = torch.reshape(field_val, res)
+
+    if flip:
+        result = torch.rot90(torch.fliplr(result))
+    
+    
+    return result
 
 def force_quiver(points: Tensor, U:Tensor,V:Tensor,norm:Tensor, ylims:int|None=None, xlims:int|None=None,
                  log:bool=False,show:bool=True,colour:str|None=None, reciprocal:bool = False, block:bool=True) -> None:

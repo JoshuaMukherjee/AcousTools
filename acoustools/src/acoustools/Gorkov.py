@@ -12,12 +12,28 @@ def gorkov_autograd(activation:Tensor, points:Tensor, K1:float|None=None, K2:flo
     '''
     Computes the Gorkov potential using pytorch's autograd system\n
     :param activation: The transducer activations to use 
-    :param points: The points to compute the potential at. if `None` will use `TRANSDUCERS`
+    :param points: The points to compute the potential at. if `None` will use `acoustools.Utilities.TRANSDUCERS`
     :param K1: The value for K1 in the Gorkov equation, if `None` will use `c.V / (4*c.p_0*c.c_0**2)`
     :param K2: The value for K2 in the Gorkov equation, if `None` will use `3*c.V / (4*(2*c.f**2 * c.p_0))`
     :param board: The transducer boards to use
     :param retain_graph: Value will be passed to autograd
     :return: gorkov potential at each point
+
+    ```Python
+    from acoustools.Utilities import create_points, add_lev_sig
+    from acoustools.Solvers import wgs
+    from acoustools.Gorkov import gorkov_autograd
+
+    N=1
+    B=1
+    points = create_points(N,B)
+    x = wgs(points)
+    x = add_lev_sig(x)
+    
+    U_ag = gorkov_autograd(x,points)
+
+    print("Autograd", U_ag.data.squeeze())
+    ```
     '''
 
     if board is None:
@@ -46,58 +62,6 @@ def gorkov_autograd(activation:Tensor, points:Tensor, K1:float|None=None, K2:flo
     gorkov = K1 * torch.abs(pressure) **2 - K2 * torch.sum((torch.abs(grad_pos)**2),1)
     return gorkov
 
-def get_finite_diff_points(points:Tensor , axis:Tensor, stepsize:float = 0.000135156253) -> Tensor:
-    '''
-    Gets points for finite difference calculations in one axis\n
-    :param points: Points around which to find surrounding points
-    :param axis: The axis to add points in
-    :param stepsize: The distance aroud points to add, default 0.000135156253
-    :return: points 
-    '''
-    #points = Bx3x4
-    points_h = points.clone()
-    points_neg_h = points.clone()
-    points_h[:,axis,:] = points_h[:,axis,:] + stepsize
-    points_neg_h[:,axis,:] = points_neg_h[:,axis,:] - stepsize
-
-    return points_h, points_neg_h
-
-def get_finite_diff_points_all_axis(points: Tensor,axis: str="XYZ", stepsize:float = 0.000135156253) -> Tensor:
-    '''
-    Gets points for finite difference calculations\\
-    :param points: Points around which to find surrounding points\\
-    :param axis: The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis\\
-    :param stepsize: The distance aroud points to add, default 0.000135156253\\
-    :return: Points
-    '''
-    B = points.shape[0]
-    D = len(axis)
-    N = points.shape[2]
-    fin_diff_points=  torch.zeros((B,3,((2*D)+1)*N)).to(device).to(DTYPE)
-    fin_diff_points[:,:,:N] = points.clone()
-
-    i = 2
-    if "X" in axis:
-        points_h, points_neg_h = get_finite_diff_points(points, 0, stepsize)
-        fin_diff_points[:,:,N:i*N] = points_h
-        fin_diff_points[:,:,D*N+(i-1)*N:D*N+i*N] = points_neg_h
-
-        i += 1
-
-    
-    if "Y" in axis:
-        points_h, points_neg_h = get_finite_diff_points(points, 1, stepsize)
-        fin_diff_points[:,:,(i-1)*N:i*N] = points_h
-        fin_diff_points[:,:,D*N+(i-1)*N:D*N+i*N] = points_neg_h
-        i += 1
-    
-    if "Z" in axis:
-        points_h, points_neg_h = get_finite_diff_points(points, 2, stepsize)
-        fin_diff_points[:,:,(i-1)*N:i*N] = points_h
-        fin_diff_points[:,:,D*N+(i-1)*N:D*N+i*N] = points_neg_h
-        i += 1
-    
-    return fin_diff_points
 
 def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize:float = 0.000135156253,K1:float|None=None, K2:float|None=None,
                     prop_function:FunctionType=propagate,prop_fun_args:dict={}, board:Tensor|None=None) -> Tensor:
@@ -111,8 +75,24 @@ def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize
     :param K2: The value for K2 in the Gorkov equation, if `None` will use `3*c.V / (4*(2*c.f**2 * c.p_0))`
     :param prop_function: Function to use to compute pressure
     :param prop_fun_args: Arguments to pass to `prop_function`
-    :param board: The transducer boards to use if `None` use `TRANSDUCERS`
+    :param board: The transducer boards to use if `None` use `acoustools.Utilities.TRANSDUCERS`
     :return: gorkov potential at each point
+
+    ```Python
+    from acoustools.Utilities import create_points, add_lev_sig
+    from acoustools.Solvers import wgs
+    from acoustools.Gorkov import gorkov_fin_diff
+
+    N=1
+    B=1
+    points = create_points(N,B)
+    x = wgs(points)
+    x = add_lev_sig(x)
+    
+    U_fd = gorkov_fin_diff(x,points)
+
+    print("Finite Differences",U_fd.data.squeeze())
+    ```
     '''
     # torch.autograd.set_detect_anomaly(True)
     if board is None:
@@ -167,6 +147,21 @@ def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None
     :param board: The transducer boards to use
     :param axis: The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis
     :return: gorkov potential at each point
+    ```Python
+    from acoustools.Utilities import create_points, add_lev_sig
+    from acoustools.Solvers import wgs
+    from acoustools.Gorkov import gorkov_analytical
+
+    N=1
+    B=1
+    points = create_points(N,B)
+    x = wgs(points)
+    x = add_lev_sig(x)
+    
+    U_a = gorkov_analytical(x,points)
+
+    print("Analytical",U_a.data.squeeze())
+    ```
     '''
 
     if board is None:
@@ -198,3 +193,56 @@ def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None
     U = K1*p - K2*(grad_x+grad_y+grad_z)
 
     return U
+
+def get_finite_diff_points(points:Tensor , axis:Tensor, stepsize:float = 0.000135156253) -> Tensor:
+    '''
+    Gets points for finite difference calculations in one axis\n
+    :param points: Points around which to find surrounding points
+    :param axis: The axis to add points in
+    :param stepsize: The distance aroud points to add, default 0.000135156253
+    :return: points 
+    '''
+    #points = Bx3x4
+    points_h = points.clone()
+    points_neg_h = points.clone()
+    points_h[:,axis,:] = points_h[:,axis,:] + stepsize
+    points_neg_h[:,axis,:] = points_neg_h[:,axis,:] - stepsize
+
+    return points_h, points_neg_h
+
+def get_finite_diff_points_all_axis(points: Tensor,axis: str="XYZ", stepsize:float = 0.000135156253) -> Tensor:
+    '''
+    Gets points for finite difference calculations\\
+    :param points: Points around which to find surrounding points\\
+    :param axis: The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis\\
+    :param stepsize: The distance aroud points to add, default 0.000135156253\\
+    :return: Points
+    '''
+    B = points.shape[0]
+    D = len(axis)
+    N = points.shape[2]
+    fin_diff_points=  torch.zeros((B,3,((2*D)+1)*N)).to(device).to(DTYPE)
+    fin_diff_points[:,:,:N] = points.clone()
+
+    i = 2
+    if "X" in axis:
+        points_h, points_neg_h = get_finite_diff_points(points, 0, stepsize)
+        fin_diff_points[:,:,N:i*N] = points_h
+        fin_diff_points[:,:,D*N+(i-1)*N:D*N+i*N] = points_neg_h
+
+        i += 1
+
+    
+    if "Y" in axis:
+        points_h, points_neg_h = get_finite_diff_points(points, 1, stepsize)
+        fin_diff_points[:,:,(i-1)*N:i*N] = points_h
+        fin_diff_points[:,:,D*N+(i-1)*N:D*N+i*N] = points_neg_h
+        i += 1
+    
+    if "Z" in axis:
+        points_h, points_neg_h = get_finite_diff_points(points, 2, stepsize)
+        fin_diff_points[:,:,(i-1)*N:i*N] = points_h
+        fin_diff_points[:,:,D*N+(i-1)*N:D*N+i*N] = points_neg_h
+        i += 1
+    
+    return fin_diff_points

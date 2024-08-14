@@ -1,20 +1,14 @@
 
 
 if __name__ == "__main__":
-    from acoustools.Utilities import create_points, forward_model, add_lev_sig
-    from acoustools.Solvers import wgs_wrapper, wgs
-    import matplotlib.pyplot as plt
+    from acoustools.Utilities import create_points, add_lev_sig
+    from acoustools.Solvers import wgs
     from acoustools.Gorkov import gorkov_analytical, gorkov_autograd, gorkov_fin_diff
 
     N=1
     B=1
-    F_As = []
-    F_FDs = []
-    F_aFDs = []
-    axis=0
-
     points = create_points(N,B)
-    x = wgs_wrapper(points)
+    x = wgs(points)
     x = add_lev_sig(x)
     
     U_ag = gorkov_autograd(x,points)

@@ -517,6 +517,10 @@ def create_points(N:int,B:int=1,x:float|None=None,y:float|None=None,z:float|None
     :param z: if not None all points will have this as their z position. Default: `None`
     :param min_pos: Minimum position
     :param max_pos: Maximum position
+    ```
+    from acoustools.Utilities import create_points
+    p = create_points(N=3,B=1)
+    ```
     '''
     points = torch.FloatTensor(B, 3, N).uniform_(min_pos,max_pos).to(device)
     if x is not None:
@@ -543,6 +547,16 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
     * Twin: Add $\\pi$ to half of the board laterally to create a twin trap
     :param sig: signature to add to top board. If `None` then value is determined by value of `mode`
     :return: hologram with signature added
+
+    ```Python
+    from acoustools.Utilities import create_points, add_lev_sig
+    from acoustools.Solvers import wgs
+    
+    p = create_points(1,x=0,y=0,z=0)
+    x = wgs(p, board=board)
+    x_sig, sig = add_lev_sig(x.clone(), mode=mode, return_sig=True, board=board)
+
+    ```
     '''
     if board is None:
         board = TRANSDUCERS

@@ -63,6 +63,21 @@ def wgs(points:Tensor,iter:int = 200, board:Tensor|None = None, A:Tensor|None = 
     :param b: initial guess - If none will use `torch.ones(N,1).to(device)+0j`
     :param return_components: IF True will return `hologram image, point phases, hologram` else will return `hologram`, default False
     :return: hologram
+
+    ```Python
+    from acoustools.Solvers import wgs
+    from acoustools.Utilities import create_points, propagate_abs
+
+    p = create_points(2,4)
+    print(p)
+    x = wgs(p)
+    print(propagate_abs(x,p))
+    
+    p = p.squeeze(0)
+    print(p)
+    x = wgs(p)
+    print(propagate_abs(x,p))
+    ```
     '''
     if board is None:
         board = TRANSDUCERS
@@ -132,6 +147,21 @@ def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:T
     :param iterations: Number of iterations to use
     :param return_components: IF True will return `hologram, pressure` else will return `hologram`, default True
     :return: Hologram
+    
+    ```Python
+    from acoustools.Solvers import wgs
+    from acoustools.Utilities import create_points, propagate_abs
+
+    p = create_points(1,1)
+    print(p)
+    x = wgs(p)
+    print(propagate_abs(x,p))
+    
+    p = p.squeeze(0)
+    print(p)
+    x = wgs(p)
+    print(propagate_abs(x,p))
+    ```
     '''
 
     if board is None:
@@ -289,6 +319,8 @@ def temporal_wgs(A:Tensor, y:Tensor, K:int,ref_in:Tensor, ref_out:Tensor,T_in:fl
     :param T_in: Hologram phase change threshold
     :param T_out: Point activations phase change threshold
     :return: (hologram image, point phases, hologram)
+    
+
     '''
     #ref_out -> points
     #ref_in-> transducers
@@ -337,6 +369,20 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
     :param save_each_n: For n>0 will save the optimiser results at every n steps. Set either `save_each_n` or `save_set_iters`
     :param save_set_iters: List containing exact iterations to save optimiser results at. Set either `save_each_n` or `save_set_iters`
     :return: optimised result and optionally the objective values and results (see `return_loss`, `save_each_n` and `save_set_iters`). If either are returned both will be returned but maybe empty if not asked for
+    
+    ```Python
+    from acoustools.Optimise.Objectives import propagate_abs_sum_objective
+    from acoustools.Solvers import gradient_descent_solver
+    from acoustools.Optimise.Constraints import constrain_phase_only
+
+    p = create_points(4,2)
+    x = gradient_descent_solver(p,propagate_abs_sum_objective, 
+                                maximise=True, constrains=constrain_phase_only, 
+                                log=False, lr=1e-1)
+
+    print(propagate_abs(x,p))
+
+    ```
     ''' 
 
     if board is None:
@@ -406,6 +452,22 @@ def iterative_backpropagation(points:Tensor,iterations:int = 200, board:Tensor|N
     :param b: initial guess - If none will use `torch.ones(N,1).to(device)+0j`
     :param return_components: IF True will return `hologram image, point phases, hologram` else will return `hologram`, default False
     :return: (point pressure ,point phases, hologram)
+
+    ```Python
+    from acoustools.Solvers import iterative_backpropagation
+    from acoustools.Utilities import create_points, propagate_abs
+
+    p = create_points(2,1)
+    print(p)
+    x = iterative_backpropagation(p)
+    print(propagate_abs(x,p))
+    
+    p = p.squeeze(0)
+    print(p)
+    x = iterative_backpropagation(p)
+    print(propagate_abs(x,p))
+
+    ```
     '''
 
     if board is None:

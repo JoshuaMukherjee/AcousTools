@@ -451,13 +451,45 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     '''
     Computes E in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
-    :param board: Transducers to use, if `None` then `TOP_BOARD` is used
+    :param board: Transducers to use, if `None` then `acoustools.Utilities.TOP_BOARD` is used
     :param use_cache_H_grad: If true uses the cache system, otherwise computes H and does not save it
     :param print_lines: if true prints messages detaling progress
     :param H: Precomputed H - if None H will be compute
     :param path: path to folder containing `BEMCache/`
     :param return_components: if true will return the subparts used to compute, F,G,H
     :return E: Propagation matrix for BEM E
+
+    ```Python
+            from acoustools.Mesh import load_scatterer
+            from acoustools.BEM import compute_E, propagate_BEM_pressure, compute_H
+            from acoustools.Utilities import create_points, TOP_BOARD
+            from acoustools.Solvers import wgs
+            from acoustools.Visualiser import Visualise
+
+            import torch, vedo
+
+            path = "../../BEMMedia"
+            scatterer = load_scatterer(path+"/Sphere-lam2.stl",dy=-0.06,dz=-0.08)
+            
+            N=1
+            B=1
+            p = create_points(N,B,y=0,x=0,z=0)
+            
+            H = compute_H(scatterer, TOP_BOARD)
+            E, F, G, H = compute_E(scatterer, p, TOP_BOARD,path=path,use_cache_H=False,return_components=True,H=H)
+            x = wgs(p,board=TOP_BOARD,A=E)
+            
+            A = torch.tensor((-0.12,0, 0.12))
+            B = torch.tensor((0.12,0, 0.12))
+            C = torch.tensor((-0.12,0, -0.12))
+            normal = (0,1,0)
+            origin = (0,0,0)
+
+            line_params = {"scatterer":scatterer,"origin":origin,"normal":normal}
+
+            Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],colour_function_args=[{"scatterer":scatterer,"board":TOP_BOARD,"path":path,'H':H}],vmax=8621, show=True,res=[256,256])
+    ```
+    
     '''
     if board is None:
         board = TOP_BOARD
@@ -489,7 +521,7 @@ def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,boar
     :param activations: Transducer hologram
     :param points: Points to propagate to
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
-    :param board: Transducers to use, if `None` then uses `TOP_BOARD` 
+    :param board: Transducers to use, if `None` then uses `acoustools.Utilities.TOP_BOARD` 
     :param H: Precomputed H - if None H will be computed
     :param E: Precomputed E - if None E will be computed
     :param path: path to folder containing `BEMCache/ `
@@ -540,7 +572,7 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     Computes gradient of the G matrix in BEM \n
     :param points: Points to propagate to
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
-    :param board: Transducers to use, if `None` will use `TRANSDUCERS`
+    :param board: Transducers to use, if `None` will use `acoustools.Utilities.TRANSDUCERS`
     :param return_components: if true will return the subparts used to compute
     :return: Gradient of the G matrix in BEM
     '''
@@ -578,7 +610,7 @@ def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor|Mes
     '''
     Computes the gradient of the forward propagation for BEM\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
-    :param transducers: Transducers to use, if `None` uses `TRANSDUCERS`
+    :param transducers: Transducers to use, if `None` uses `acoustools.Utilities.TRANSDUCERS`
     :param use_cache_H_grad: If true uses the cache system, otherwise computes `H` and does not save it
     :param print_lines: if true prints messages detaling progress
     :param H: Precomputed `H` - if `None` `H` will be computed
