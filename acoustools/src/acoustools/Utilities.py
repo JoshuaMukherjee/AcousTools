@@ -223,6 +223,16 @@ def forward_model_grad(points:Tensor, transducers:Tensor|None = None) -> tuple[T
     :param points: Point position to compute propagation to 
     :param transducers: The Transducer array, default two 16x16 arrays 
     :return: derivative of forward model wrt x,y,z position
+
+    ```Python
+    from acoustools.Utilities import forward_model_grad
+
+    Fx, Fy, Fz = forward_model_grad(points,transducers=board)
+    Px  = torch.abs(Fx@activations) #gradient wrt x position
+    Py  = torch.abs(Fy@activations) #gradient wrt y position
+    Pz  = torch.abs(Fz@activations) #gradient wrt z position
+
+    ```
     '''
     if transducers is None:
         transducers=TRANSDUCERS
@@ -400,6 +410,18 @@ def propagate(activations: Tensor, points: Tensor,board: Tensor|None=None, A:Ten
     :param board: The Transducer array, default two 16x16 arrays
     :param A: The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`
     :return: point activations
+
+    ```Python
+    from acoustools.Solvers import iterative_backpropagation
+    from acoustools.Utilities import create_points, propagate
+
+    p = create_points(2,1)
+    x = iterative_backpropagation(p)
+    
+    p = p.squeeze(0)
+    x = iterative_backpropagation(p)
+    print(propagate(x,p))
+    ```
     '''
     if board is None:
         board  = TRANSDUCERS
@@ -423,6 +445,18 @@ def propagate_abs(activations: Tensor, points: Tensor,board:Tensor|None=None, A:
     :param board: The Transducer array, default two 16x16 arrays
     :param A: The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`
     :return: point pressure
+
+    ```Python
+    from acoustools.Solvers import iterative_backpropagation
+    from acoustools.Utilities import create_points, propagate_abs
+
+    p = create_points(2,1)
+    x = iterative_backpropagation(p)
+    
+    p = p.squeeze(0)
+    x = iterative_backpropagation(p)
+    print(propagate_abs(x,p))
+    ```
     '''
     if board is None:
         board = TRANSDUCERS
@@ -440,6 +474,18 @@ def propagate_phase(activations:Tensor, points:Tensor,board:Tensor|None=None, A:
     :param board: The Transducer array, default two 16x16 arrays
     :param A: The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`
     :return: point phase
+
+    ```Python
+    from acoustools.Solvers import iterative_backpropagation
+    from acoustools.Utilities import create_points, propagate_phase
+
+    p = create_points(2,1)
+    x = iterative_backpropagation(p)
+    
+    p = p.squeeze(0)
+    x = iterative_backpropagation(p)
+    print(propagate_phase(x,p))
+    ```
     '''
     if board is None:
         board = TRANSDUCERS
@@ -551,7 +597,7 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
     ```Python
     from acoustools.Utilities import create_points, add_lev_sig
     from acoustools.Solvers import wgs
-    
+
     p = create_points(1,x=0,y=0,z=0)
     x = wgs(p, board=board)
     x_sig, sig = add_lev_sig(x.clone(), mode=mode, return_sig=True, board=board)
