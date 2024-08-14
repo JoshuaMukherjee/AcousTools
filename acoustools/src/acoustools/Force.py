@@ -42,7 +42,7 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     Returns the force on a particle using the analytical derivative of the Gor'kov potential and the piston model\n
     :param activations: Transducer hologram
     :param points: Points to propagate to
-    :param board: Transducers to use, if `None` uses `TRANSDUCERS`
+    :param board: Transducers to use, if `None` uses `acoustools.Utilities.TRANSDUCERS`
     :param return_components: If true returns force as one tensor otherwise returns Fx, Fy, Fz
     :return: force  
     '''
@@ -90,7 +90,7 @@ def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axi
 
     :param activations: Transducer hologram
     :param points: Points to propagate to
-    :param board: Transducers to use if `None` uses `TRANSDUCERS`
+    :param board: Transducers to use if `None` uses `acoustools.Utilities.TRANSDUCERS`
     :param axis: Axis to take the force in
     :return: force  
     '''
