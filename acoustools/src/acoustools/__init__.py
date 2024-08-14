@@ -17,3 +17,8 @@
 
 # import acoustools.Optimise.Objectives 
 # import acoustools.Optimise.Constraints 
+
+"""
+.. include:: ../../../README.md
+"""
+
