@@ -1,8 +1,8 @@
 '''
-Module to deal with the scattering of sound off of objects.
-See
-High-speed acoustic holography with arbitrary scattering objects: https://doi.org/10.1126/sciadv.abn7614
-BEM notes: https://www.personal.reading.ac.uk/~sms03snc/fe_bem_notes_sncw.pdf 
+Module to deal with the scattering of sound off of objects.\n
+See: \n
+High-speed acoustic holography with arbitrary scattering objects: https://doi.org/10.1126/sciadv.abn7614 \n
+BEM notes: https://www.personal.reading.ac.uk/~sms03snc/fe_bem_notes_sncw.pdf \n
 '''
 
 import torch
