@@ -207,7 +207,7 @@ def Visualise_single(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
     :param B: Position of the top right corner of the image
     :param C: Position of the bottom left corner of the image
     :param activation: The transducer activation to use
-    :param colour_function: Function to call at each position. Should return a value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`
+    :param colour_function: Function to call at each position. Should return a numeric value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`
     :param colour_function_args: The arguments to pass to `colour_function`
     :param res: Number of pixels as a tuple (X,Y). Default (200,200)
     :param flip: Reverses X and Y directions. Default True
