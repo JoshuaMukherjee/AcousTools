@@ -446,14 +446,14 @@ def Visualise_line(A:Tensor,B:Tensor,x:Tensor, F:Tensor|None=None,points:Tensor|
         return pressure
        
 
-def ABC(size:int, plane:Literal['xz'] = 'xz') -> tuple[Tensor]:
+def ABC(size:int, plane:Literal['xz', 'yz', 'xy'] = 'xz') -> tuple[Tensor]:
     '''
     Get ABC values for visualisation
     * A top right corner
     * B bottom right corner
     * C top left corner
     :param size: The size of the window
-    :param plane: Plane (currently only xz plane allowed)
+    :param plane: Plane, one of 'xz' 'yz' 'xy'
     :return: A,B,C 
     '''
     if plane == 'xz':
