@@ -23,6 +23,17 @@ pip install -e <path-to-clone>/acoustools/ --config-settings editable_mode=stric
 
 where `<path-to-clone>` is the local location of the repository 
 
+## Documentation
+
+To view the documentation for AcousTools firstly install pdoc
+```console
+pip install pdoc
+```
+Then run pdoc on AcousTools to create a locally hosted server containing the documentation
+```console
+python -m pdoc <path-to-clone>/acoustools/ --math
+```
+
 ## AcousTools Basics
 
 AcousTools represents data as `torch.Tensors`. A point is represented as a tensor where each column represents a (x,y,z) point. Groups of points can also be grouped into batches of points for parallel computation and so have a shape (B,3,N) for B batches and N points.
