@@ -241,7 +241,7 @@ def Visualise_single(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
     
     return result
 
-def force_quiver(points: Tensor, U:Tensor,V:Tensor,norm:Tensor, ylims:int|None=None, xlims:int|None=None,
+def force_quiver(points: Tensor, U:Tensor,V:Tensor,norm:tuple[int]=(0,0,0), ylims:int|None=None, xlims:int|None=None,
                  log:bool=False,show:bool=True,colour:str|None=None, reciprocal:bool = False, block:bool=True) -> None:
     '''
     Plot the force on a mesh as a quiver plot\n
