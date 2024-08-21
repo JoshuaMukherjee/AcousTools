@@ -30,7 +30,7 @@ def scatterer_file_name(scatterer:Mesh) ->str:
     
     '''
 
-    f_name = str(scatterer.coordinates)
+    f_name = str(list(scatterer.coordinates))
     return f_name
 
 def load_scatterer(path:str, compute_areas:bool = True, compute_normals:bool=True, dx:float=0,dy:float=0,dz:float=0, rotx:float=0, roty:float=0, rotz:float=0, root_path:str="") -> Mesh:
@@ -73,6 +73,17 @@ def load_scatterer(path:str, compute_areas:bool = True, compute_normals:bool=Tru
 
 
     return scatterer
+
+def calculate_features(scatterer:Mesh, compute_areas:bool = True, compute_normals:bool=True):
+    '''
+    @private
+    '''
+    if compute_areas: scatterer.compute_cell_size()
+    if compute_normals: scatterer.compute_normals()
+
+    scatterer.filename = scatterer_file_name(scatterer)
+    scatterer.metadata["FILE"] = scatterer.filename.split(".")[0]
+
 
 def load_multiple_scatterers(paths:list[str],  compute_areas:bool = True, compute_normals:bool=True, 
                              dxs:list[int]=[],dys:list[int]=[],dzs:list[int]=[], rotxs:list[int]=[], rotys:list[int]=[], rotzs:list[int]=[], root_path:str="") -> Mesh:
