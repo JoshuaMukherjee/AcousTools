@@ -35,17 +35,17 @@ def scatterer_file_name(scatterer:Mesh) ->str:
 
 def load_scatterer(path:str, compute_areas:bool = True, compute_normals:bool=True, dx:float=0,dy:float=0,dz:float=0, rotx:float=0, roty:float=0, rotz:float=0, root_path:str="") -> Mesh:
     '''
-    Loads a scatterer as a `vedo` `Mesh` and applies translations as needed\\
-    :param path: The name of the scatterer to load\\
-    :param compute_areas: if `True` will call `scatterer.compute_cell_size()`. Default `True`\\
-    :param compute_normals: if `True` will call `scatterer.compute_normals()`. Default `True`\\
-    :param dx: Translation in the x direction to apply\\
-    :param dy: Translation in the y direction to apply\\
-    :param dz: Translation in the z direction to apply\\
-    :param rotx: Rotation around the x axis to apply\\
-    :param roty: Rotation around the y axis to apply\\
-    :param rotz: Rotation around the z axis to apply\\
-    :param root_path: The folder containing the file, the scatterer to be loaded will be loaded from `root_path+path`\\
+    Loads a scatterer as a `vedo` `Mesh` and applies translations as needed
+    :param path: The name of the scatterer to load
+    :param compute_areas: if `True` will call `scatterer.compute_cell_size()`. Default `True`
+    :param compute_normals: if `True` will call `scatterer.compute_normals()`. Default `True`
+    :param dx: Translation in the x direction to apply
+    :param dy: Translation in the y direction to apply
+    :param dz: Translation in the z direction to apply
+    :param rotx: Rotation around the x axis to apply
+    :param roty: Rotation around the y axis to apply
+    :param rotz: Rotation around the z axis to apply
+    :param root_path: The folder containing the file, the scatterer to be loaded will be loaded from `root_path+path`
     :return: The `vedo` `Mesh` of the scatterer
     '''
     scatterer = vedo.load(root_path+path)
