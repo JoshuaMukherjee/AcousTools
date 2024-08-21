@@ -473,4 +473,4 @@ def ABC(size:int, plane:Literal['xz', 'yz', 'xy'] = 'xz') -> tuple[Tensor]:
     
     
 
-    return A, B, C
+    return A.to(device), B.to(device), C.to(device)
