@@ -356,7 +356,7 @@ def downsample(scatterer:Mesh, factor:int=2, n:int|None=None, method:str='quadri
 def centre_scatterer(scatterer:Mesh) -> list[int]:
     '''
     Translate scatterer so the centre of mass is at (0,0,0)\n
-    Modifies Mesh in
+    Modifies Mesh in place \n
     :param scatterer: Scatterer to centre
     :return: Returns the amount needed to move in each direction
     '''
@@ -365,3 +365,40 @@ def centre_scatterer(scatterer:Mesh) -> list[int]:
     translate(scatterer, dx = correction[0], dy = correction[1], dz=  correction[2])
 
     return correction
+
+
+def get_edge_data(scatterer:Mesh, wavelength:float=Constants.wavelength, print_output:bool=True) -> None|tuple[float]:
+    '''
+    Get the maximum, minimum and average size of edges in a mesh. Optionally prints or returns the result.\n
+    :param scatterer: Mesh of interest
+    :param wavelength: Wavenelgth size for printing results as multiple of some wavelength
+    :param print_output: If True, prints results else returns values
+    :return: None if `print_outputs` is `True` else returns `(max_distance, min_distance, average_distance)`
+    '''
+    points = scatterer.vertices
+
+    distance_sum = 0
+    N = 0
+
+    max_distance = 0
+    min_distance = 100000000
+
+    for (start,end) in scatterer.edges:
+        start_point = points[start]
+        end_point = points[end]
+        distance = torch.sum(torch.Tensor((end_point-start_point)**2))**0.5
+        distance_sum += distance
+        N += 1
+        if distance < min_distance:
+            min_distance = distance
+        if distance > max_distance:
+            max_distance = distance
+
+    average_distance = distance_sum/N
+
+    if print_output:
+        print('Max Distance', max_distance.item(),'=' ,max_distance.item()/wavelength, 'lambda')
+        print('Min Distance', min_distance.item(),'=', min_distance.item()/wavelength, 'lambda')
+        print('Ave Distance', average_distance.item(),'=', average_distance.item()/wavelength, 'lambda')
+    else:
+        return (max_distance, min_distance, average_distance)
