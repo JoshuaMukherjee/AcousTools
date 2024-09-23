@@ -21,6 +21,8 @@ pip install -r <path-to-clone>/requirements.txt
 pip install -e <path-to-clone>/acoustools/ --config-settings editable_mode=strict
 ```
 
+Use `python<version> -m` before the above commands to use a specific version of python.
+
 where `<path-to-clone>` is the local location of the repository 
 
 ## Documentation
