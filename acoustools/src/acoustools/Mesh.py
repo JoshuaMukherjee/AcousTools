@@ -367,13 +367,15 @@ def centre_scatterer(scatterer:Mesh) -> list[int]:
     return correction
 
 
-def get_edge_data(scatterer:Mesh, wavelength:float=Constants.wavelength, print_output:bool=True) -> None|tuple[float]:
+def get_edge_data(scatterer:Mesh, wavelength:float=Constants.wavelength, print_output:bool=True, break_down_average:bool=False) -> None|tuple[float]:
     '''
     Get the maximum, minimum and average size of edges in a mesh. Optionally prints or returns the result.\n
     :param scatterer: Mesh of interest
     :param wavelength: Wavenelgth size for printing results as multiple of some wavelength
     :param print_output: If True, prints results else returns values
-    :return: None if `print_outputs` is `True` else returns `(max_distance, min_distance, average_distance)`
+    :break_down_average: If True will also return (distance_sum, N)
+    :return: None if `print_outputs` is `True` else returns `(max_distance, min_distance, average_distance)` and optionally  (distance_sum, N)
+
     '''
     points = scatterer.vertices
 
@@ -383,10 +385,13 @@ def get_edge_data(scatterer:Mesh, wavelength:float=Constants.wavelength, print_o
     max_distance = 0
     min_distance = 100000000
 
+
     for (start,end) in scatterer.edges:
         start_point = points[start]
         end_point = points[end]
-        distance = torch.sum(torch.Tensor((end_point-start_point)**2))**0.5
+        sqvec = torch.Tensor((start_point-end_point)**2)
+        # print(sqvec, torch.sum(sqvec)**0.5)
+        distance = torch.sum(sqvec)**0.5
         distance_sum += distance
         N += 1
         if distance < min_distance:
@@ -401,4 +406,7 @@ def get_edge_data(scatterer:Mesh, wavelength:float=Constants.wavelength, print_o
         print('Min Distance', min_distance.item(),'=', min_distance.item()/wavelength, 'lambda')
         print('Ave Distance', average_distance.item(),'=', average_distance.item()/wavelength, 'lambda')
     else:
-        return (max_distance, min_distance, average_distance)
+        if break_down_average:
+            return (max_distance, min_distance, average_distance), (distance_sum, N)
+        else:
+            return (max_distance, min_distance, average_distance)
