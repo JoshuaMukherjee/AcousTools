@@ -18,7 +18,9 @@ from acoustools.Mesh import scatterer_file_name, load_scatterer, load_multiple_s
 
 import hashlib
 
- 
+# from pytorch_memlab import profile
+# 
+
 def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False) -> Tensor:
     '''
     Computes the derivative of greens function \n
@@ -31,27 +33,44 @@ def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, r
     :param return_components: if true will return the subparts used to compute the derivative \n
     :return: returns the partial derivative of greeens fucntion wrt y
     '''
-    distance = torch.sqrt(torch.sum((x - y)**2,dim=3))
+    norms= norms.real
+    vecs = y.real-x.real
 
-    vecs = y-x
+ 
+    distance = torch.sqrt(torch.sum((vecs)**2,dim=3))
+
     norms = norms.expand(B,N,-1,-1)
 
     
     # norm_norms = torch.norm(norms,2,dim=3) # === 1
-    vec_norms = torch.norm(vecs,2,dim=3)
-    angles = (torch.sum(norms*vecs,3) / (vec_norms)).to(DTYPE)
+    # vec_norms = torch.norm(vecs,2,dim=3) # === distance?
+    # print(vec_norms == distance)
+    angles = (torch.sum(norms*vecs,3) / (distance))
 
-    A = ((torch.e**(1j*Constants.k*distance))/(4*torch.pi*distance)).to(DTYPE)
-    B = (1j*Constants.k - 1/(distance)).to(DTYPE)
+    del norms, vecs
+    torch.cuda.empty_cache()
+
+    A = ((torch.e**(1j*Constants.k*distance))/(4*torch.pi*distance))
+    B = (1j*Constants.k - 1/(distance))
+    
+    del distance
+    # torch.cuda.empty_cache()
+
     partial_greens = A*B*angles
+    
+    if not return_components:
+        del A,B,angles
+    torch.cuda.empty_cache()
+
+    
     partial_greens[partial_greens.isnan()] = 1
+
 
     if return_components:
         return partial_greens, A,B,angles
     
     return partial_greens
 
- 
 def compute_G(points: Tensor, scatterer: Mesh) -> Tensor:
     '''
     Computes G in the BEM model\n
@@ -59,7 +78,8 @@ def compute_G(points: Tensor, scatterer: Mesh) -> Tensor:
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
     :return G: `torch.Tensor` of G
     '''
-    areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
+    torch.cuda.empty_cache()
+    areas = torch.Tensor(scatterer.celldata["Area"]).to(device).real
     B = points.shape[0]
     N = points.shape[2]
     M = areas.shape[0]
@@ -68,18 +88,18 @@ def compute_G(points: Tensor, scatterer: Mesh) -> Tensor:
     #Compute the partial derivative of Green's Function
 
     #Firstly compute the distances from mesh points -> control points
-    centres = torch.tensor(scatterer.cell_centers).to(device).to(DTYPE) #Uses centre points as position of mesh
+    centres = torch.tensor(scatterer.cell_centers).to(device).real #Uses centre points as position of mesh
     centres = centres.expand((B,N,-1,-1))
     
     # print(points.shape)
     # p = torch.reshape(points,(B,N,3))
-    p = torch.permute(points,(0,2,1))
+    p = torch.permute(points,(0,2,1)).real
     p = torch.unsqueeze(p,2).expand((-1,-1,M,-1))
 
     #Compute cosine of angle between mesh normal and point
-    scatterer.compute_normals()
+    # scatterer.compute_normals()
     # norms = torch.tensor(scatterer.cell_normals).to(device)
-    norms = get_normals_as_points(scatterer,permute_to_points=False)
+    norms = get_normals_as_points(scatterer,permute_to_points=False).real
   
     partial_greens = compute_green_derivative(centres,p,norms, B,N,M)
     
@@ -452,7 +472,7 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
         H = compute_H(scatterer,board)
 
     return H
- 
+
 def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
                H:Tensor|None=None,path:str="Media", return_components:bool=False) -> Tensor:
     '''
@@ -488,7 +508,9 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     B = torch.tensor((0.12,0, 0.12))
     C = torch.tensor((-0.12,0, -0.12))
 
-    Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],colour_function_args=[{"scatterer":scatterer,"board":TOP_BOARD,"path":path,'H':H}],vmax=8621, show=True,res=[256,256])
+    Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],
+                colour_function_args=[{"scatterer":scatterer,"board":TOP_BOARD,"path":path,'H':H}],
+                vmax=8621, show=True,res=[256,256])
     ```
     
     '''
@@ -510,11 +532,16 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
 
     E = F+G@H
 
+    torch.cuda.empty_cache()
     if return_components:
         return E.to(DTYPE), F.to(DTYPE), G.to(DTYPE), H.to(DTYPE)
     return E.to(DTYPE)
 
- 
+
+
+
+
+
 def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
                   E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False) ->Tensor:
     '''
@@ -541,7 +568,6 @@ def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,boar
     out = E@activations
     return out
 
- 
 def propagate_BEM_pressure(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:
                            Tensor|None=None,E:Tensor|None=None, path:str="Media",use_cache_H:bool=True, print_lines:bool=False) -> Tensor:
     '''
