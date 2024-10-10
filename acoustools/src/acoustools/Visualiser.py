@@ -11,6 +11,8 @@ from typing import Literal
 from vedo import Mesh
 
 
+
+
 def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|Tensor=[],
               colour_functions:list[FunctionType]|None=[propagate_abs], colour_function_args:list[dict]|None=None, 
               res:tuple[int]=(200,200), cmaps:list[str]=[], add_lines_functions:list[FunctionType]|None=None, 
@@ -198,6 +200,7 @@ def get_point_pos(A:Tensor,B:Tensor,C:Tensor, points:Tensor, res:tuple[int]=(200
 
     return pts_norm
 
+@profile
 def Visualise_single(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
                      colour_function:FunctionType=propagate_abs, colour_function_args:dict={}, 
                      res:tuple[int]=(200,200), flip:bool=True) -> Tensor:
