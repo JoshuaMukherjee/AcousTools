@@ -103,7 +103,8 @@ def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axi
 
 
 def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, board:Tensor, grad_function:FunctionType=forward_model_grad, 
-               grad_function_args:dict={},F:Tensor|None=None, Ax:Tensor|None=None, Ay:Tensor|None=None,Az:Tensor|None=None) -> Tensor:
+               grad_function_args:dict={}, F_fun:FunctionType|None=forward_model_batched, F_function_args:dict={},
+               F:Tensor|None=None, Ax:Tensor|None=None, Ay:Tensor|None=None,Az:Tensor|None=None) -> Tensor:
     '''
     Returns the force on a mesh using a discritised version of Eq. 1 in `Acoustical boundary hologram for macroscopic rigid-body levitation`\n
     :param activations: Transducer hologram
@@ -113,13 +114,17 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     :param board: Transducers to use 
     :param grad_function: The function to use to compute the gradient of pressure
     :param grad_function_args: The argument to pass to `grad_function`
+    :param F_fun: Function to compute F
+    :param F_function_args:Fucntion to compute Grad F
     :param F: A precomputed forward propagation matrix, if `None` will be computed
     :param Ax: The gradient of `F` wrt x, if `None` will be computed
     :param Ay: The gradient of `F` wrt y, if `None` will be computed
     :param Az: The gradient of `F` wrt z, if `None` will be computed
     :return: the force on each mesh element
     '''
-    activations= activations
+
+    if F is None:
+        F = F_fun(**F_function_args)
     p = propagate(activations,points,board,A=F)
     pressure = torch.abs(p)**2
     
