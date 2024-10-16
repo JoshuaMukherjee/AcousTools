@@ -4,11 +4,14 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import art3d
 import matplotlib.colors as clrs
 import matplotlib.cm as cm
+from matplotlib.colors import Normalize
+
 
 from torch import Tensor
 from types import FunctionType
 from typing import Literal
 from vedo import Mesh
+
 
 
 
@@ -319,7 +322,8 @@ def force_quiver_3d(points:Tensor, U:Tensor,V:Tensor,W:Tensor, scale:float=1) ->
 
 def Visualise_mesh(mesh:Mesh, colours:Tensor|None=None, points:Tensor|None=None, p_pressure:Tensor|None=None,
                    vmax:int|None=None,vmin:int|None=None, show:bool=True, subplot:int|plt.Axes|None=None, fig:plt.Figure|None=None, 
-                   buffer_x:int=0, buffer_y:int = 0, buffer_z:int = 0, equalise_axis:bool=False, elev:float=-45, azim:float=45) ->None:
+                   buffer_x:int=0, buffer_y:int = 0, buffer_z:int = 0, equalise_axis:bool=False, elev:float=-45, azim:float=45, 
+                   clamp:bool=False) ->None:
     '''
     Plot a mesh in 3D and colour the mesh faces
     :param mesh: Mesh to plot
@@ -337,12 +341,16 @@ def Visualise_mesh(mesh:Mesh, colours:Tensor|None=None, points:Tensor|None=None,
     :param equalise_axis: If `True` call `ax.set_aspect('equal')`
     :param elev: elevation angle
     :param azim: azimuth angle
+    :param clamp: if True will clamp values in colours to vmax and vmin
     '''
 
     xmin,xmax, ymin,ymax, zmin,zmax = mesh.bounds()
     
     if type(colours) is torch.Tensor:
         colours=colours.flatten()
+    
+    if clamp:
+        colours = torch.clamp(colours,vmin,vmax)
 
 
     v = mesh.vertices
@@ -390,8 +398,18 @@ def Visualise_mesh(mesh:Mesh, colours:Tensor|None=None, points:Tensor|None=None,
     pc = art3d.Poly3DCollection(v[f], edgecolor="black", linewidth=0.01, facecolors=colour_mapped)
     plt_3d = ax.add_collection(pc)
 
+
+    mappable = cm.ScalarMappable(cmap=cm.hot, norm=norm)
+    mappable.set_array(colour_mapped)  # Link the data to the ScalarMappable
+
+    # Add the color bar to the figure
+    cbar = fig.colorbar(mappable, ax=ax, shrink=0.6)
+    cbar.set_label('Face Value')
+
+
     scale = mesh.vertices.flatten()
     ax.auto_scale_xyz(scale, scale, scale)
+    
     
     if not equalise_axis:
         ax.set_xlim([xmin - buffer_x, xmax +  buffer_x])
