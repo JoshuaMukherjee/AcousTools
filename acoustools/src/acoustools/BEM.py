@@ -645,8 +645,8 @@ def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor|Mes
     :param path: path to folder containing `BEMCache/` 
     :return: Ex, Ey, Ez
     '''
-    if board is None:
-        board = TRANSDUCERS
+    if transducers is None:
+        transducers = TRANSDUCERS
 
     B = points.shape[0]
     if H is None:
