@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import art3d
 import matplotlib.colors as clrs
 import matplotlib.cm as cm
-from matplotlib.colors import Normalize
+import matplotlib.colors as mcolors
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 
 
 from torch import Tensor
@@ -20,7 +22,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
               colour_functions:list[FunctionType]|None=[propagate_abs], colour_function_args:list[dict]|None=None, 
               res:tuple[int]=(200,200), cmaps:list[str]=[], add_lines_functions:list[FunctionType]|None=None, 
               add_line_args:list[dict]|None=None,vmin:int|list[int]|None=None,vmax:int|list[int]|None=None, 
-              matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None) -> None:
+              matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None, depth:int=2) -> None:
     '''
     Visualises any number of fields generated from activation to the plane ABC and arranges them in a (1,N) grid \n
     :param A: Position of the top left corner of the image
@@ -40,6 +42,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     :param show: If True will call `plt.show(block=block)` else does not. Default True
     :param block: Will be passed to `plot.show(block=block)`. Default True
     :param clr_label: Label for colourbar
+    :param depth: Number of times to tile image
 
     ```Python
     from acoustools.Utilities import create_points, add_lev_sig
@@ -76,7 +79,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     
     if colour_functions is not None:
         for i,colour_function in enumerate(colour_functions):
-            result = Visualise_single(A,B,C,activation,colour_function, colour_function_args[i], res)
+            result = Visualise_single_blocks(A,B,C,activation,colour_function, colour_function_args[i], res, depth=depth)
             results.append(result)
         
             if add_lines_functions is not None:
@@ -97,6 +100,19 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
                 else:
                     lines.append(None)
 
+    v_min = vmin
+    v_max = vmax
+    
+    if type(vmax) is list:
+        v_max = vmax[i]
+    
+    if type(vmin) is list:
+        v_min = vmin[i]
+    
+    
+    
+    norm = mcolors.Normalize(vmin=v_min, vmax=v_max)
+
 
     for i in range(len(results)):
         if len(cmaps) > 0:
@@ -105,18 +121,9 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
             cmap = 'hot'
 
         length = len(colour_functions) if colour_functions is not None else len(matricies)
-        plt.subplot(1,length,i+1)
+        ax = plt.subplot(1,length,i+1)
         im = results[i]
-       
-        v_min = vmin
-        v_max = vmax
-        
-        if type(vmax) is list:
-            v_max = vmax[i]
-        
-        if type(vmin) is list:
-            v_min = vmin[i]
-        
+
         if v_min is None:
             v_min = torch.min(im)
         if v_max is None:
@@ -130,8 +137,11 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
         else:
             clr_label = clr_labels[i]
             
-        plt.imshow(im.cpu().detach().numpy(),cmap=cmap,vmin=v_min,vmax=v_max)
-        plt.colorbar(label=clr_label)
+        print(im.shape)
+        
+        img = plt.imshow(im.cpu().detach().numpy(),cmap=cmap,norm=norm)
+        # plt.colorbar(label=clr_label)
+
 
         if add_lines_functions is not None:
             AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]])
@@ -152,6 +162,12 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
         
         if len(points) >0:
             plt.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
+    
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+
+    cbar = plt.colorbar(img, cax=cax)
+
     
     if show:
         plt.show(block=block)
@@ -471,8 +487,8 @@ def ABC(size:int, plane:Literal['xz', 'yz', 'xy'] = 'xz') -> tuple[Tensor]:
     '''
     Get ABC values for visualisation
     * A top right corner
-    * B bottom right corner
-    * C top left corner
+    * B top right corner
+    * C bottom left corner
     :param size: The size of the window
     :param plane: Plane, one of 'xz' 'yz' 'xy'
     :return: A,B,C 
@@ -495,3 +511,77 @@ def ABC(size:int, plane:Literal['xz', 'yz', 'xy'] = 'xz') -> tuple[Tensor]:
     
 
     return A.to(device), B.to(device), C.to(device)
+
+def ABC_2_tiles(A:Tensor,B:Tensor,C:Tensor):
+    '''
+    Split ABC defined region into 4 tiles
+    * A top right corner
+    * B top right corner
+    * C bottom left corner
+    
+    '''
+    A1 = A
+    B1 = A + (B-A)/2
+    C1 = A+ (C-A)/2
+
+    A2 = A+ (B-A)/2
+    B2 = B
+    C2 = A+ ((B-A)/2 + (C-A)/2)
+
+    A3 = A+ (C-A)/2
+    B3 = A + ((B-A)/2 + (C-A)/2)
+    C3 = C
+
+    A4 = A + ((B-A)/2 + (C-A)/2)
+    B4 = A + (B-A)+(C-A)/2
+    C4 = A + ((B-A)/2 + (C-A))
+
+    return (A1,B1,C1), (A2,B2,C2), (A3,B3,C3), (A4,B4,C4)
+
+def combine_tiles(t1:Tensor,t2:Tensor,t3:Tensor,t4:Tensor):
+    '''
+    Combines subimages into a larger image, used in `Visualise_single_blocks`
+    :param t1: Top left image
+    :param t2: Top right image
+    :param t3: Bottom left image
+    :param t4: Bottom right image
+    '''
+    top = torch.cat([t1,t2],dim=1)
+    bottom = torch.cat([t3,t4],dim=1)
+
+    return torch.cat([top,bottom],dim=0)
+
+def Visualise_single_blocks(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
+                     colour_function:FunctionType=propagate_abs, colour_function_args:dict={}, 
+                     res:tuple[int]=(200,200), flip:bool=True, depth=2) -> Tensor:
+    '''
+    Visalises field generated from activation to the plane ABC in a slightly nicer memory efficient way by chunking into tiles
+    :param A: Position of the top left corner of the image
+    :param B: Position of the top right corner of the image
+    :param C: Position of the bottom left corner of the image
+    :param activation: The transducer activation to use
+    :param colour_function: Function to call at each position. Should return a numeric value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`
+    :param colour_function_args: The arguments to pass to `colour_function`
+    :param res: Number of pixels as a tuple (X,Y). Default (200,200)
+    :param flip: Reverses X and Y directions. Default True
+    :param depth: Number of times to chunk
+    :return: Tensor of values of propagated field
+    '''
+
+    tiles = ABC_2_tiles(A,B,C)
+
+    new_res = (int(res[0]/2), int(res[1]/2))
+
+    ims = []
+
+
+    for (nA,nB,nC) in tiles:
+        if depth == 1:
+            im = Visualise_single(nA,nB,nC,activation,colour_function=colour_function, colour_function_args=colour_function_args, res=new_res, flip=flip)
+        else:
+            im = Visualise_single_blocks(nA,nB,nC,activation,colour_function=colour_function, colour_function_args=colour_function_args, res=new_res, flip=flip, depth = depth-1)
+        ims.append(im)
+        # torch.cuda.empty_cache()
+
+    im = combine_tiles(*ims)
+    return im
