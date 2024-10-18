@@ -24,7 +24,8 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
               colour_functions:list[FunctionType]|None=[propagate_abs], colour_function_args:list[dict]|None=None, 
               res:tuple[int]=(200,200), cmaps:list[str]=[], add_lines_functions:list[FunctionType]|None=None, 
               add_line_args:list[dict]|None=None,vmin:int|list[int]|None=None,vmax:int|list[int]|None=None, 
-              matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None, depth:int=2, link_ax:str|list='all',cursor:bool=True) -> None:
+              matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None, depth:int=2, link_ax:str|list='all',
+              cursor:bool=True, arangement:tuple|None = None) -> None:
     '''
     Visualises any number of fields generated from activation to the plane ABC and arranges them in a (1,N) grid \n
     :param A: Position of the top left corner of the image
@@ -47,6 +48,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     :param depth: Number of times to tile image
     :param link_ax: Axes to link colourbar of `'all'` to link all axes
     :param cursor: If `True` will show cursor across plots
+    :param arangement: Arangment of subplots 
 
     ```Python
     from acoustools.Utilities import create_points, add_lev_sig
@@ -125,10 +127,12 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
             cmap = 'hot'
 
         length = len(colour_functions) if colour_functions is not None else len(matricies)
+        if arangement is None:
+            arangement = (1,length)
         if i > 0:
-            ax = plt.subplot(1,length,i+1, sharex = ax, sharey=ax)
+            ax = plt.subplot(*arangement,i+1, sharex = ax, sharey=ax)
         else:
-            ax = plt.subplot(1,length,i+1)
+            ax = plt.subplot(*arangement,i+1)
 
         axs.append(ax)
         im = results[i]
