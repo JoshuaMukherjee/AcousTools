@@ -25,7 +25,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
               res:tuple[int]=(200,200), cmaps:list[str]=[], add_lines_functions:list[FunctionType]|None=None, 
               add_line_args:list[dict]|None=None,vmin:int|list[int]|None=None,vmax:int|list[int]|None=None, 
               matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None, depth:int=2, link_ax:str|list='all',
-              cursor:bool=True, arangement:tuple|None = None) -> None:
+              cursor:bool=True, arangement:tuple|None = None, titles:list[str]|None=None ) -> None:
     '''
     Visualises any number of fields generated from activation to the plane ABC and arranges them in a (1,N) grid \n
     :param A: Position of the top left corner of the image
@@ -49,6 +49,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     :param link_ax: Axes to link colourbar of `'all'` to link all axes
     :param cursor: If `True` will show cursor across plots
     :param arangement: Arangment of subplots 
+    :param title: Titles for each subplot
 
     ```Python
     from acoustools.Utilities import create_points, add_lev_sig
@@ -155,6 +156,11 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
             ax = plt.subplot(*arangement,i+1, sharex = ax, sharey=ax)
         else:
             ax = plt.subplot(*arangement,i+1)
+        
+        if titles is not None:
+            t = titles[i]
+            if t is not None:
+                ax.set_title(t)
 
         axs.append(ax)
         im = results[i]
@@ -172,9 +178,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
             clr_label = 'Pressure (Pa)'
         else:
             clr_label = clr_labels[i]
-            
-        print(im.shape)
-        
+                    
 
         img = plt.imshow(im.cpu().detach().numpy(),cmap=cmap,norm=norms[i])
         plt.yticks([])
