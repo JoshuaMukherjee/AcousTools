@@ -22,7 +22,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
               colour_functions:list[FunctionType]|None=[propagate_abs], colour_function_args:list[dict]|None=None, 
               res:tuple[int]=(200,200), cmaps:list[str]=[], add_lines_functions:list[FunctionType]|None=None, 
               add_line_args:list[dict]|None=None,vmin:int|list[int]|None=None,vmax:int|list[int]|None=None, 
-              matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None, depth:int=2) -> None:
+              matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None, depth:int=2, link_ax:str|list='all') -> None:
     '''
     Visualises any number of fields generated from activation to the plane ABC and arranges them in a (1,N) grid \n
     :param A: Position of the top left corner of the image
@@ -43,6 +43,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     :param block: Will be passed to `plot.show(block=block)`. Default True
     :param clr_label: Label for colourbar
     :param depth: Number of times to tile image
+    :param link_ax: Axes to link colourbar of `'all'` to link all axes
 
     ```Python
     from acoustools.Utilities import create_points, add_lev_sig
@@ -110,7 +111,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
         v_min = vmin[i]
     
     
-    
+
     norm = mcolors.Normalize(vmin=v_min, vmax=v_max)
 
 
@@ -121,8 +122,14 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
             cmap = 'hot'
 
         length = len(colour_functions) if colour_functions is not None else len(matricies)
-        ax = plt.subplot(1,length,i+1)
+        if i > 0:
+            ax = plt.subplot(1,length,i+1, sharex = ax, sharey=ax)
+        else:
+            ax = plt.subplot(1,length,i+1)
+
+        
         im = results[i]
+        
 
         if v_min is None:
             v_min = torch.min(im)
@@ -139,8 +146,18 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
             
         print(im.shape)
         
-        img = plt.imshow(im.cpu().detach().numpy(),cmap=cmap,norm=norm)
-        # plt.colorbar(label=clr_label)
+        if link_ax == 'all' or i in link_ax:
+           n = norm
+        else:
+            n = None
+        img = plt.imshow(im.cpu().detach().numpy(),cmap=cmap,norm=n)
+        plt.yticks([])
+        plt.xticks([])
+
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+
+        plt.colorbar(label=clr_label,cax=cax)
 
 
         if add_lines_functions is not None:
@@ -163,10 +180,10 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
         if len(points) >0:
             plt.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
     
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
+    # divider = make_axes_locatable(ax)
+    # cax = divider.append_axes("right", size="5%", pad=0.05)
 
-    cbar = plt.colorbar(img, cax=cax)
+    # cbar = plt.colorbar(img, cax=cax)
 
     
     if show:
@@ -483,7 +500,7 @@ def Visualise_line(A:Tensor,B:Tensor,x:Tensor, F:Tensor|None=None,points:Tensor|
         return pressure
        
 
-def ABC(size:int, plane:Literal['xz', 'yz', 'xy'] = 'xz') -> tuple[Tensor]:
+def ABC(size:int, plane:Literal['xz', 'yz', 'xy'] = 'xz', origin:Tensor|tuple=None) -> tuple[Tensor]:
     '''
     Get ABC values for visualisation
     * A top right corner
@@ -491,22 +508,28 @@ def ABC(size:int, plane:Literal['xz', 'yz', 'xy'] = 'xz') -> tuple[Tensor]:
     * C bottom left corner
     :param size: The size of the window
     :param plane: Plane, one of 'xz' 'yz' 'xy'
+    :param origin: The centre of the view window 
     :return: A,B,C 
     '''
+    if origin is None:
+        origin = torch.tensor((0,0,0))
+    if type(origin) == tuple:
+        origin = torch.tensor(origin)
+    
     if plane == 'xz':
-        A = torch.tensor((-1,0, 1)) * size
-        B = torch.tensor((1,0, 1))* size
-        C = torch.tensor((-1,0, -1))* size
+        A = origin+torch.tensor((-1,0, 1)) * size
+        B = origin+torch.tensor((1,0, 1))* size
+        C = origin+torch.tensor((-1,0, -1))* size
     
     if plane == 'yz':
-        A = torch.tensor((0,-1, 1)) * size
-        B = torch.tensor((0,1, 1))* size
-        C = torch.tensor((0,-1, -1))* size
+        A = origin+torch.tensor((0,-1, 1)) * size
+        B = origin+torch.tensor((0,1, 1))* size
+        C = origin+torch.tensor((0,-1, -1))* size
     
     if plane == 'xy':
-        A = torch.tensor((-1,1, 0)) * size
-        B = torch.tensor((1, 1,0))* size
-        C = torch.tensor((-1, -1,0))* size
+        A = origin+torch.tensor((-1,1, 0)) * size
+        B = origin+torch.tensor((1, 1,0))* size
+        C = origin+torch.tensor((-1, -1,0))* size
     
     
 
