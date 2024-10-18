@@ -6,6 +6,8 @@ import matplotlib.colors as clrs
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.widgets import MultiCursor
+
 
 
 
@@ -22,7 +24,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
               colour_functions:list[FunctionType]|None=[propagate_abs], colour_function_args:list[dict]|None=None, 
               res:tuple[int]=(200,200), cmaps:list[str]=[], add_lines_functions:list[FunctionType]|None=None, 
               add_line_args:list[dict]|None=None,vmin:int|list[int]|None=None,vmax:int|list[int]|None=None, 
-              matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None, depth:int=2, link_ax:str|list='all') -> None:
+              matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None, depth:int=2, link_ax:str|list='all',cursor:bool=True) -> None:
     '''
     Visualises any number of fields generated from activation to the plane ABC and arranges them in a (1,N) grid \n
     :param A: Position of the top left corner of the image
@@ -44,6 +46,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     :param clr_label: Label for colourbar
     :param depth: Number of times to tile image
     :param link_ax: Axes to link colourbar of `'all'` to link all axes
+    :param cursor: If `True` will show cursor across plots
 
     ```Python
     from acoustools.Utilities import create_points, add_lev_sig
@@ -66,7 +69,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     ```
     '''
 
-
+    axs =[]
     results = []
     lines = []
     if len(points) > 0:
@@ -127,7 +130,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
         else:
             ax = plt.subplot(1,length,i+1)
 
-        
+        axs.append(ax)
         im = results[i]
         
 
@@ -180,10 +183,30 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
         if len(points) >0:
             plt.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
     
-    # divider = make_axes_locatable(ax)
-    # cax = divider.append_axes("right", size="5%", pad=0.05)
+    fig = plt.gcf()
+    if cursor: 
+        c = MultiCursor(fig.canvas, axs, color='b',lw=0.5, horizOn=True, vertOn=True)
 
-    # cbar = plt.colorbar(img, cax=cax)
+        multi_event_id = fig.canvas.mpl_connect('motion_notify_event', c.onmove)
+
+        
+        def press(event):
+            nonlocal multi_event_id
+            if event.key == 'c':
+                if c.visible:
+                    fig.canvas.mpl_disconnect(multi_event_id)
+                    fig.canvas.draw_idle()
+                    c.visible = False
+                else: 
+                    print(1)
+                    multi_event_id = fig.canvas.mpl_connect('motion_notify_event', c.onmove)
+                    fig.canvas.draw_idle()
+                    for line in c.vlines + c.hlines:  
+                        line.set_visible(True)
+                    c.visible = True
+               
+        fig.canvas.mpl_connect('key_press_event', press)
+
 
     
     if show:
@@ -453,6 +476,7 @@ def Visualise_mesh(mesh:Mesh, colours:Tensor|None=None, points:Tensor|None=None,
 
 
     ax.view_init(elev=elev, azim=azim)
+
 
 
     if show:
