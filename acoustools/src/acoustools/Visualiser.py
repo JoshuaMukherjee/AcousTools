@@ -115,9 +115,31 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     if type(vmin) is list:
         v_min = vmin[i]
     
+    norms = {}
     
+    if link_ax == 'all':
+        norm = mcolors.Normalize(vmin=v_min, vmax=v_max)
+        for i in range(len(results)):
+            norms[i] = norm
+    
+    else:
+        if type(link_ax[0]) == list or type(link_ax[0]) == tuple:
+            for group in link_ax:
+                norm = mcolors.Normalize(vmin=v_min, vmax=v_max)
+                for i in range(len(results)):
+                    if i in group: 
+                        norms[i] = norm 
+                    elif i not in norms: 
+                        norms[i] = None
 
-    norm = mcolors.Normalize(vmin=v_min, vmax=v_max)
+        else:
+            norm = mcolors.Normalize(vmin=v_min, vmax=v_max)
+            group = link_ax
+            for i in range(len(results)):
+                if i in group: 
+                    norms[i] = norm
+                elif i not in norms: 
+                    norms[i] = None
 
 
     for i in range(len(results)):
@@ -153,11 +175,8 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
             
         print(im.shape)
         
-        if link_ax == 'all' or i in link_ax:
-           n = norm
-        else:
-            n = None
-        img = plt.imshow(im.cpu().detach().numpy(),cmap=cmap,norm=n)
+
+        img = plt.imshow(im.cpu().detach().numpy(),cmap=cmap,norm=norms[i])
         plt.yticks([])
         plt.xticks([])
 
