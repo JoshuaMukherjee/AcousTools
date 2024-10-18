@@ -192,18 +192,19 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
         
         def press(event):
             nonlocal multi_event_id
-            if event.key == 'c':
+            if event.key == 'z':
                 if c.visible:
                     fig.canvas.mpl_disconnect(multi_event_id)
                     fig.canvas.draw_idle()
                     c.visible = False
                 else: 
-                    print(1)
                     multi_event_id = fig.canvas.mpl_connect('motion_notify_event', c.onmove)
                     fig.canvas.draw_idle()
                     for line in c.vlines + c.hlines:  
                         line.set_visible(True)
                     c.visible = True
+            if event.key == 'x':
+                c.active = not c.active
                
         fig.canvas.mpl_connect('key_press_event', press)
 
