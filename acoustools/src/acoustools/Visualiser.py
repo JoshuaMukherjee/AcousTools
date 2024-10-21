@@ -86,7 +86,10 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     
     if colour_functions is not None:
         for i,colour_function in enumerate(colour_functions):
-            result = Visualise_single_blocks(A,B,C,activation,colour_function, colour_function_args[i], res, depth=depth)
+            if depth > 0:
+                result = Visualise_single_blocks(A,B,C,activation,colour_function, colour_function_args[i], res, depth=depth)
+            else:
+                result = Visualise_single(A,B,C,activation,colour_function, colour_function_args[i], res)
             results.append(result)
         
             if add_lines_functions is not None:
@@ -211,30 +214,35 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
             plt.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
     
     fig = plt.gcf()
-    if cursor: 
-        c = MultiCursor(fig.canvas, axs, color='b',lw=0.5, horizOn=True, vertOn=True)
+     
+    c = MultiCursor(fig.canvas, axs, color='b',lw=0.5, horizOn=True, vertOn=True)
 
-        multi_event_id = fig.canvas.mpl_connect('motion_notify_event', c.onmove)
-
+    multi_event_id = fig.canvas.mpl_connect('motion_notify_event', c.onmove)
         
-        def press(event):
-            nonlocal multi_event_id
-            if event.key == 'z':
-                if c.visible:
-                    fig.canvas.mpl_disconnect(multi_event_id)
-                    fig.canvas.draw_idle()
-                    c.visible = False
-                    c.active = True
-                else: 
-                    multi_event_id = fig.canvas.mpl_connect('motion_notify_event', c.onmove)
-                    fig.canvas.draw_idle()
-                    for line in c.vlines + c.hlines:  
-                        line.set_visible(True)
-                    c.visible = True
-            if event.key == 'x' and c.visible:
-                c.active = not c.active
-               
-        fig.canvas.mpl_connect('key_press_event', press)
+    def press(event):
+        nonlocal multi_event_id
+        if event.key == 'z':
+            if c.visible:
+                fig.canvas.mpl_disconnect(multi_event_id)
+                fig.canvas.draw_idle()
+                c.visible = False
+                c.active = True
+            else: 
+                multi_event_id = fig.canvas.mpl_connect('motion_notify_event', c.onmove)
+                fig.canvas.draw_idle()
+                for line in c.vlines + c.hlines:  
+                    line.set_visible(True)
+                c.visible = True
+        if event.key == 'x' and c.visible:
+            c.active = not c.active
+            
+    fig.canvas.mpl_connect('key_press_event', press)
+
+    if not cursor:
+        fig.canvas.mpl_disconnect(multi_event_id)
+        fig.canvas.draw_idle()
+        c.visible = False
+        c.active = True
 
 
     
@@ -322,7 +330,7 @@ def Visualise_single(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
     
     # print(positions.shape)
     # print(colour_function_args)
-    field_val = colour_function(activation,positions,**colour_function_args)
+    field_val = colour_function(activations=activation,points=positions,**colour_function_args)
     # print(field_val.shape)
     result = torch.reshape(field_val, res)
 
