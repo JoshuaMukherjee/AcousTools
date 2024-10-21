@@ -5,6 +5,7 @@ Must have the signature (transducer_phases, points, board, targets, **objective_
 
 from acoustools.Utilities import propagate_abs, add_lev_sig
 from acoustools.Gorkov import gorkov_analytical
+from acoustools.BEM import propagate_BEM_pressure
 import torch
 
 from torch import Tensor
@@ -18,6 +19,19 @@ def propagate_abs_sum_objective(transducer_phases: Tensor, points:Tensor, board:
     :param target: <Unused>
     '''
     return torch.sum(propagate_abs(transducer_phases,points,board),dim=1)
+
+def propagate_abs_sum_objective_BEM(transducer_phases: Tensor, points:Tensor, board:Tensor, targets:Tensor, **objective_params) -> Tensor:
+    '''
+    Sum of the pressure of points
+    :param transducer_phases: Hologram
+    :param points: Points
+    :param board: Transducer board
+    :param target: <Unused>
+    '''
+    E = objective_params['E']
+    scatterer = objective_params['scatterer']
+    return torch.sum(propagate_BEM_pressure(transducer_phases,points,scatterer,board,E=E),dim=1).squeeze_(0)
+
 
 
 def gorkov_analytical_sum_objective(transducer_phases: Tensor, points:Tensor, board:Tensor, targets:Tensor, **objective_params) -> Tensor:
