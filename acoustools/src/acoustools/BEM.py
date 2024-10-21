@@ -679,7 +679,7 @@ def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor|Mes
 
 
 def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|str=None,
-                          board:Tensor|None=None,H:Tensor|None=None,E:Tensor|None=None,
+                          board:Tensor|None=None,H:Tensor|None=None,E:Tensor|None=None, return_components:bool=False,
                           **params) -> Tensor:
     '''
     Returns Gor'kov potential computed analytically from the BEM model\n
@@ -689,6 +689,7 @@ def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|s
     :param board: Transducers to use 
     :param H: Precomputed H - if None H will be computed
     :param E: Precomputed E - if None E will be computed
+    :param return_components: 
     :return: Gor'kov potential at point U
     '''
     if board is None:
@@ -712,6 +713,12 @@ def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|s
     K1 = Constants.V / (4*Constants.p_0*Constants.c_0**2)
     K2 = 3*Constants.V / (4*(2*Constants.f**2 * Constants.p_0))
 
-    U = K1 * torch.abs(p)**2 - K2*(torch.abs(px)**2 + torch.abs(py)**2 + torch.abs(pz)**2)
+    a = K1 * torch.abs(p)**2 
+    b = K2*(torch.abs(px)**2 + torch.abs(py)**2 + torch.abs(pz)**2)
+
+    U = a-b
+
+    if return_components:
+        return U, a ,b
 
     return U
