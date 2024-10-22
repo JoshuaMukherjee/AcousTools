@@ -13,7 +13,7 @@ if __name__ == "__main__":
     from pytorch_memlab import profile
 
 
-    @profile
+    # @profile
     def run():
         path = "../BEMMedia"
         scatterer = load_scatterer(path+"/Sphere-lam2.stl",dy=-0.06,dz=-0.08)
