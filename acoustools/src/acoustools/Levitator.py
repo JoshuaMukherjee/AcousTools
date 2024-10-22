@@ -19,7 +19,7 @@ class LevitatorController():
         from acoustools.Utilities import create_points, add_lev_sig, propagate_abs
         from acoustools.Solvers import wgs
 
-        lev = LevitatorController(ids=(73,53))
+        lev = LevitatorController()
 
         p = create_points(1,1,x=0,y=0,z=0)
         x = wgs(p)
@@ -77,14 +77,14 @@ class LevitatorController():
 
             if matBoardToWorld is None:
                 self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number)) (
-                    -1, 0, 0, 0,
+                    1, 0, 0, 0,
                     0, 1, 0, 0,
                     0, 0, 1, 0,
                     0, 0, 0, 1,
 
-                    -1, 0, 0, 0,
+                    1, 0, 0, 0,
                     0, 1, 0, 0,
-                    0, 0, -1, 0.24,
+                    0, 0, 1, 0,
                     0, 0, 0, 1
 
                     

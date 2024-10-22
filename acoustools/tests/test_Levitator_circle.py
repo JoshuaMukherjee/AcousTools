@@ -2,7 +2,7 @@ if __name__ == '__main__':
     from acoustools.Levitator import LevitatorController
     from acoustools.Utilities import create_points, add_lev_sig, write_to_file
     from acoustools.Solvers import wgs
-    import math
+    import math, time
 
     print('Computing...')
     xs = []
@@ -13,7 +13,7 @@ if __name__ == '__main__':
         t = ((3.1415926*2) / N) * i
         x = radius * math.sin(t)
         z = radius * math.cos(t)
-        print(x,0,z)
+        print(i,x,0,z)
         poss.append((x,0,z))
         p = create_points(1,1,x=x,y=0,z=z)
         x = wgs(p)
@@ -21,7 +21,7 @@ if __name__ == '__main__':
         xs.append(x)
     print('Finished\nConnecting...')
 
-    lev = LevitatorController()
+    lev = LevitatorController(ids=(73,53))
 
     lev.levitate(xs[0])
     print(poss[0])
@@ -31,6 +31,7 @@ if __name__ == '__main__':
         while True:
             for x in xs:
                 lev.levitate(x)
+                time.sleep(0.1)
     except:  
         print('Finished')
         input()
