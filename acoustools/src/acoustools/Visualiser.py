@@ -7,7 +7,7 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.widgets import MultiCursor
-
+import matplotlib as mpl
 
 
 
@@ -396,7 +396,7 @@ def force_quiver(points: Tensor, U:Tensor,V:Tensor,norm:tuple[int]=(0,0,0), ylim
     
 
 
-def force_quiver_3d(points:Tensor, U:Tensor,V:Tensor,W:Tensor, scale:float=1) ->None:
+def force_quiver_3d(points:Tensor, U:Tensor,V:Tensor,W:Tensor, scale:float=1, show:bool=True, ax:mpl.axes.Axes|None=None) ->None:
     '''
     Plot the force on a mesh in 3D
     :param points: The centre of the mesh faces
@@ -404,11 +404,15 @@ def force_quiver_3d(points:Tensor, U:Tensor,V:Tensor,W:Tensor, scale:float=1) ->
     :param V: Force in second axis
     :param W: Force in third axis
     :param scale: value to scale result by
+    :param show: If True will call `plt.show()`
+    :param ax: Axis to use 
     '''
     
-    ax = plt.figure().add_subplot(projection='3d')
+    if ax is None: ax = plt.figure().add_subplot(projection='3d')
     ax.quiver(points[:,0,:].cpu().detach().numpy(), points[:,1,:].cpu().detach().numpy(), points[:,2,:].cpu().detach().numpy(), U.cpu().detach().numpy()* scale, V.cpu().detach().numpy()* scale, W.cpu().detach().numpy()* scale)
-    plt.show()
+    
+    if show: plt.show()
+    else: return ax
 
 
 
