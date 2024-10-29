@@ -36,7 +36,7 @@ class LevitatorController():
         ```
         THIS CHANGES THE CURRENT WORKING DIRECTORY AND THEN CHANGES IT BACK \n
         :param bin_path: The path to the binary files needed. If `None` will use files contained in AcousTools. Default: None.
-        :param ids: IDs of boards. Default `(1000,999)` if `-1` then all messages will be ignored. Use when testing code but no device is conncted 
+        :param ids: IDs of boards. Default `(1000,999)`. For two board setup will be (Top, Bottom) if `-1` then all messages will be ignored. Use when testing code but no device is conncted 
         :param matBoardToWorld: Matric defining the mapping between simulated and real boards. When `None` uses a default setting. Default `None`.
         :param print_lines: If False supresses some print messages
         '''
@@ -45,6 +45,8 @@ class LevitatorController():
         '''
         @private
         '''
+        if type(ids) == int:
+            ids = (ids,)
 
         if ids[0] == -1:
             self.mode = 0
