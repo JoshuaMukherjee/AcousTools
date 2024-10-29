@@ -195,5 +195,4 @@ class LevitatorController():
                 amplitudes = None
                 relative_amplitude = ctypes.c_float(relative_amplitude)
             
-            print(amplitudes)
             self.send_message(phases, amplitudes, 0, num_geometries,sleep_ms=sleep_ms,loop=loop,num_loops=num_loops)
