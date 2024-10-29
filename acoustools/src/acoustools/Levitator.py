@@ -11,7 +11,7 @@ class LevitatorController():
      Class to enable the manipulation of an OpenMPD style acoustic levitator from python. 
     '''
 
-    def __init__(self, bin_path:str|None = None, ids:tuple[int] = (999,1000), matBoardToWorld:list[int]|None=None, print_lines:bool=False):
+    def __init__(self, bin_path:str|None = None, ids:tuple[int] = (1000,999), matBoardToWorld:list[int]|None=None, print_lines:bool=False):
         '''
         Creates the controller\n
         ```python
@@ -140,47 +140,60 @@ class LevitatorController():
             new_frame_rate = self.levitatorLib.set_new_frame_rate(self.controller, frame_rate)
 
 
-    def levitate(self, phases:list[Tensor]|Tensor, amplitudes:Tensor=None, relative_amplitude:int=1, permute:bool=True, sleep_ms:float = 0, loop:bool=False, num_loops:int=0):
+    def levitate(self, hologram:list[Tensor]|Tensor, relative_amplitude:int=-1, permute:bool=True, sleep_ms:float = 0, loop:bool=False, num_loops:int=0):
         '''
         Send a single phase map to the levitator - This is the recomended function to use as will deal with dtype conversions etc
-        :param phases: `Torch.Tensor` of phases or list of `Torch.Tensor` of phases, expects a batched dimension in dim 0. If phases is complex then ` phases = torch.angle(phases)` will be run, else phases left as is
-        :param amplitudes: Optional `Torch.Tensor` of amplitudes, same shape as `phases`
-        :param relative_amplitude: Single value [0,1] to set amplitude to. Default 1
+        :param hologram: `Torch.Tensor` of phases or list of `Torch.Tensor` of phases, expects a batched dimension in dim 0. If phases is complex then ` phases = torch.angle(hologram)` will be run for phase and ` amp = torch.abs(hologram)` for amplitude, else phases left as is
+        :param relative_amplitude: Single value [0,1] or -1 to set amplitude to. If -1 will ignore Default -1
         :param permute: Convert between acoustools transducer order and OpenMPD. Default True.
         :param sleep_ms: Time to wait between frames in ms.
         :param loop: If True will restart from the start of phases, default False
         :param num_loops: A set number of times to repeat the phases
         '''
+
+
         if self.mode:
             to_output = []
+            to_output_amplitudes = []
 
-            if type(phases) is list:
-                num_geometries = len(phases)
-                for phases_elem in phases:
+            if type(hologram) is list:
+                num_geometries = len(hologram)
+                for phases_elem in hologram:
 
                     if permute:
                         phases_elem = phases_elem[:,self.IDX]
 
                     if torch.is_complex(phases_elem):
+                        amp_elem = torch.abs(phases_elem)
                         phases_elem = torch.angle(phases_elem)
+                        
+                    else:
+                        amp_elem = torch.ones_like(phases_elem)
             
                     to_output = to_output + phases_elem.squeeze().cpu().detach().tolist()
+                    to_output_amplitudes = to_output_amplitudes + amp_elem.squeeze().cpu().detach().tolist()
             else:
                 num_geometries = 1
                 if permute:
-                        phases = phases[:,self.IDX]
+                        hologram = hologram[:,self.IDX]
 
-                if torch.is_complex(phases):
-                        phases = torch.angle(phases)
-                to_output = phases[0].squeeze().cpu().detach().tolist()
+                if torch.is_complex(hologram):
+                        amp = torch.abs(hologram)
+                        hologram = torch.angle(hologram)
+                else:
+                        amp = torch.ones_like(hologram)
+                to_output = hologram[0].squeeze().cpu().detach().tolist()
+                to_output_amplitudes = amp[0].squeeze().cpu().detach().tolist()
 
 
             phases = (ctypes.c_float * (256*self.board_number *num_geometries))(*to_output)
+           
 
-            if amplitudes is not None:
-                amplitudes = (ctypes.c_float * (256*self.board_number*num_geometries))(*amplitudes)
-
-            relative_amplitude = ctypes.c_float(relative_amplitude)
+            if relative_amplitude == -1:
+                amplitudes = (ctypes.c_float * (256*self.board_number*num_geometries))(*to_output_amplitudes)
+            else:
+                amplitudes = None
+                relative_amplitude = ctypes.c_float(relative_amplitude)
             
-
-            self.send_message(phases, amplitudes, relative_amplitude, num_geometries,sleep_ms=sleep_ms,loop=loop,num_loops=num_loops)
+            print(amplitudes)
+            self.send_message(phases, amplitudes, 0, num_geometries,sleep_ms=sleep_ms,loop=loop,num_loops=num_loops)
