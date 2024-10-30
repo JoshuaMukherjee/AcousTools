@@ -99,6 +99,8 @@ class LevitatorController():
                         0, 0, 1, 0,
                         0, 0, 0, 1
                         )
+                else:
+                    raise ValueError('For number of boards > 2, matBoardToWorld shouldnt be None')
 
             else:
                 self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number))(*matBoardToWorld)
