@@ -78,19 +78,28 @@ class LevitatorController():
             self.ids = (ctypes.c_int * self.board_number)(*ids)
 
             if matBoardToWorld is None:
-                self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number)) (
-                    1, 0, 0, 0,
-                    0, 1, 0, 0,
-                    0, 0, 1, 0,
-                    0, 0, 0, 1,
+                if self.board_number == 2:
+                    self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number)) (
+                        1, 0, 0, 0,
+                        0, 1, 0, 0,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1,
 
-                    1, 0, 0, 0,
-                    0, 1, 0, 0,
-                    0, 0, 1, 0,
-                    0, 0, 0, 1
+                        1, 0, 0, 0,
+                        0, 1, 0, 0,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1
 
-                    
-                )
+                        
+                    )
+                elif self.board_number == 1:
+                     self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number)) (
+                        1, 0, 0, 0,
+                        0, 1, 0, 0,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1
+                        )
+
             else:
                 self.matBoardToWorld =  (ctypes.c_float * (16*self.board_number))(*matBoardToWorld)
             
