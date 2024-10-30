@@ -1,5 +1,6 @@
 import torch
 import itertools
+import math
 
 from torch import Tensor
 
@@ -190,7 +191,7 @@ def distance(p1:Tensor, p2:Tensor) -> float:
     :param p2: Second point
     :return: Distance
     '''
-    return torch.sqrt(torch.sum((p2 - p1)**2))
+    return torch.sqrt(torch.sum((p2 - p1)**2)).real
     
 def interpolate_points(p1:Tensor, p2:Tensor, n:int)-> list[Tensor]:
     '''
@@ -200,12 +201,30 @@ def interpolate_points(p1:Tensor, p2:Tensor, n:int)-> list[Tensor]:
     :param n: number of points to interpolate
     :return: Path
     '''
-    vec = (p2 - p1) / n
-    points = []
-    for i in range(n):
-        points.append(p1 + i * vec)
+    if n > 0:
+        vec = (p2 - p1) / n
+        points = []
+        for i in range(n):
+            points.append(p1 + i * vec)
+    else:
+        return p1
 
     return points
+
+
+def total_distance(path: list[Tensor]):
+    total_dist = 0
+    distances = []
+    for p1, p2 in itertools.pairwise(path):
+        d = distance(p1,p2)
+        total_dist +=  d
+        distances.append(d)
+    
+    return total_dist, distances
+
+def target_distance_to_n(total_dist, max_distance):
+    n = total_dist / max_distance
+    return math.ceil(n)
 
 def interpolate_path(path: list[Tensor], n:int, return_distance:bool = False) -> list[Tensor]:
     '''
@@ -215,12 +234,8 @@ def interpolate_path(path: list[Tensor], n:int, return_distance:bool = False) ->
     :return: Path and optionally total distance
     '''
     points = []
-    total_dist = 0
-    distances = []
-    for p1, p2 in itertools.pairwise(path):
-        d = distance(p1,p2)
-        total_dist +=  d
-        distances.append(d)
+    total_dist, distances = total_distance(path)
+
 
     for i,(p1, p2) in enumerate(itertools.pairwise(path)):
         d = distances[i]
@@ -229,4 +244,19 @@ def interpolate_path(path: list[Tensor], n:int, return_distance:bool = False) ->
 
     if return_distance:
         return points, total_dist
+    return points
+
+def interpolate_path_to_distance(path: list[Tensor], max_diatance:float=0.001) -> list[Tensor]:
+    '''
+    Calls `interpolate_points on all adjacent pairs of points in path to make distance < max_distance`
+    :param max_diatance: max_distance between adjacent points
+    :return: Path and optionally total distance
+    '''
+    points = []
+
+    for i,(p1, p2) in enumerate(itertools.pairwise(path)):
+        total_dist, distances = total_distance([p1,p2])
+        n = math.ceil(total_dist / max_diatance)
+        points += interpolate_points(p1, p2, n)
+    
     return points
