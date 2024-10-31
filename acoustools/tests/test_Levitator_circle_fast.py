@@ -45,7 +45,7 @@ if __name__ == '__main__':
         # lev.levitate(xs,num_loops=1)
 
         start = time.time_ns()
-        lev.set_frame_rate(7000)
+        lev.set_frame_rate(6000)
         lev.levitate(xs,num_loops=100)
         end = time.time_ns()
         print((end-start)/1e9, 'Seconds')

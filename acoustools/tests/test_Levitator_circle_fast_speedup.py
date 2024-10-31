@@ -29,7 +29,8 @@ try:
         lev.set_frame_rate(speed)
         lev.levitate(xs,num_loops=1)
         end = time.time_ns()
-    print((end-start)/1e9, 'Seconds')
+        
+        # print((end-start)/1e9, 'Seconds')
 
 
 
