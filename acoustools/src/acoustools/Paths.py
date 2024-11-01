@@ -186,7 +186,7 @@ def numeral_nine(A,B,C):
 
 def distance(p1:Tensor, p2:Tensor) -> float:
     '''
-    Computes the euclidian distance between two points
+    Computes the euclidian distance between two points\n
     :param p1: First point
     :param p2: Second point
     :return: Distance
@@ -195,7 +195,7 @@ def distance(p1:Tensor, p2:Tensor) -> float:
     
 def interpolate_points(p1:Tensor, p2:Tensor, n:int)-> list[Tensor]:
     '''
-    Interpolates `n` points between `p1` and `p2`
+    Interpolates `n` points between `p1` and `p2`\n
     :param p1: First point
     :param p2: Second point
     :param n: number of points to interpolate
@@ -228,7 +228,7 @@ def target_distance_to_n(total_dist, max_distance):
 
 def interpolate_path(path: list[Tensor], n:int, return_distance:bool = False) -> list[Tensor]:
     '''
-    Calls `interpolate_points on all adjacent pairs of points in path`
+    Calls `interpolate_points on all adjacent pairs of points in path`\n
     :param n: TOTAL number of points to interpolate (will be split between pairs)
     :param return_distance: if `True` will also return total distance
     :return: Path and optionally total distance
@@ -248,7 +248,7 @@ def interpolate_path(path: list[Tensor], n:int, return_distance:bool = False) ->
 
 def interpolate_path_to_distance(path: list[Tensor], max_diatance:float=0.001) -> list[Tensor]:
     '''
-    Calls `interpolate_points on all adjacent pairs of points in path to make distance < max_distance`
+    Calls `interpolate_points on all adjacent pairs of points in path to make distance < max_distance` \n
     :param max_diatance: max_distance between adjacent points
     :return: Path and optionally total distance
     '''
@@ -264,8 +264,18 @@ def interpolate_path_to_distance(path: list[Tensor], max_diatance:float=0.001) -
 
 def interpolate_arc(start:Tensor, end:Tensor|None, origin:Tensor, n:int=100, 
                     up:Tensor=torch.tensor([0,0,1.0]), anticlockwise:bool=False) -> list[Tensor]:
-
-
+    
+    '''
+    Creates an arc between start and end with origin at origin\n
+    :param start: Point defining start of the arc
+    :param end: Point defining the end of the arc (this is not checked to lie on the arc - the arc will end at the same angle as arc)
+    :param origin: Point defining origin of the arc
+    :param n: number of points to interpolate along the arc. Default 100
+    :param up: vector defining which way is 'up'. Default to positive z
+    :param anticlickwise: If true will create anticlockwise arc. Otherwise will create clockwise arc
+    :returns Points: List of points
+    
+    '''
 
     
     radius = torch.sqrt(torch.sum((start - origin)**2))
@@ -299,8 +309,6 @@ def interpolate_arc(start:Tensor, end:Tensor|None, origin:Tensor, n:int=100,
     else:
         direction = 1
 
-    print(u)
-    print(v)
     points = []
     for i in range(n):
             t = direction * ((angle) / n) * i
