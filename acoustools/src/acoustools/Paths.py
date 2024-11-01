@@ -262,7 +262,7 @@ def interpolate_path_to_distance(path: list[Tensor], max_diatance:float=0.001) -
     return points
 
 
-def interpolate_arc(start:Tensor, end:Tensor|None, origin:Tensor, n:int=100, 
+def interpolate_arc(start:Tensor, end:Tensor|None=None, origin:Tensor=None, n:int=100, 
                     up:Tensor=torch.tensor([0,0,1.0]), anticlockwise:bool=False) -> list[Tensor]:
     
     '''
@@ -277,20 +277,21 @@ def interpolate_arc(start:Tensor, end:Tensor|None, origin:Tensor, n:int=100,
     
     '''
 
-    
+    if origin is None:
+        raise ValueError('Need to pass a value for origin')
+
     radius = torch.sqrt(torch.sum((start - origin)**2))
 
     start_vec = (start-origin)
 
-    
     if end is not None:
         end_vec = (end-origin)
         cos = torch.dot(start_vec.squeeze(),end_vec.squeeze()) / (torch.linalg.vector_norm(start_vec.squeeze()) * torch.linalg.vector_norm(end_vec.squeeze()))
-        print(cos)
         angle = torch.acos(cos)
     else:
-        end = start.clone()
-        angle = 3.14159 * 2
+        end = start.clone() + 1e-10
+        end_vec = (end-origin)
+        angle = torch.tensor([3.14159 * 2])
 
     w = torch.cross(start_vec,end_vec,dim=1)
     clockwise = torch.dot(w.squeeze(),up.squeeze())<0
@@ -318,3 +319,36 @@ def interpolate_arc(start:Tensor, end:Tensor|None, origin:Tensor, n:int=100,
     return points
 
 
+def interpolate_bezier(start: Tensor, end:Tensor, offset_1:Tensor, offset_2:Tensor, n:int=100) -> list[Tensor]:
+
+    '''
+    Create cubic Bezier curve based on positions given \n
+    :param start: Start position
+    :param end: End position
+    :param offset_1: offset from start to first control point
+    :param offset_2: offset from start to second control point
+    :param n: number of samples
+    :returns points:
+    '''
+
+    #Make even sample?= distance
+
+    P1 = start
+    P2 = start + offset_1
+    P3 = start + offset_2
+    P4 = end
+
+    points = []
+
+    for i in range(n):
+        t = i/n
+        P5 = (1-t)*P1 + t*P2
+        P6 = (1-t)*P2 + t*P3
+        P7 = (1-t)*P3 + t*P4
+        P8 = (1-t)*P5 + t*P6
+        P9 = (1-t)*P6 + t*P7
+        point = (1-t)*P8 + t*P9
+
+        points.append(point)
+
+    return points
