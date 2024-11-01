@@ -3,11 +3,11 @@ from acoustools.Utilities import create_points
 
 import matplotlib.pyplot as plt
 
-start =  create_points(1,1, z=0)
-end =    create_points(1,1, z=0)
+start =  create_points(1,1,x=0,y=0.01, z=0)
+end =    create_points(1,1,x=-.01,y=-0.01, z=0)
 origin = create_points(1,1,x =  0,   y = 0.005,z=0)
 
-points = interpolate_arc(start,end,origin)
+points = interpolate_arc(start,end,origin, anticlockwise=False, n=10)
 
 pts = [[p.detach().cpu()[:,0].item(),p.detach().cpu()[:,1].item()] for p in points]
 

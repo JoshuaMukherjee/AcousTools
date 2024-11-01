@@ -262,9 +262,10 @@ def interpolate_path_to_distance(path: list[Tensor], max_diatance:float=0.001) -
     return points
 
 
-def interpolate_arc(start:Tensor, end:Tensor|None, origin:Tensor, n:int=100):
+def interpolate_arc(start:Tensor, end:Tensor|None, origin:Tensor, n:int=100, 
+                    up:Tensor=torch.tensor([0,0,1.0]), anticlockwise:bool=False) -> list[Tensor]:
 
-    #DIRECTION!!
+
 
     
     radius = torch.sqrt(torch.sum((start - origin)**2))
@@ -275,12 +276,15 @@ def interpolate_arc(start:Tensor, end:Tensor|None, origin:Tensor, n:int=100):
     if end is not None:
         end_vec = (end-origin)
         cos = torch.dot(start_vec.squeeze(),end_vec.squeeze()) / (torch.linalg.vector_norm(start_vec.squeeze()) * torch.linalg.vector_norm(end_vec.squeeze()))
+        print(cos)
         angle = torch.acos(cos)
     else:
         end = start.clone()
         angle = 3.14159 * 2
 
     w = torch.cross(start_vec,end_vec,dim=1)
+    clockwise = torch.dot(w.squeeze(),up.squeeze())<0
+
     u = start_vec 
     u/= torch.linalg.vector_norm(start_vec.squeeze())
     if  (w == 0).all():
@@ -289,11 +293,17 @@ def interpolate_arc(start:Tensor, end:Tensor|None, origin:Tensor, n:int=100):
     v = torch.cross(w,u,dim=1) 
     v /=  torch.linalg.vector_norm(v.squeeze())
 
+    if clockwise == anticlockwise: #Should be false
+        angle = 2*3.14159 - angle
+        direction= -1
+    else:
+        direction = 1
+
     print(u)
     print(v)
     points = []
     for i in range(n):
-            t = ((angle) / n) * i
+            t = direction * ((angle) / n) * i
             p = radius * (torch.cos(t)*u + torch.sin(t)*v) + origin
             points.append(p)
 
