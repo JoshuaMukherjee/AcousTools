@@ -260,3 +260,43 @@ def interpolate_path_to_distance(path: list[Tensor], max_diatance:float=0.001) -
         points += interpolate_points(p1, p2, n)
     
     return points
+
+
+def interpolate_arc(start:Tensor, end:Tensor|None, origin:Tensor, n:int=100):
+
+    #DIRECTION!!
+
+    
+    radius = torch.sqrt(torch.sum((start - origin)**2))
+
+    start_vec = (start-origin)
+
+    
+    if end is not None:
+        end_vec = (end-origin)
+        cos = torch.dot(start_vec.squeeze(),end_vec.squeeze()) / (torch.linalg.vector_norm(start_vec.squeeze()) * torch.linalg.vector_norm(end_vec.squeeze()))
+        angle = torch.acos(cos)
+    else:
+        end = start.clone()
+        angle = 3.14159 * 2
+
+    w = torch.cross(start_vec,end_vec,dim=1)
+    u = start_vec 
+    u/= torch.linalg.vector_norm(start_vec.squeeze())
+    if  (w == 0).all():
+        w += torch.ones_like(w) * 1e-10
+    
+    v = torch.cross(w,u,dim=1) 
+    v /=  torch.linalg.vector_norm(v.squeeze())
+
+    print(u)
+    print(v)
+    points = []
+    for i in range(n):
+            t = ((angle) / n) * i
+            p = radius * (torch.cos(t)*u + torch.sin(t)*v) + origin
+            points.append(p)
+
+    return points
+
+
