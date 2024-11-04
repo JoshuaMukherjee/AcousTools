@@ -2,7 +2,18 @@ import torch
 import itertools
 import math
 
+from acoustools.Utilities import create_points
+
+try:
+    from svgpathtools import svg2paths, CubicBezier, Line
+    svg_warning = False
+except ImportError:
+    svg_warning = True
+
+
 from torch import Tensor
+
+
 
 def get_numeral(numeral:int|str, A:Tensor, B:Tensor, C:Tensor) -> list[Tensor]:
     '''
@@ -352,3 +363,106 @@ def interpolate_bezier(start: Tensor, end:Tensor, offset_1:Tensor, offset_2:Tens
         points.append(point)
 
     return points
+
+def svg_to_beziers(pth:str, flip_y:bool= False, n:int=20, dx:float=0, dy:float=0, scale_x:float = 1/10, scale_y:float = 1/10) -> tuple[list[Tensor]]:
+    '''
+    Converts a .SVG file containing bezier curves to a set of AcousTools bezier curves \n
+    :param pth: String path to .svg file
+    :param flip_y: If true flip the y axis
+    :param n: Number of samples along bezier to return
+    :param dx: change in x direction to apply
+    :param dy: change in y direction to apply
+    :param scale_x: scale in x direction to apply
+    :param scale_y: scale in y direction to apply
+    :returns (points, bezier): Points and the bezier curve as list of tuples. Bezier defined as (start, end, offset1, offset2) where offsets are from start
+    '''
+    if svg_warning:
+        raise ImportError('Requires svgpathtools module `pip install svgpathtools`')
+        
+
+    paths, _ = svg2paths(pth)
+
+
+    def ReIm_to_AcousTools_point(point, flip_y, dx, dy, scale_x, scale_y):
+        if flip_y:
+            y_mul = -1
+        else:
+            y_mul = 1
+
+        point_AT = create_points(1,x=(point.real*scale_x) + dx, y=(y_mul*point.imag*scale_y)-dy,z=0)
+        return point_AT
+
+    points = []
+    control_points = []
+    i = -1
+
+    for pth in paths:
+        for bez in pth:
+            if type(bez) == CubicBezier:
+                i += 1
+
+                start_RI = bez.start
+                control_1_RI = bez.control1
+                control_2_RI = bez.control2
+                end_RI = bez.end
+
+                start = ReIm_to_AcousTools_point(start_RI, flip_y, dx, dy, scale_x , scale_y)
+                control1 = ReIm_to_AcousTools_point(control_1_RI, flip_y,dx, dy, scale_x , scale_y)
+                control2 = ReIm_to_AcousTools_point(control_2_RI, flip_y,dx, dy, scale_x , scale_y)
+                end = ReIm_to_AcousTools_point(end_RI, flip_y,dx, dy, scale_x , scale_y)
+
+                control_points.append([start, end, control1-start, control2-start ])
+
+                points += interpolate_bezier(start, end, control1-start, control2-start, n=n)
+
+            elif type(bez) == Line:
+                start_RI = bez.start
+                end_RI = bez.end
+                
+                start = ReIm_to_AcousTools_point(start_RI, flip_y)
+                end = ReIm_to_AcousTools_point(end_RI, flip_y)
+                points += interpolate_path([start, end],n=n)
+    
+
+    xs = [p[:,0] for p in points]
+    max_x = max(xs).clone()
+    min_x = min(xs).clone()
+
+    ys = [p[:,1] for p in points]
+    max_y = max(ys).clone()
+    min_y = min(ys).clone()
+   
+
+    return points, control_points
+
+
+def bezier_to_C1(bezier, check_C0=True, n=20):
+    '''
+    Converts a bezier curve to be C1 continuous (https://en.wikipedia.org/wiki/Composite_B%C3%A9zier_curve#Smooth_joining)
+    :param bezier: bezier curve to convert as (start, end, offset1, offset2) where offsets are from start 
+    :param check_C0: If True will encure C0 continuity as well. Raises an error if violated
+    :param n: number of samples
+    :returns points,new_bezier: Points and new C1 bezier curve
+    '''
+    new_bezier = []
+    new_bezier.append(bezier[0])
+
+    for i,([P0, P3, c11, c12],[start_2,P6, c21, c22 ]) in enumerate(itertools.pairwise(bezier)):
+        P1 = P0 + c11
+        P2 = P0 + c12
+        P5 = P3 + c22
+ 
+        if check_C0: assert (P3 == start_2).all() #Assert we have C0 continuity
+
+        P4_offset = (P3 - P2)
+
+        new_bezier.append([P3, P6, P4_offset, c22])
+
+
+    points =[]
+    for (P0, P3, c11, c12) in new_bezier:
+        points += interpolate_bezier(P0,P3, c11, c12, n)
+    
+    
+    return points,new_bezier
+
