@@ -5,7 +5,7 @@ from acoustools.Utilities import create_points
 import matplotlib.pyplot as plt
 
 
-pth = 'acoustools/tests/data/svgs/bez_loop.svg'
+pth = 'acoustools/tests/data/svgs/Complex.svg'
 points, bezier_non_c1 = svg_to_beziers(pth, True, dx=-0.06, dy=-0.06)
 print(bezier_non_c1[0])
 

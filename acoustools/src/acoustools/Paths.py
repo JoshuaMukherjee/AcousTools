@@ -2,7 +2,7 @@ import torch
 import itertools
 import math
 
-from acoustools.Utilities import create_points
+from acoustools.Utilities import create_points, device
 
 try:
     from svgpathtools import svg2paths, CubicBezier, Line
@@ -12,6 +12,7 @@ except ImportError:
 
 
 from torch import Tensor
+from types import FunctionType
 
 
 
@@ -364,6 +365,56 @@ def interpolate_bezier(start: Tensor, end:Tensor, offset_1:Tensor, offset_2:Tens
 
     return points
 
+def interpolate_bezier_velocity(start: Tensor, end:Tensor, offset_1:Tensor, offset_2:Tensor, n:int=100) -> list[Tensor]:
+    '''
+    Gets the velocity of a  cubic Bezier curve based on positions given \n
+    :param start: Start position
+    :param end: End position
+    :param offset_1: offset from start to first control point
+    :param offset_2: offset from start to second control point
+    :param n: number of samples
+    :returns points:
+    '''
+
+    P0 = start
+    P1 = start + offset_1
+    P2 = start + offset_2
+    P3 = end
+
+    points = []
+    for i in range(n):
+        t = i/n
+        p = 3*(1-t)**2 *(P1-P0) + 6*(1-t)*t*(P2-P1) + 3*t**2 * (P3-P2)
+        points.append(p)
+    
+    return points
+
+
+def interpolate_bezier_acceleration(start: Tensor, end:Tensor, offset_1:Tensor, offset_2:Tensor, n:int=100) -> list[Tensor]:
+    '''
+    Gets the acceleration of a  cubic Bezier curve based on positions given \n
+    :param start: Start position
+    :param end: End position
+    :param offset_1: offset from start to first control point
+    :param offset_2: offset from start to second control point
+    :param n: number of samples
+    :returns points:
+    '''
+     
+    P0 = start
+    P1 = start + offset_1
+    P2 = start + offset_2
+    P3 = end
+
+    points = []
+    for i in range(n):
+        t = i/n
+        p = 6*(1-t)*(P2-2*P1+P0) + 6*t*(P3-2*P2+P1)
+        points.append(p)
+    
+    return points
+
+
 def svg_to_beziers(pth:str, flip_y:bool= False, n:int=20, dx:float=0, dy:float=0, scale_x:float = 1/10, scale_y:float = 1/10) -> tuple[list[Tensor]]:
     '''
     Converts a .SVG file containing bezier curves to a set of AcousTools bezier curves \n
@@ -436,7 +487,7 @@ def svg_to_beziers(pth:str, flip_y:bool= False, n:int=20, dx:float=0, dy:float=0
     return points, control_points
 
 
-def bezier_to_C1(bezier, check_C0=True, n=20):
+def bezier_to_C1(bezier:list[list[Tensor]], check_C0:bool=True, n:int=20) -> tuple[list[Tensor]]:
     '''
     Converts a bezier curve to be C1 continuous (https://en.wikipedia.org/wiki/Composite_B%C3%A9zier_curve#Smooth_joining)
     :param bezier: bezier curve to convert as (start, end, offset1, offset2) where offsets are from start 
@@ -458,6 +509,23 @@ def bezier_to_C1(bezier, check_C0=True, n=20):
 
         new_bezier.append([P3, P6, P4_offset, c22])
 
+    if (new_bezier[0][0] == new_bezier[-1][1]).all(): #C0 continuous at the last point -> Path is a loop
+        [P0, P3, c11, c12] = new_bezier[-1]
+        [start_2,P6, c21, c22 ] = new_bezier[0]
+
+        P1 = P0 + c11
+        P2 = P0 + c12
+        P5 = P3 + c22
+ 
+        if check_C0: assert (P3 == start_2).all() #Assert we have C0 continuity
+
+        P4_offset = (P3 - P2)
+
+        new_bezier[0] = [P3, P6, P4_offset, c22]
+
+
+
+
 
     points =[]
     for (P0, P3, c11, c12) in new_bezier:
@@ -466,3 +534,70 @@ def bezier_to_C1(bezier, check_C0=True, n=20):
     
     return points,new_bezier
 
+def close_bezier(bezier:list[list[Tensor]], n:int=20)  -> tuple[list[Tensor]]:
+    '''
+    Links the last point in a bezier to the start of it with a new bezier
+    :param bezier: Bezier spline to close as list of (start, end, offset1, offset2) where offsets are from start 
+    :param n: number of points to sample
+    :returns points,bezier: points,bezier
+    '''
+
+    start = bezier[0]
+    end = bezier[-1]
+
+    new_b = [end[1], start[0],torch.zeros_like(start[0]),torch.zeros_like(start[0])]
+    bezier.append(new_b)
+
+    points =[]
+    for (P0, P3, c11, c12) in bezier:
+        points += interpolate_bezier(P0,P3, c11, c12, n)
+
+
+    return points,bezier
+
+
+
+def OptiSpline(bezier:list[list[Tensor]], target_points:list[Tensor], objective: FunctionType, 
+               n:int=20, C1:bool=True, optimiser:torch.optim.Optimizer=torch.optim.Adam, 
+               lr: float=0.01, objective_params:dict={},iters:int=200,log=True ):
+    '''
+    Optimiser for AcousTools bezier Splines \n
+    :param bezier: Bezier spline as list of (start, end, offset1, offset2) where offsets are from start 
+    :param target_points: Target points 
+    :param objective: Objective function
+    :param n: number of points to sample
+    :param C1: If True will enforce C1 continuity
+    :param optimiser: Optimiser to use - default Adam
+    :param lr: learning rate to use - default 0.01
+    :param objective_params: Objectives to pass to objective function
+    :param iters: iterations to optimise for
+    :param log: If true will print objective value at each step
+    :returns bezier: Optimses curve
+
+    '''
+    params = []
+
+    
+    for bez in bezier:
+        params.append(bez[2].requires_grad_())
+        params.append(bez[3].requires_grad_())
+
+    optim = optimiser(params,lr)
+
+    target_points = torch.stack(target_points)
+    
+    for epoch in range(iters):
+
+        optim.zero_grad()       
+
+        loss = objective( bezier, target_points, n=n, **objective_params)
+        if log: print(loss)
+
+        loss.backward()
+        optim.step()
+        if C1: _,bezier=bezier_to_C1(bezier)
+
+
+
+
+    return bezier
