@@ -591,7 +591,7 @@ def OptiSpline(bezier:list[list[Tensor]], target_points:list[Tensor], objective:
         optim.zero_grad()       
 
         loss = objective( bezier, target_points, n=n, **objective_params)
-        if log: print(loss)
+        if log: print(epoch, loss)
 
         loss.backward()
         optim.step()
