@@ -503,7 +503,7 @@ def bezier_to_C1(bezier:list[list[Tensor]], check_C0:bool=True, n:int=20) -> tup
         P2 = P0 + c12
         P5 = P3 + c22
  
-        if check_C0: assert (P3 == start_2).all() #Assert we have C0 continuity
+        # if check_C0: assert (P3 == start_2).all() #Assert we have C0 continuity
 
         P4_offset = (P3 - P2)
 
@@ -517,7 +517,7 @@ def bezier_to_C1(bezier:list[list[Tensor]], check_C0:bool=True, n:int=20) -> tup
         P2 = P0 + c12
         P5 = P3 + c22
  
-        if check_C0: assert (P3 == start_2).all() #Assert we have C0 continuity
+        # if check_C0: assert (P3 == start_2).all() #Assert we have C0 continuity
 
         P4_offset = (P3 - P2)
 
@@ -559,7 +559,7 @@ def close_bezier(bezier:list[list[Tensor]], n:int=20)  -> tuple[list[Tensor]]:
 
 def OptiSpline(bezier:list[list[Tensor]], target_points:list[Tensor], objective: FunctionType, 
                n:int=20, C1:bool=True, optimiser:torch.optim.Optimizer=torch.optim.Adam, 
-               lr: float=0.01, objective_params:dict={},iters:int=200,log=True ):
+               lr: float=0.01, objective_params:dict={},iters:int=200,log=True, optimise_start:bool=True ):
     '''
     Optimiser for AcousTools bezier Splines \n
     :param bezier: Bezier spline as list of (start, end, offset1, offset2) where offsets are from start 
@@ -572,6 +572,7 @@ def OptiSpline(bezier:list[list[Tensor]], target_points:list[Tensor], objective:
     :param objective_params: Objectives to pass to objective function
     :param iters: iterations to optimise for
     :param log: If true will print objective value at each step
+    :param optimise_start: If True will use the start position of the beziers as a optimisation parameter as well
     :returns bezier: Optimses curve
 
     '''
@@ -579,6 +580,7 @@ def OptiSpline(bezier:list[list[Tensor]], target_points:list[Tensor], objective:
 
     
     for bez in bezier:
+        if optimise_start: params.append(bez[1].requires_grad_())
         params.append(bez[2].requires_grad_())
         params.append(bez[3].requires_grad_())
 

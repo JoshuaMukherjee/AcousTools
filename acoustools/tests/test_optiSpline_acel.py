@@ -3,7 +3,7 @@ from acoustools.Optimise.OptiSpline_Objectives import optispline_min_acceleratio
 
 import matplotlib.pyplot as plt
 
-N = 50
+N = 20
 
 pth = 'acoustools/tests/data/svgs/Complex.svg'
 points, bezier = svg_to_beziers(pth, True, dx=-0.06, dy=-0.06,n=N)
@@ -16,7 +16,7 @@ ys = [p[1] for p in pts]
 plt.plot(xs,ys,marker='.', label='Target')
 
 
-new_bezier = OptiSpline(bezier, points, optispline_min_acceleration_position,iters=300, objective_params={'alpha':1e-5},n=N)
+new_bezier = OptiSpline(bezier, points, optispline_min_acceleration_position,iters=300, objective_params={'alpha':1e-6},n=N, optimise_start=True)
 points,new_bezier = close_bezier(new_bezier)
 
 

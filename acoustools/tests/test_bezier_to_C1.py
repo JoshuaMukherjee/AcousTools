@@ -18,13 +18,13 @@ pts = [[p.detach().cpu()[:,0].item(),p.detach().cpu()[:,1].item()] for p in poin
 xs = [p[0] for p in pts]
 ys = [p[1] for p in pts]
 
-plt.scatter(xs,ys)
+plt.plot(xs,ys, marker='.')
 
 pts = [[p.detach().cpu()[:,0].item(),p.detach().cpu()[:,1].item()] for p in points_c1]
 xs = [p[0] for p in pts]
 ys = [p[1] for p in pts]
 
-plt.scatter(xs,ys)
+plt.plot(xs,ys, marker='.')
 
 
 plt.show()
