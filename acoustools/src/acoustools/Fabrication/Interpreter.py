@@ -14,8 +14,6 @@ Commands\n
 `C1;` Activate UV\n
 `C2;` Turn off UV\n
 `C3 <T>;` Delay for T ms\n
-
-
 '''
 
 
