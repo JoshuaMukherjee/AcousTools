@@ -1,28 +1,126 @@
+'''
+Converts gcode file to lcode file \n
+
+Each line starts with a command (see below) followed by the arguments for that command. The command should be followed by a colon (:). \n
+Each line should end with a semi-colon (;), each argument is seperated by a comma (,) and groups or arguments can be seperated with a colon (:)\n
+
+Commands\n
+`L0 <X> <Y> <Z>;` Create Focal Point at (X,Y,Z)\n
+`L1 <X> <Y> <Z>;` Create Trap Point at (X,Y,Z)\n
+`L2 <X> <Y> <Z>;` Create Twin Trap Point at (X,Y,Z)\n
+`L3 <X> <Y> <Z>;` Create Vortex Trap Point at (X,Y,Z)\n
+
+`C0;`Dispense Droplet\n
+`C1;` Activate UV\n
+`C2;` Turn off UV\n
+`C3 <T>;` Delay for T ms\n
+
+
+'''
+
+
 from acoustools.Utilities import create_points
 from acoustools.Paths import interpolate_points, distance, interpolate_arc
 
 from torch import Tensor
 import torch
 
-'''
-Converts gcode file to lcode file
-
-Each line starts with a command (see below) followed by the arguments for that command. The command should be followed by a colon (:). 
-Each line should end with a semi-colon (;), each argument is seperated by a comma (,) and groups or arguments can be seperated with a colon (:)
-
-Commands
-L0 <X> <Y> <Z>; Create Focal Point at (X,Y,Z)
-L1 <X> <Y> <Z>; Create Trap Point at (X,Y,Z)
-L2 <X> <Y> <Z>; Create Twin Trap Point at (X,Y,Z)
-L3 <X> <Y> <Z>; Create Vortex Trap Point at (X,Y,Z)
-
-C0; Dispense Droplet
-C1; Activate UV
-C2; Turn off UV
-C3 <T>; Delay for T ms
+def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=None, log:bool=True, log_name:str|None=None, log_dir:str=None,
+                    divider:float = 1000, relative:bool = False, 
+                   max_stepsize:float=0.001, extruder:Tensor|None = None, pre_print_command:str = '', post_print_command:str = ''):
+    '''
+    Converts a .gcode file to a .lcode file \n
+    ```Python
+    from acoustools.Fabrication.Interpreter import gcode_to_lcode
 
 
-'''
+    pth = 'acoustools/tests/data/gcode/rectangle.gcode'
+
+    pre_cmd = 'C0;\\n'
+    post_cmd = 'C1;\\nC3:10;\\nC2;\\n'
+    gcode_to_lcode(pth, pre_print_command=pre_cmd, post_print_command=post_cmd)
+
+    ```
+    :param fname: The file name of the gcode file
+    :param output_name: The filename for the lcode file, if None will use the gcode file name with .gcode replaced with .lcode
+    :param output_dir: output directory of the lcode file, if None will use the same as the gcode file
+    :param log: If True will save log files 
+    :param log_name: Name for the log file, if None will will use the gcode file name with .gcode replaced with .txt and the name with '_log' appended
+    :param log_dir: Directory for log file, if None will use same as the gcode file
+    :param divider: Value to divide dx,dy,dz by - useful to change units
+    :param relative: If true will change relative to last position, else will be absolute
+    :param max_stepsize: Maximum stepsize allowed, default 1mm
+    :param extruder: Extruder location, if None will use (0,0.10, 0)
+    :param pre_print_command: commands to put before each generated command
+    :param post_print_command: commands to put after each generated command
+
+    '''
+    name = fname.replace('.gcode','')
+    parts = name.split('/')
+    name = parts[-1]
+    path = '/'.join(parts[:-1])
+
+    if extruder is None:
+        extruder = create_points(1,1,0,0.10, 0)
+
+    if output_name is None:
+        output_name = name
+
+    if output_dir is None:
+        output_dir = path
+    
+    if log_dir is None:
+        log_dir = output_dir
+    
+    if log_name is None:
+        log_name = name
+
+    
+    
+    output_file = open(output_dir+'/'+output_name+'.lcode','w')
+    if log: log_file = open(log_dir+'/'+log_name+'_log.txt','w')
+
+    head_position = create_points(1,1,0,0,0)
+    
+    with open(fname) as file:
+        for i,line in enumerate(file.readlines()):
+            line = line.rstrip()
+            line_split = line.split()
+            code = line_split[0]
+            args = line_split[1:]
+            if code == 'G00' or code == 'G0': #Non-fabricating move
+                _, head_position = convert_G00(*args, head_position=head_position, divider=divider, relative=relative)
+                if log: log_file.write(f'Line {i+1}, G00 Command: Virtual head updated to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} ({line}) \n')
+            elif code == 'G01' or code == 'G1': #Fabricating move
+                command, head_position, N = convert_G01(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
+                                                        max_stepsize=max_stepsize,pre_print_command=pre_print_command, 
+                                                        post_print_command=post_print_command )
+                output_file.write(command)
+
+                if log: log_file.write(f'Line {i+1}, G01 Command: Line printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
+            
+            elif code == 'G02' or code == 'G2': #Fabricating move
+                command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
+                                                            max_stepsize=max_stepsize, anticlockwise=False,pre_print_command=pre_print_command, 
+                                                            post_print_command=post_print_command )
+                output_file.write(command)
+
+                if log: log_file.write(f'Line {i+1}, G02 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
+            
+            elif code == 'G03' or code == 'G3': #Fabricating arc
+                command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
+                                                            max_stepsize=max_stepsize, anticlockwise=True,pre_print_command=pre_print_command, 
+                                                            post_print_command=post_print_command )
+                output_file.write(command)
+
+                if log: log_file.write(f'Line {i+1}, G03 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
+
+            else: #Ignore everything else
+                if log: log_file.write(f'Line {i+1}, Ignoring code {code} ({line})\n')
+    
+
+    output_file.close()
+    if log: log_file.close()
 
 def parse_xyz(*args:str):
     '''
@@ -206,89 +304,3 @@ def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float 
     return command, end_position, N
 
 
-
-def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=None, log:bool=True, log_name:str|None=None, log_dir:str=None,
-                    divider:float = 1000, relative:bool = False, 
-                   max_stepsize:float=0.001, extruder:Tensor|None = None, pre_print_command:str = '', post_print_command:str = ''):
-    '''
-    Converts a .gcode file to a .lcode file \n
-    :param fname: The file name of the gcode file
-    :param output_name: The filename for the lcode file, if None will use the gcode file name with .gcode replaced with .lcode
-    :param output_dir: output directory of the lcode file, if None will use the same as the gcode file
-    :param log: If True will save log files 
-    :param log_name: Name for the log file, if None will will use the gcode file name with .gcode replaced with .txt and the name with '_log' appended
-    :param log_dir: Directory for log file, if None will use same as the gcode file
-    :param divider: Value to divide dx,dy,dz by - useful to change units
-    :param relative: If true will change relative to last position, else will be absolute
-    :param max_stepsize: Maximum stepsize allowed, default 1mm
-    :param extruder: Extruder location, if None will use (0,0.10, 0)
-    :param pre_print_command: commands to put before each generated command
-    :param post_print_command: commands to put after each generated command
-
-    '''
-    name = fname.replace('.gcode','')
-    parts = name.split('/')
-    name = parts[-1]
-    path = '/'.join(parts[:-1])
-
-    if extruder is None:
-        extruder = create_points(1,1,0,0.10, 0)
-
-    if output_name is None:
-        output_name = name
-
-    if output_dir is None:
-        output_dir = path
-    
-    if log_dir is None:
-        log_dir = output_dir
-    
-    if log_name is None:
-        log_name = name
-
-    
-    
-    output_file = open(output_dir+'/'+output_name+'.lcode','w')
-    if log: log_file = open(log_dir+'/'+log_name+'_log.txt','w')
-
-    head_position = create_points(1,1,0,0,0)
-    
-    with open(fname) as file:
-        for i,line in enumerate(file.readlines()):
-            line = line.rstrip()
-            line_split = line.split()
-            code = line_split[0]
-            args = line_split[1:]
-            if code == 'G00' or code == 'G0': #Non-fabricating move
-                _, head_position = convert_G00(*args, head_position=head_position, divider=divider, relative=relative)
-                if log: log_file.write(f'Line {i+1}, G00 Command: Virtual head updated to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} ({line}) \n')
-            elif code == 'G01' or code == 'G1': #Fabricating move
-                command, head_position, N = convert_G01(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
-                                                        max_stepsize=max_stepsize,pre_print_command=pre_print_command, 
-                                                        post_print_command=post_print_command )
-                output_file.write(command)
-
-                if log: log_file.write(f'Line {i+1}, G01 Command: Line printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
-            
-            elif code == 'G02' or code == 'G2': #Fabricating move
-                command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
-                                                            max_stepsize=max_stepsize, anticlockwise=False,pre_print_command=pre_print_command, 
-                                                            post_print_command=post_print_command )
-                output_file.write(command)
-
-                if log: log_file.write(f'Line {i+1}, G02 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
-            
-            elif code == 'G03' or code == 'G3': #Fabricating arc
-                command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
-                                                            max_stepsize=max_stepsize, anticlockwise=True,pre_print_command=pre_print_command, 
-                                                            post_print_command=post_print_command )
-                output_file.write(command)
-
-                if log: log_file.write(f'Line {i+1}, G03 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
-
-            else: #Ignore everything else
-                if log: log_file.write(f'Line {i+1}, Ignoring code {code} ({line})\n')
-    
-
-    output_file.close()
-    if log: log_file.close()
