@@ -1,5 +1,4 @@
 .DS_Store
 *.pyc
 read_beast_file.py
-acoustools/tests/data/*
 *.gif
