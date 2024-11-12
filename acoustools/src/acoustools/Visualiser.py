@@ -1,5 +1,5 @@
 import torch
-from acoustools.Utilities import propagate_abs, add_lev_sig, device, create_board, TRANSDUCERS, forward_model
+from acoustools.Utilities import propagate_abs, device, TRANSDUCERS, create_points
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import art3d
 import matplotlib.colors as clrs
@@ -7,9 +7,9 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.widgets import MultiCursor
-import matplotlib as mpl
 
-
+import matplotlib.animation as animation
+import matplotlib  as mpl
 
 from torch import Tensor
 from types import FunctionType
@@ -673,3 +673,104 @@ def Visualise_single_blocks(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
 
     im = combine_tiles(*ims)
     return im
+
+
+def animate_lcode(pth, ax:mpl.axes.Axes|None=None, fig:plt.Figure=None, skip:int=1, show:bool=False, 
+                  fname:str='', extruder:Tensor|None = None, xlims:tuple[float]|None=None, 
+                  ylims:tuple[float]|None=None, zlims:tuple[float]|None=None, dpi:int=200, interval:int = 1, 
+                  legend:bool=True, title:bool=True) -> None:
+    '''
+    Reads a .lcode file and produces a gif of the simulation of the result of that lcode\n
+    :param pth: Path to the .lcode file
+    :param ax: Axis to use, if None will create new
+    :param fig: Figure to use, if None will create new
+    :param skip: Number of instructions to skip per animation frame, default 1 (no skipping)
+    :param show: If true will call plt.show()
+    :param: fname: Name of file to save to
+    :param extruder: If not None the position of the extruder to plot as Tensor
+    :param xlims: Tuple of xlims, if None will use  (-0.12,0.12)
+    :param ylims: Tuple of ylims, if None will use  (-0.12,0.12)
+    :param zlims: Tuple of `lims, if None will use  (-0.12,0.12)
+    :param dpi: dpi to use when saving gif
+    :param inetrval: Time to wait between frames
+    :param legend: If True will add figure legend
+    :param title: If True will add figure title
+    '''
+
+    if fig is None: fig = plt.figure()
+    if ax is None: ax = fig.add_subplot(projection='3d')
+    
+
+    point_commands = ['L0','L1','L2','L3']
+
+    frames = []
+    printed_points = [[],]
+
+    with open(pth,'r') as file:
+        lines = file.readlines()
+        for line in lines:
+            line = line.replace(';','').rstrip()
+            split = line.split(':')
+            cmd = split[0]
+            if cmd in point_commands:
+                point = split[1].split(',')
+                frames.append([float(p) for p in point])
+            
+            frame_printed_points = printed_points[-1].copy()
+            if cmd == 'C1':
+                frame_printed_points.append(frames[-1].copy())
+            
+            printed_points.append(frame_printed_points)
+
+
+    if extruder is not None:
+        if type(extruder) is bool:
+            extruder = create_points(1,1,0,0.10, 0.04)
+        ex_x = extruder[:,0].detach().cpu()
+        ex_y = extruder[:,1].detach().cpu()
+        ex_z = extruder[:,2].detach().cpu()
+
+
+    FRAMES = int(len(frames) / skip)
+    # FRAMES = 100
+
+    if xlims is None:
+        xlims = (-0.12,0.12)
+    
+    if ylims is None:
+        ylims = (-0.12,0.12)
+    
+    if zlims is None:
+        zlims = (-0.12,0.12)
+    
+
+    def traverse(index):
+        index = index*skip
+        ax.clear()
+        print(f"{index/skip}/{FRAMES}")
+        ax.scatter(*frames[index], label='Trap')
+        
+        printed_xs = [p[0] for p in printed_points[index]]
+        printed_ys = [p[1] for p in printed_points[index]]
+        printed_zs = [p[2] for p in printed_points[index]]
+
+        ax.scatter(printed_xs,printed_ys, printed_zs, label='Printed')
+
+        ax.set_ylim(xlims)
+        ax.set_xlim(ylims)
+        ax.set_zlim(zlims)
+
+        
+        if extruder is not None: ax.scatter(ex_x, ex_y, ex_z, label='Extruder')
+
+        if legend: ax.legend()
+        if title: ax.set_title(f'Location: {index}')
+        
+
+
+    ani = animation.FuncAnimation(fig, traverse, frames=FRAMES, interval=interval)
+    if show: plt.show()
+
+    if fname == '':
+        fname = 'Results.gif'
+    ani.save(fname, writer='imagemagick', dpi = dpi)
