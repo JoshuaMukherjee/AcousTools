@@ -1,4 +1,4 @@
-from acoustools.Fabrication.Interpreter import gcode_to_lcode
+from acoustools.Fabrication.Translater import gcode_to_lcode
 
 
 pth = 'acoustools/tests/data/gcode/circle.gcode'
