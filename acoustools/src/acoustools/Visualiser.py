@@ -677,7 +677,7 @@ def Visualise_single_blocks(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
 
 def animate_lcode(pth, ax:mpl.axes.Axes|None=None, fig:plt.Figure=None, skip:int=1, show:bool=False, 
                   fname:str='', extruder:Tensor|None = None, xlims:tuple[float]|None=None, 
-                  ylims:tuple[float]|None=None, zlims:tuple[float]|None=None, dpi:int=200, interval:int = 1, 
+                  ylims:tuple[float]|None=None, zlims:tuple[float]|None=None, dpi:int=100, interval:int = 1, 
                   legend:bool=True, title:bool=True) -> None:
     '''
     Reads a .lcode file and produces a gif of the simulation of the result of that lcode\n
@@ -725,7 +725,7 @@ def animate_lcode(pth, ax:mpl.axes.Axes|None=None, fig:plt.Figure=None, skip:int
 
     if extruder is not None:
         if type(extruder) is bool:
-            extruder = create_points(1,1,0,0.10, 0.04)
+            extruder = create_points(1,1,0,0.10,0)
         ex_x = extruder[:,0].detach().cpu()
         ex_y = extruder[:,1].detach().cpu()
         ex_z = extruder[:,2].detach().cpu()
@@ -747,7 +747,7 @@ def animate_lcode(pth, ax:mpl.axes.Axes|None=None, fig:plt.Figure=None, skip:int
     def traverse(index):
         index = index*skip
         ax.clear()
-        print(f"{index/skip}/{FRAMES}")
+        print(f"Line {index/skip}/{FRAMES}", end='\r')
         ax.scatter(*frames[index], label='Trap')
         
         printed_xs = [p[0] for p in printed_points[index]]

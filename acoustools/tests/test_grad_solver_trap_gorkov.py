@@ -11,7 +11,7 @@ if __name__ == '__main__':
     p = create_points(4,1, y=0)
     x = gradient_descent_solver(p,gorkov_analytical_std_mean_objective, 
                                     maximise=False, constrains=constrain_phase_only, 
-                                    log=True, lr=1e2,iters=2000)
+                                    log=True, lr=1e2,iters=700)
 
     print(propagate_abs(x,p))
     

@@ -296,6 +296,8 @@ def interpolate_arc(start:Tensor, end:Tensor|None=None, origin:Tensor=None, n:in
 
     start_vec = (start-origin)
 
+    up = up.to(device)
+
     if end is not None:
         end_vec = (end-origin)
         cos = torch.dot(start_vec.squeeze(),end_vec.squeeze()) / (torch.linalg.vector_norm(start_vec.squeeze()) * torch.linalg.vector_norm(end_vec.squeeze()))
