@@ -5,7 +5,7 @@ from acoustools.Utilities import create_points
 import matplotlib.pyplot as plt
 
 
-pth = 'acoustools/tests/data/svgs/blob.svg'
+pth = 'acoustools/tests/data/svgs/fish.svg'
 points, control_points = svg_to_beziers(pth, True)
 
 
