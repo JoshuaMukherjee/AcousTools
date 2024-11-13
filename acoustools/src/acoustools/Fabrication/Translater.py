@@ -1,5 +1,5 @@
 '''
-Converts gcode file to lcode file \n
+Translates gcode file to lcode file \n
 
 Each line starts with a command (see below) followed by the arguments for that command. The command should be followed by a colon (:). \n
 Each line should end with a semi-colon (;), each argument is seperated by a comma (,) and groups or arguments can be seperated with a colon (:)\n
@@ -29,7 +29,7 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
     '''
     Converts a .gcode file to a .lcode file \n
     ```Python
-    from acoustools.Fabrication.Interpreter import gcode_to_lcode
+    from acoustools.Fabrication.Translater import gcode_to_lcode
 
 
     pth = 'acoustools/tests/data/gcode/rectangle.gcode'
