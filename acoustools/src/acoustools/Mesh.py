@@ -413,6 +413,14 @@ def get_edge_data(scatterer:Mesh, wavelength:float=Constants.wavelength, print_o
 
 
 def cut_mesh_to_walls(scatterer:Mesh, layer_z:float, layer_normal:tuple[float] = (0,0,-1.0), wall_thickness = 0.001) -> Mesh:
+    '''
+    Cuts a mesh with a given plane and then converts the result to have walls of a certain thickness \n
+    :param scatterer: Mesh to use
+    :param layer_z: coordinate of layer
+    :param layer_normal: Normal to layer (if not +- (0,0,1) then layer_z will not refer to a z coordinate)
+    :param wall_thickness: Thickness of the walls to returns
+    :return: Cut mesh with walls
+    '''
 
     xmin,xmax, ymin,ymax, zmin,zmax = scatterer.bounds()
     dx = xmax-xmin
