@@ -21,6 +21,8 @@ Commands\n
 `C7;` Set to two board setup\n
 `C8;` Set to top board setup\n
 `C9;` Set to bottom board setup\n
+`C10;` Update BEM to use layer at last z position \n
+`C11:<Sig>;` Update the type of signature that movemenets will be converted to - will change which of L1-L4 are used for G01 moves. \n
 '''
 # NEED TO ADD FRAME RATE CONTROL
 
@@ -34,7 +36,7 @@ import torch
 def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=None, log:bool=True, log_name:str|None=None, log_dir:str=None,
                     divider:float = 1000, relative:bool = False, 
                    max_stepsize:float=0.001, extruder:Tensor|None = None, pre_print_command:str = '', 
-                   post_print_command:str = '', print_lines:bool=False, pre_commands:str= '', post_commands:str=''):
+                   post_print_command:str = '', print_lines:bool=False, pre_commands:str= '', post_commands:str='', use_BEM = False, sig_type='Trap'):
     '''
     Converts a .gcode file to a .lcode file \n
     ```Python
@@ -93,7 +95,10 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
     if log: log_file = open(log_dir+'/'+log_name+'_log.txt','w')
 
     head_position = create_points(1,1,0,0,0)
+
     
+
+
     with open(fname) as file:
         lines = file.readlines()
         Nl = len(lines)
@@ -103,30 +108,31 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
             line_split = line.split()
             code = line_split[0]
             args = line_split[1:]
+            command = ''
             if code == 'G00' or code == 'G0': #Non-fabricating move
-                _, head_position = convert_G00(*args, head_position=head_position, divider=divider, relative=relative)
+                head_z = head_position[:,2].item()
+                command, head_position = convert_G00(*args, head_position=head_position, divider=divider, relative=relative)
+                if use_BEM and head_z != head_position[:,2]:
+                    command += 'C10;\n'
                 if log: log_file.write(f'Line {i+1}, G00 Command: Virtual head updated to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} ({line}) \n')
             elif code == 'G01' or code == 'G1': #Fabricating move
                 command, head_position, N = convert_G01(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
                                                         max_stepsize=max_stepsize,pre_print_command=pre_print_command, 
-                                                        post_print_command=post_print_command )
-                output_file.write(command)
+                                                        post_print_command=post_print_command, sig=sig_type )
 
                 if log: log_file.write(f'Line {i+1}, G01 Command: Line printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
             
             elif code == 'G02' or code == 'G2': #Fabricating move
                 command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
                                                             max_stepsize=max_stepsize, anticlockwise=False,pre_print_command=pre_print_command, 
-                                                            post_print_command=post_print_command )
-                output_file.write(command)
+                                                            post_print_command=post_print_command, sig=sig_type )
 
                 if log: log_file.write(f'Line {i+1}, G02 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
             
             elif code == 'G03' or code == 'G3': #Fabricating arc
                 command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
                                                             max_stepsize=max_stepsize, anticlockwise=True,pre_print_command=pre_print_command, 
-                                                            post_print_command=post_print_command )
-                output_file.write(command)
+                                                            post_print_command=post_print_command, sig=sig_type )
 
                 if log: log_file.write(f'Line {i+1}, G03 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
 
@@ -135,6 +141,8 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
 
             else: #Ignore everything else
                 if log: log_file.write(f'Line {i+1}, Ignoring code {code} ({line})\n')
+            
+            output_file.write(command)
     
     output_file.write(post_commands)
     output_file.close()
@@ -201,7 +209,7 @@ def extruder_to_point(points:list[Tensor], extruder:Tensor, max_stepsize:float=0
 
         
 
-def points_to_lcode_trap(points:list[Tensor]) -> tuple[str,Tensor]:
+def points_to_lcode_trap(points:list[Tensor], sig:str='Trap') -> tuple[str,Tensor]:
     '''
     Converts a set of points to a number of L1 commands (Traps) \n
     :param points: The point locations
@@ -210,7 +218,8 @@ def points_to_lcode_trap(points:list[Tensor]) -> tuple[str,Tensor]:
     command = ''
     for point in points:
         N = point.shape[2]
-        command += "L1:"
+        sig_num = {'Focal':'0','Trap':"1",'Twin':'2','Vortex':'3'}[sig]
+        command += f"L{sig_num}:"
         for i in range(N):
             command += f'{point[:,0].item()},{point[:,1].item()},{point[:,2].item()}'
             if i+1 < N:
@@ -237,7 +246,7 @@ def convert_G00(*args:str, head_position:Tensor, divider:float = 1000, relative:
     return '', head_position
 
 def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float = 1000, 
-                relative:bool=False, max_stepsize:bool=0.001, pre_print_command:str = '', post_print_command:str = '') -> tuple[str, Tensor]:
+                relative:bool=False, max_stepsize:bool=0.001, pre_print_command:str = '', post_print_command:str = '', sig:str='Trap') -> tuple[str, Tensor]:
     '''
     Comverts G00 commands to line of points \n
     :param args: Arguments to G00 command
@@ -248,6 +257,7 @@ def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float 
     :param max_stepsize: Maximum stepsize allowed, default 1mm
     :param pre_print_command: commands to put before generated commands
     :param post_print_command: commands to put after generated commands
+    :param sig: Signature to use 
     :returns command, head_position: Returns the commands and the new head position
     '''
     dx, dy, dz = parse_xyz(*args)
@@ -261,7 +271,7 @@ def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float 
     command = ''
     for point in print_points:
         pt = extruder_to_point(point, extruder)
-        cmd, head_position =  points_to_lcode_trap(pt)
+        cmd, head_position =  points_to_lcode_trap(pt,sig=sig)
         command += pre_print_command
         command += cmd
         command += post_print_command
@@ -270,7 +280,7 @@ def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float 
 
 def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float = 1000, 
                     relative:bool=False, max_stepsize:float=0.001, anticlockwise:bool = False, 
-                    pre_print_command:str = '', post_print_command:str = '')-> tuple[str, Tensor]:
+                    pre_print_command:str = '', post_print_command:str = '', sig:str='Trap')-> tuple[str, Tensor]:
     '''
     Comverts G02 and G03 commands to arc of points \n
     :param args: Arguments to G00 command
@@ -282,6 +292,7 @@ def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float 
     :param anticlockwise: If true will arc anticlockwise, otherwise clockwise
     :param pre_print_command: commands to put before generated commands
     :param post_print_command: commands to put after generated commands
+    :param sig: Signature to use 
     :returns command, head_position: Returns the commands and the new head position
     '''
 
@@ -316,7 +327,7 @@ def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float 
     command = ''
     for point in print_points:
         pt = extruder_to_point(point, extruder)
-        cmd, head_position =  points_to_lcode_trap(pt)
+        cmd, head_position =  points_to_lcode_trap(pt, sig=sig)
         command += pre_print_command
         command += cmd
         command += post_print_command

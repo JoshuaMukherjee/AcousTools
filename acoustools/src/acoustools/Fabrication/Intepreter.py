@@ -1,9 +1,14 @@
 from acoustools.Utilities import create_points, TOP_BOARD, BOTTOM_BOARD, TRANSDUCERS, add_lev_sig
 from acoustools.Solvers import wgs, gspat, iterative_backpropagation, naive
 from acoustools.Levitator import LevitatorController
-import torch, time
+from acoustools.Mesh import cut_mesh_to_walls
+from acoustools.BEM import compute_E
 
-def read_lcode(pth:str, ids:tuple[int]=(1000,)):
+import torch, time
+from vedo import Mesh
+import vedo
+
+def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=0.001):
     '''
     Reads lcode and runs the commands on the levitator device \n
     :param pth: Path to lcode file
@@ -15,6 +20,8 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,)):
     A = None
     solver = wgs
     delay = 0
+    layer_z = 0
+    cut_mesh = None
 
     start_from_focal_point = ['L0','L1','L2','L3']
     signature = ['Focal','Trap','Twin','Vortex']
@@ -39,8 +46,11 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,)):
                 if command in start_from_focal_point:
                     x = L0(*groups[1:], iterations=iterations, board=board, A=A, solver=solver)
                     sig = signature[start_from_focal_point.index(command)]
-                    x = add_lev_sig(x, board=board,mode=signature)
+                    x = add_lev_sig(x, board=board,mode=sig)
                     lev.levitate(x)
+
+                    layer_z = float(groups[1].split(',')[2])
+
                 elif command == 'L4':
                     lev.turn_off()
                 elif command == 'C0':
@@ -63,6 +73,9 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,)):
                     board = TOP_BOARD
                 elif command == 'C9':
                     board = BOTTOM_BOARD
+                elif command == 'C10':
+                    cut_mesh = cut_mesh_to_walls(mesh, layer_z=layer_z, wall_thickness=thickness)
+                    print(cut_mesh)
                 else:
                     raise NotImplementedError(command)
                 
