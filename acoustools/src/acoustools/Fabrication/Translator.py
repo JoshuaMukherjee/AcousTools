@@ -71,7 +71,7 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
     path = '/'.join(parts[:-1])
 
     if extruder is None:
-        extruder = create_points(1,1,0,0.10, 0)
+        extruder = create_points(1,1,0,-0.04, 0.04)
 
     if output_name is None:
         output_name = name

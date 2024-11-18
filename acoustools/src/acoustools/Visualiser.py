@@ -725,7 +725,7 @@ def animate_lcode(pth, ax:mpl.axes.Axes|None=None, fig:plt.Figure=None, skip:int
 
     if extruder is not None:
         if type(extruder) is bool:
-            extruder = create_points(1,1,0,0.10,0)
+            extruder = create_points(1,1,0,-0.04, 0.04)
         ex_x = extruder[:,0].detach().cpu()
         ex_y = extruder[:,1].detach().cpu()
         ex_z = extruder[:,2].detach().cpu()
