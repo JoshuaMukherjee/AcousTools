@@ -754,7 +754,7 @@ def animate_lcode(pth, ax:mpl.axes.Axes|None=None, fig:plt.Figure=None, skip:int
         printed_ys = [p[1] for p in printed_points[index]]
         printed_zs = [p[2] for p in printed_points[index]]
 
-        ax.scatter(printed_xs,printed_ys, printed_zs, label='Printed')
+        ax.scatter(printed_xs,printed_ys, printed_zs, label='Printed', edgecolor='black')
 
         ax.set_ylim(xlims)
         ax.set_xlim(ylims)

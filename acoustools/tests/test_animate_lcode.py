@@ -1,7 +1,7 @@
 from acoustools.Visualiser import animate_lcode
 
 
-shape = 'Teapot'
+shape = 'rod-lam1'
 
 pth = f'acoustools/tests/data/gcode/{shape}.lcode'
 fname = f'acoustools/tests/data/gcode/{shape}.gif'
