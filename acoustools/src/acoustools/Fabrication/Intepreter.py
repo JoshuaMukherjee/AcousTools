@@ -7,8 +7,10 @@ from acoustools.BEM import compute_E
 import torch, time
 from vedo import Mesh
 import vedo
+from torch import Tensor
+from types import FunctionType
 
-def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=0.001):
+def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=0.001, BEM_path='../BEMMedia'):
     '''
     Reads lcode and runs the commands on the levitator device \n
     :param pth: Path to lcode file
@@ -22,6 +24,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     delay = 0
     layer_z = 0
     cut_mesh = None
+
 
     start_from_focal_point = ['L0','L1','L2','L3']
     signature = ['Focal','Trap','Twin','Vortex']
@@ -44,7 +47,8 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 command = groups[0]
 
                 if command in start_from_focal_point:
-                    x = L0(*groups[1:], iterations=iterations, board=board, A=A, solver=solver)
+
+                    x = L0(*groups[1:], iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,BEM_path=BEM_path)
                     sig = signature[start_from_focal_point.index(command)]
                     x = add_lev_sig(x, board=board,mode=sig)
                     lev.levitate(x)
@@ -75,7 +79,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                     board = BOTTOM_BOARD
                 elif command == 'C10':
                     cut_mesh = cut_mesh_to_walls(mesh, layer_z=layer_z, wall_thickness=thickness)
-                    print(cut_mesh)
+                    print(layer_z)
                 else:
                     raise NotImplementedError(command)
                 
@@ -84,7 +88,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     t1 = time.time_ns()
     print((t1-t0)/1e9,'seconds')
 
-def L0(*args, solver=wgs, iterations=50, board=TOP_BOARD, A=None):
+def L0(*args, solver:FunctionType=wgs, iterations:int=50, board:Tensor=TOP_BOARD, A:Tensor=None, mesh:Mesh=None, BEM_path:str=''):
     '''
     @private
     '''
@@ -94,6 +98,9 @@ def L0(*args, solver=wgs, iterations=50, board=TOP_BOARD, A=None):
         p = create_points(1,1,group[0], group[1], group[2])
         ps.append(p)
     points = torch.concatenate(ps, dim=2) 
+
+    if mesh is not None:
+        A = compute_E(mesh, points=points, board=board, print_lines=False, path=BEM_path)
     
     if solver == wgs:
         x = wgs(points, iter=iterations,board=board, A=A )

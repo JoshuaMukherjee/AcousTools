@@ -451,5 +451,7 @@ def cut_mesh_to_walls(scatterer:Mesh, layer_z:float, layer_normal:tuple[float] =
 
     walls = vedo.merge(walls,strips)
     
+    calculate_features(walls)
+    scatterer_file_name(walls)
 
     return walls.clean()

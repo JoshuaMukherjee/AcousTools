@@ -95,7 +95,7 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
     if log: log_file = open(log_dir+'/'+log_name+'_log.txt','w')
 
     head_position = create_points(1,1,0,0,0)
-
+    E_val = 0
     
 
 
@@ -109,18 +109,22 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
             code = line_split[0]
             args = line_split[1:]
             command = ''
-            if code == 'G00' or code == 'G0': #Non-fabricating move
+            
+            E_val = get_E_val(*args, E_val=E_val)
+
+            if (code == 'G00' or code == 'G0') or ((code == 'G01' or code == 'G1') and E_val == 0): #Non-fabricating move
                 head_z = head_position[:,2].item()
                 command, head_position = convert_G00(*args, head_position=head_position, divider=divider, relative=relative)
                 if use_BEM and head_z != head_position[:,2]:
                     command += 'C10;\n'
-                if log: log_file.write(f'Line {i+1}, G00 Command: Virtual head updated to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} ({line}) \n')
+                
+                if log: log_file.write(f'Line {i+1}, G00 Command: Virtual head updated to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} ({line}), E value set to {E_val} \n')
             elif code == 'G01' or code == 'G1': #Fabricating move
                 command, head_position, N = convert_G01(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
                                                         max_stepsize=max_stepsize,pre_print_command=pre_print_command, 
                                                         post_print_command=post_print_command, sig=sig_type )
-
-                if log: log_file.write(f'Line {i+1}, G01 Command: Line printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
+                
+                if log: log_file.write(f'Line {i+1}, G01 Command: Line printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}), E value set to {E_val} \n')
             
             elif code == 'G02' or code == 'G2': #Fabricating move
                 command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
@@ -148,6 +152,13 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
     output_file.close()
     if print_lines: print()
     if log: log_file.close()
+
+def get_E_val(*args:str, E_val:float):
+    E = E_val
+    for arg in args:
+        if arg.startswith('E'):
+            E = float(arg[1:])
+    return E
 
 def parse_xyz(*args:str):
     '''
@@ -267,14 +278,16 @@ def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float 
     update_head(end_position, dx, dy, dz, divider, relative)
 
     N = int(torch.ceil(torch.max(distance(head_position, end_position) / max_stepsize)).item())
-    print_points = interpolate_points(head_position, end_position,N)
     command = ''
-    for point in print_points:
-        pt = extruder_to_point(point, extruder)
-        cmd, head_position =  points_to_lcode_trap(pt,sig=sig)
-        command += pre_print_command
-        command += cmd
-        command += post_print_command
+    if N > 0:
+        print_points = interpolate_points(head_position, end_position,N)
+
+        for point in print_points:
+            pt = extruder_to_point(point, extruder)
+            cmd, head_position =  points_to_lcode_trap(pt,sig=sig)
+            command += pre_print_command
+            command += cmd
+            command += post_print_command
 
     return command, end_position, N
 
