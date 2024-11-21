@@ -578,8 +578,9 @@ def ABC(size:int, plane:Literal['xz', 'yz', 'xy'] = 'xz', origin:Tensor|tuple=No
     '''
     if origin is None:
         origin = torch.tensor((0,0,0))
-    if type(origin) == tuple:
+    if type(origin) == tuple or type(origin) == list:
         origin = torch.tensor(origin)
+
     
     if plane == 'xz':
         A = origin+torch.tensor((-1,0, 1)) * size
