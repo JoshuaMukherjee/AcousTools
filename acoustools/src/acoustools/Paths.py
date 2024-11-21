@@ -333,7 +333,7 @@ def interpolate_arc(start:Tensor, end:Tensor|None=None, origin:Tensor=None, n:in
     return points
 
 
-def interpolate_bezier(start: Tensor, end:Tensor, offset_1:Tensor, offset_2:Tensor, n:int=100) -> list[Tensor]:
+def interpolate_bezier(start: Tensor, end:Tensor, offset_1:Tensor|list[int]|int, offset_2:Tensor|list[int]|int, n:int=100) -> list[Tensor]:
 
     '''
     Create cubic Bezier curve based on positions given \n
@@ -346,6 +346,14 @@ def interpolate_bezier(start: Tensor, end:Tensor, offset_1:Tensor, offset_2:Tens
     '''
 
     #Make even sample?= distance
+
+    
+    if type(offset_1) == list: offset_1 = torch.tensor(offset_1).reshape((1,3,1))
+    if type(offset_1) == int: offset_1 = torch.ones_like(start) * offset_1
+
+    if type(offset_2) == list: offset_2 = torch.tensor(offset_2).reshape((1,3,1))
+    if type(offset_2) == int: offset_2 = torch.ones_like(start) * offset_2
+
 
     P1 = start
     P2 = start + offset_1
@@ -557,6 +565,17 @@ def close_bezier(bezier:list[list[Tensor]], n:int=20)  -> tuple[list[Tensor]]:
 
     return points,bezier
 
+def bezier_to_distance(bezier:list[Tensor], max_distance:float=0.001, start_n=20):
+    bezier_points = interpolate_bezier(*bezier,n=start_n)
+
+    points = []
+    
+    for i,(p1,p2) in enumerate(itertools.pairwise(bezier_points)):
+        d = distance(p1,p2)
+        n = int(torch.ceil(torch.max(distance(p1, p2) / max_distance)).item())
+        points += interpolate_points(p1,p2, n)
+    
+    return points
 
 
 def OptiSpline(bezier:list[list[Tensor]], target_points:list[Tensor], objective: FunctionType, 

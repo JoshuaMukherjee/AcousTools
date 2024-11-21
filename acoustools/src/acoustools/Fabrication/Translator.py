@@ -28,7 +28,7 @@ Commands\n
 
 
 from acoustools.Utilities import create_points
-from acoustools.Paths import interpolate_points, distance, interpolate_arc
+from acoustools.Paths import interpolate_points, distance, interpolate_arc, interpolate_bezier, bezier_to_distance
 
 from torch import Tensor
 import torch
@@ -36,7 +36,8 @@ import torch
 def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=None, log:bool=True, log_name:str|None=None, log_dir:str=None,
                     divider:float = 1000, relative:bool = False, 
                    max_stepsize:float=0.001, extruder:Tensor|None = None, pre_print_command:str = '', 
-                   post_print_command:str = '', print_lines:bool=False, pre_commands:str= '', post_commands:str='', use_BEM = False, sig_type='Trap'):
+                   post_print_command:str = '', print_lines:bool=False, pre_commands:str= '', post_commands:str='', 
+                   use_BEM:bool = False, sig_type:str='Trap', travel_type:str='hypot'):
     '''
     Converts a .gcode file to a .lcode file \n
     ```Python
@@ -122,21 +123,21 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
             elif code == 'G01' or code == 'G1': #Fabricating move
                 command, head_position, N = convert_G01(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
                                                         max_stepsize=max_stepsize,pre_print_command=pre_print_command, 
-                                                        post_print_command=post_print_command, sig=sig_type )
+                                                        post_print_command=post_print_command, sig=sig_type, travel_type=travel_type)
                 
                 if log: log_file.write(f'Line {i+1}, G01 Command: Line printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}), E value set to {E_val} \n')
             
             elif code == 'G02' or code == 'G2': #Fabricating move
                 command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
                                                             max_stepsize=max_stepsize, anticlockwise=False,pre_print_command=pre_print_command, 
-                                                            post_print_command=post_print_command, sig=sig_type )
+                                                            post_print_command=post_print_command, sig=sig_type, travel_type=travel_type )
 
                 if log: log_file.write(f'Line {i+1}, G02 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
             
             elif code == 'G03' or code == 'G3': #Fabricating arc
                 command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
                                                             max_stepsize=max_stepsize, anticlockwise=True,pre_print_command=pre_print_command, 
-                                                            post_print_command=post_print_command, sig=sig_type )
+                                                            post_print_command=post_print_command, sig=sig_type, travel_type=travel_type )
 
                 if log: log_file.write(f'Line {i+1}, G03 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
 
@@ -198,7 +199,7 @@ def update_head(head_position: Tensor, dx:float, dy:float, dz:float, divider:flo
         if dy is not None: head_position[:,1] = dy/divider
         if dz is not None: head_position[:,2] = dz/divider
 
-def extruder_to_point(points:list[Tensor], extruder:Tensor, max_stepsize:float=0.001 ) -> list[Tensor]:
+def extruder_to_point(points:list[Tensor], extruder:Tensor, max_stepsize:float=0.001, travel_type:str='hypot' ) -> list[Tensor]:
     '''
     Will create a path from the extruder to each point in a shape \n
     :param points: Points in shape
@@ -212,9 +213,29 @@ def extruder_to_point(points:list[Tensor], extruder:Tensor, max_stepsize:float=0
 
     all_points = []
     for p in points:
-        d = distance(p, extruder)
-        N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
-        all_points += interpolate_points(extruder, p, N)
+        if travel_type == 'legs': #Move in XY plane then move in Z
+        
+            mid_point = create_points(1,1,x=p[0].item(), y=p[1].item(), z=extruder[:,2].item())
+            d = distance(p, mid_point)
+            N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
+            all_points += interpolate_points(extruder, mid_point, N)
+
+            d = distance(mid_point, p)
+            N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
+            all_points += interpolate_points(mid_point, p, N)
+
+        elif travel_type == 'bezier': #Move along Bezier curve - paramatarised? 
+            mid_point = create_points(1,1,x=p[0].item(), y=p[1].item(), z=extruder[:,2].item())
+            offset_2 = mid_point - extruder
+
+            bezier = [extruder,  p, [0,0,0], offset_2]
+            
+            all_points += bezier_to_distance(bezier)
+
+        else: #default is hypot
+            d = distance(p, extruder)
+            N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
+            all_points += interpolate_points(extruder, p, N)
     
     return all_points
 
@@ -257,7 +278,8 @@ def convert_G00(*args:str, head_position:Tensor, divider:float = 1000, relative:
     return '', head_position
 
 def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float = 1000, 
-                relative:bool=False, max_stepsize:bool=0.001, pre_print_command:str = '', post_print_command:str = '', sig:str='Trap') -> tuple[str, Tensor]:
+                relative:bool=False, max_stepsize:bool=0.001, pre_print_command:str = '', post_print_command:str = '', 
+                sig:str='Trap', travel_type:str='hypot') -> tuple[str, Tensor]:
     '''
     Comverts G00 commands to line of points \n
     :param args: Arguments to G00 command
@@ -283,7 +305,7 @@ def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float 
         print_points = interpolate_points(head_position, end_position,N)
 
         for point in print_points:
-            pt = extruder_to_point(point, extruder)
+            pt = extruder_to_point(point, extruder, travel_type=travel_type)
             cmd, head_position =  points_to_lcode_trap(pt,sig=sig)
             command += pre_print_command
             command += cmd
@@ -293,7 +315,7 @@ def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float 
 
 def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float = 1000, 
                     relative:bool=False, max_stepsize:float=0.001, anticlockwise:bool = False, 
-                    pre_print_command:str = '', post_print_command:str = '', sig:str='Trap')-> tuple[str, Tensor]:
+                    pre_print_command:str = '', post_print_command:str = '', sig:str='Trap', travel_type:str='hypot')-> tuple[str, Tensor]:
     '''
     Comverts G02 and G03 commands to arc of points \n
     :param args: Arguments to G00 command
@@ -339,7 +361,7 @@ def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float 
     
     command = ''
     for point in print_points:
-        pt = extruder_to_point(point, extruder)
+        pt = extruder_to_point(point, extruder, travel_type=travel_type)
         cmd, head_position =  points_to_lcode_trap(pt, sig=sig)
         command += pre_print_command
         command += cmd
