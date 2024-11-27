@@ -32,12 +32,14 @@ from acoustools.Paths import interpolate_points, distance, interpolate_arc, inte
 
 from torch import Tensor
 import torch
+from typing import Literal
+
 
 def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=None, log:bool=True, log_name:str|None=None, log_dir:str=None,
                     divider:float = 1000, relative:bool = False, 
                    max_stepsize:float=0.001, extruder:Tensor|None = None, pre_print_command:str = '', 
                    post_print_command:str = '', print_lines:bool=False, pre_commands:str= '', post_commands:str='', 
-                   use_BEM:bool = False, sig_type:str='Trap', travel_type:str='hypot'):
+                   use_BEM:bool = False, sig_type:str='Trap', travel_type:Literal["hypot","legsXY","legsZ","bezier"]='hypot'):
     '''
     Converts a .gcode file to a .lcode file \n
     ```Python
@@ -61,8 +63,8 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
     :param relative: If true will change relative to last position, else will be absolute
     :param max_stepsize: Maximum stepsize allowed, default 1mm
     :param extruder: Extruder location, if None will use (0,0.10, 0)
-    :param pre_print_command: commands to put before each generated command
-    :param post_print_command: commands to put after each generated command
+    :param pre_print_command: commands to put before the block resulting from each G01, G02 and G03 command
+    :param post_print_command: commands to put before the block resulting from each G01, G02 and G03 command
     :param print_lines: If true will print which line is being processed
     :param pre_commands: commands to put at the top of the file
     :param post_commands: commands to put at the end of the file
@@ -213,7 +215,7 @@ def extruder_to_point(points:list[Tensor], extruder:Tensor, max_stepsize:float=0
 
     all_points = []
     for p in points:
-        if travel_type == 'legs': #Move in XY plane then move in Z
+        if travel_type == 'legsXY': #Move in XY plane then move in Z
         
             mid_point = create_points(1,1,x=p[0].item(), y=p[1].item(), z=extruder[:,2].item())
             d = distance(p, mid_point)
@@ -221,6 +223,19 @@ def extruder_to_point(points:list[Tensor], extruder:Tensor, max_stepsize:float=0
             all_points += interpolate_points(extruder, mid_point, N)
 
             d = distance(mid_point, p)
+            N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
+            all_points += interpolate_points(mid_point, p, N)
+        
+        elif travel_type == 'legsZ': #Move in XY plane then move in Z
+        
+            mid_point = create_points(1,1,x=extruder[:,0].item(), y=extruder[:,1].item(), z=p[2].item())
+            
+
+            d = distance(mid_point, p)
+            N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
+            all_points += interpolate_points(extruder, mid_point, N)
+
+            d = distance(p, mid_point)
             N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
             all_points += interpolate_points(mid_point, p, N)
 
