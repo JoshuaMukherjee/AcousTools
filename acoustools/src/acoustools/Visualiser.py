@@ -187,6 +187,9 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
         plt.yticks([])
         plt.xticks([])
 
+        if len(points) >0:
+            ax.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
+
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
 
@@ -210,8 +213,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
                     # print(xs,ys)
                     plt.plot(xs,ys,color = "blue")
         
-        if len(points) >0:
-            plt.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
+       
     
     fig = plt.gcf()
      
