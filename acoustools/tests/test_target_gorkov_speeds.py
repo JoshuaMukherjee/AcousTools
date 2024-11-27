@@ -13,7 +13,7 @@ from torch import Tensor
 
 board = TOP_BOARD
 
-N = 1
+N = 10
 M = 10
 positions = [-0.01 + 0.0001*i for i in range(N)]
 targets = [-6.5e-6 - 1e-7 *i for i in range(M)] #-3e-5 is the limit
@@ -41,9 +41,8 @@ def target_gorkov_mse_objective_reflector(transducer_phases: Tensor, points:Tens
     return l
 
 
-
-for pos in positions:
-    for tU in targets:
+for tU in targets:
+    for pos in positions:
         p = create_points(1,1,0,0,0.01)
         p[:,axis] = pos
 
@@ -58,6 +57,7 @@ for pos in positions:
         U = BEM_gorkov_analytical(x,p, reflector, board=board, H=H, path=path)
 
         print(pos,targets_u.item(), U)
+    print('\n\n\n')
 
 A,B,C = ABC(0.06, origin = [0,0,0.06])
 
