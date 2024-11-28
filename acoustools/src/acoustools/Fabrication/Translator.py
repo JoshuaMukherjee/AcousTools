@@ -109,6 +109,9 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
             if print_lines and i % 10 == 0: print(f'Computing, {i}/{Nl}', end='\r')
             line = line.rstrip()
             line_split = line.split()
+            if len(line_split) == 0 or line.startswith(';'):
+                if log: log_file.write(f'Line {i+1}, Ignoring code {code} ({line})\n')
+                continue
             code = line_split[0]
             args = line_split[1:]
             command = ''
@@ -142,7 +145,8 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
                                                             post_print_command=post_print_command, sig=sig_type, travel_type=travel_type )
 
                 if log: log_file.write(f'Line {i+1}, G03 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
-
+            elif code == 'G04' or code == 'G4': #Dwell!!
+                pass 
             elif code.startswith(';'):
                 if log: log_file.write(f'Line {i+1}, Ignoring Comment ({line})\n')
 
