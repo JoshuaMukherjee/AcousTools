@@ -23,6 +23,8 @@ Commands\n
 `C9;` Set to bottom board setup\n
 `C10;` Update BEM to use layer at last z position \n
 `C11:<Sig>;` Update the type of signature that movemenets will be converted to - will change which of L1-L4 are used for G01 moves. \n
+
+`O0;` End of droplet\n
 '''
 # NEED TO ADD FRAME RATE CONTROL
 
@@ -39,7 +41,8 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
                     divider:float = 1000, relative:bool = False, 
                    max_stepsize:float=0.001, extruder:Tensor|None = None, pre_print_command:str = '', 
                    post_print_command:str = '', print_lines:bool=False, pre_commands:str= '', post_commands:str='', 
-                   use_BEM:bool = False, sig_type:str='Trap', travel_type:Literal["hypot","legsXY","legsZ","bezier"]='hypot'):
+                   use_BEM:bool = False, sig_type:str='Trap', travel_type:Literal["hypot","legsXY","legsZ","bezier"]='hypot',
+                   add_optimisation_commands:bool=True):
     '''
     Converts a .gcode file to a .lcode file \n
     ```Python
@@ -68,8 +71,11 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
     :param print_lines: If true will print which line is being processed
     :param pre_commands: commands to put at the top of the file
     :param post_commands: commands to put at the end of the file
+    :param add_optimisation_commands: If True will add commands to help `acoustools.Fabrication.Optimsation` functions work correctly
 
     '''
+
+
     name = fname.replace('.gcode','')
     parts = name.split('/')
     name = parts[-1]
@@ -135,14 +141,16 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
             elif code == 'G02' or code == 'G2': #Fabricating move
                 command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
                                                             max_stepsize=max_stepsize, anticlockwise=False,pre_print_command=pre_print_command, 
-                                                            post_print_command=post_print_command, sig=sig_type, travel_type=travel_type )
+                                                            post_print_command=post_print_command, sig=sig_type, 
+                                                            travel_type=travel_type, add_optimisation_commands=add_optimisation_commands )
 
                 if log: log_file.write(f'Line {i+1}, G02 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
             
             elif code == 'G03' or code == 'G3': #Fabricating arc
                 command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
                                                             max_stepsize=max_stepsize, anticlockwise=True,pre_print_command=pre_print_command, 
-                                                            post_print_command=post_print_command, sig=sig_type, travel_type=travel_type )
+                                                            post_print_command=post_print_command, sig=sig_type, 
+                                                            travel_type=travel_type , add_optimisation_commands=add_optimisation_commands )
 
                 if log: log_file.write(f'Line {i+1}, G03 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
             elif code == 'G04' or code == 'G4': #Dwell!!
@@ -154,6 +162,7 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
                 if log: log_file.write(f'Line {i+1}, Ignoring code {code} ({line})\n')
             
             output_file.write(command)
+        
     
     output_file.write(post_commands)
     output_file.close()
@@ -215,7 +224,6 @@ def extruder_to_point(points:list[Tensor], extruder:Tensor, max_stepsize:float=0
     '''
     
     #No path planning -> Talk to Pengyuan? 
-    # Replace with a bezier curve? - hard to know how many sub-divisions as no way to find length easily
 
     all_points = []
     for p in points:
@@ -298,7 +306,7 @@ def convert_G00(*args:str, head_position:Tensor, divider:float = 1000, relative:
 
 def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float = 1000, 
                 relative:bool=False, max_stepsize:bool=0.001, pre_print_command:str = '', post_print_command:str = '', 
-                sig:str='Trap', travel_type:str='hypot') -> tuple[str, Tensor]:
+                sig:str='Trap', travel_type:str='hypot', add_optimisation_commands:bool=True) -> tuple[str, Tensor]:
     '''
     Comverts G00 commands to line of points \n
     :param args: Arguments to G00 command
@@ -310,7 +318,9 @@ def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float 
     :param pre_print_command: commands to put before generated commands
     :param post_print_command: commands to put after generated commands
     :param sig: Signature to use 
+    :param add_optimisation_commands: If True will add commands to help `acoustools.Fabrication.Optimsation` functions work correctly
     :returns command, head_position: Returns the commands and the new head position
+
     '''
     dx, dy, dz = parse_xyz(*args)
 
@@ -324,17 +334,19 @@ def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float 
         print_points = interpolate_points(head_position, end_position,N)
 
         for point in print_points:
-            pt = extruder_to_point(point, extruder, travel_type=travel_type)
+            pt = extruder_to_point(point, extruder, travel_type=travel_type, max_stepsize=max_stepsize)
             cmd, head_position =  points_to_lcode_trap(pt,sig=sig)
             command += pre_print_command
             command += cmd
             command += post_print_command
+            if add_optimisation_commands: command += 'O0;\n'
 
     return command, end_position, N
 
 def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float = 1000, 
                     relative:bool=False, max_stepsize:float=0.001, anticlockwise:bool = False, 
-                    pre_print_command:str = '', post_print_command:str = '', sig:str='Trap', travel_type:str='hypot')-> tuple[str, Tensor]:
+                    pre_print_command:str = '', post_print_command:str = '', sig:str='Trap', 
+                    travel_type:str='hypot', add_optimisation_commands:bool=True)-> tuple[str, Tensor]:
     '''
     Comverts G02 and G03 commands to arc of points \n
     :param args: Arguments to G00 command
@@ -347,6 +359,7 @@ def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float 
     :param pre_print_command: commands to put before generated commands
     :param post_print_command: commands to put after generated commands
     :param sig: Signature to use 
+    :param add_optimisation_commands: If True will add commands to help `acoustools.Fabrication.Optimsation` functions work correctly
     :returns command, head_position: Returns the commands and the new head position
     '''
 
@@ -380,11 +393,12 @@ def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float 
     
     command = ''
     for point in print_points:
-        pt = extruder_to_point(point, extruder, travel_type=travel_type)
+        pt = extruder_to_point(point, extruder, travel_type=travel_type, max_stepsize=max_stepsize)
         cmd, head_position =  points_to_lcode_trap(pt, sig=sig)
         command += pre_print_command
         command += cmd
         command += post_print_command
+        if add_optimisation_commands: command += 'O0;\n'
 
     return command, end_position, N
 
