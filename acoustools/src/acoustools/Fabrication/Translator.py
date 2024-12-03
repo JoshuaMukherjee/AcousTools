@@ -1,30 +1,30 @@
 '''
-Translates gcode file to lcode file \n
+Translates gcode file to lcode file 
 
-Each line starts with a command (see below) followed by the arguments for that command. The command should be followed by a colon (:). \n
-Each line should end with a semi-colon (;), each argument is seperated by a comma (,) and groups or arguments can be seperated with a colon (:)\n
+Each line starts with a command (see below) followed by the arguments for that command. The command should be followed by a colon (:). 
+Each line should end with a semi-colon (;), each argument is seperated by a comma (,) and groups or arguments can be seperated with a colon (:)
 
-Commands\n
-`L0:<X> <Y> <Z>;` Create Focal Point at (X,Y,Z)\n
-`L1:<X> <Y> <Z>;` Create Trap Point at (X,Y,Z)\n
-`L2:<X> <Y> <Z>;` Create Twin Trap Point at (X,Y,Z)\n
-`L3:<X> <Y> <Z>;` Create Vortex Trap Point at (X,Y,Z)\n
-`L4;` Turn off Transducers\n
+Commands
+`L0:<X> <Y> <Z>;` Create Focal Point at (X,Y,Z)
+`L1:<X> <Y> <Z>;` Create Trap Point at (X,Y,Z)
+`L2:<X> <Y> <Z>;` Create Twin Trap Point at (X,Y,Z)
+`L3:<X> <Y> <Z>;` Create Vortex Trap Point at (X,Y,Z)
+`L4;` Turn off Transducers
 
-`C0;`Dispense Droplet\n
-`C1;` Activate UV\n
-`C2;` Turn off UV\n
-`C3:<T>;` Delay for T ms\n
-`C4:<T>;` Set delay for T ms between all commands\n
-`C5:<Solver>;` Change to specific solver. Should be one of "IB", "WGS", "GSPAT", "NAIVE"\n
-`C6:<N>;` Set number of iterations for the solver\n
-`C7;` Set to two board setup\n
-`C8;` Set to top board setup\n
-`C9;` Set to bottom board setup\n
-`C10;` Update BEM to use layer at last z position \n
-`C11:<Sig>;` Update the type of signature that movemenets will be converted to - will change which of L1-L4 are used for G01 moves. \n
+`C0;`Dispense Droplet
+`C1;` Activate UV
+`C2;` Turn off UV
+`C3:<T>;` Delay for T ms
+`C4:<T>;` Set delay for T ms between all commands
+`C5:<Solver>;` Change to specific solver. Should be one of "IB", "WGS", "GSPAT", "NAIVE"
+`C6:<N>;` Set number of iterations for the solver
+`C7;` Set to two board setup
+`C8;` Set to top board setup
+`C9;` Set to bottom board setup
+`C10;` Update BEM to use layer at last z position 
+`C11:<Sig>;` Update the type of signature that movemenets will be converted to - will change which of L1-L4 are used for G01 moves. 
 
-`O0;` End of droplet\n
+`O0;` End of droplet
 '''
 # NEED TO ADD FRAME RATE CONTROL
 
@@ -42,7 +42,7 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
                    max_stepsize:float=0.001, extruder:Tensor|None = None, pre_print_command:str = '', 
                    post_print_command:str = '', print_lines:bool=False, pre_commands:str= '', post_commands:str='', 
                    use_BEM:bool = False, sig_type:str='Trap', travel_type:Literal["hypot","legsXY","legsZ","bezier"]='hypot',
-                   add_optimisation_commands:bool=True):
+                   add_optimisation_commands:bool=True, via:Tensor|None=None, use_functions:bool=False):
     '''
     Converts a .gcode file to a .lcode file \n
     ```Python
@@ -72,6 +72,8 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
     :param pre_commands: commands to put at the top of the file
     :param post_commands: commands to put at the end of the file
     :param add_optimisation_commands: If True will add commands to help `acoustools.Fabrication.Optimsation` functions work correctly
+    :param via: A point to move all paths through before going to the end point
+    :param use_functions: If true will collapse common code into functions - needs `via` to be specified too
 
     '''
 
@@ -94,8 +96,12 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
         log_dir = output_dir
     
     if log_name is None:
-        log_name = name
+        log_name = name 
 
+    if use_functions:
+        functions = {}
+    else:
+        functions = None
     
     
     output_file = open(output_dir+'/'+output_name+'.lcode','w')
@@ -134,7 +140,8 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
             elif code == 'G01' or code == 'G1': #Fabricating move
                 command, head_position, N = convert_G01(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
                                                         max_stepsize=max_stepsize,pre_print_command=pre_print_command, 
-                                                        post_print_command=post_print_command, sig=sig_type, travel_type=travel_type)
+                                                        post_print_command=post_print_command, sig=sig_type, travel_type=travel_type, via=via,
+                                                        functions=functions)
                 
                 if log: log_file.write(f'Line {i+1}, G01 Command: Line printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}), E value set to {E_val} \n')
             
@@ -142,7 +149,8 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
                 command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
                                                             max_stepsize=max_stepsize, anticlockwise=False,pre_print_command=pre_print_command, 
                                                             post_print_command=post_print_command, sig=sig_type, 
-                                                            travel_type=travel_type, add_optimisation_commands=add_optimisation_commands )
+                                                            travel_type=travel_type, add_optimisation_commands=add_optimisation_commands , via=via,
+                                                            functions=functions)
 
                 if log: log_file.write(f'Line {i+1}, G02 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
             
@@ -150,7 +158,8 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
                 command, head_position, N = convert_G02_G03(*args, head_position=head_position, extruder=extruder, divider=divider, relative=relative, 
                                                             max_stepsize=max_stepsize, anticlockwise=True,pre_print_command=pre_print_command, 
                                                             post_print_command=post_print_command, sig=sig_type, 
-                                                            travel_type=travel_type , add_optimisation_commands=add_optimisation_commands )
+                                                            travel_type=travel_type , add_optimisation_commands=add_optimisation_commands , via=via,
+                                                            functions=functions)
 
                 if log: log_file.write(f'Line {i+1}, G03 Command: Circle printed to {head_position[:,0].item()}, {head_position[:,1].item()}, {head_position[:,2].item()} in {N} steps ({line}) \n')
             elif code == 'G04' or code == 'G4': #Dwell!!
@@ -214,12 +223,14 @@ def update_head(head_position: Tensor, dx:float, dy:float, dz:float, divider:flo
         if dy is not None: head_position[:,1] = dy/divider
         if dz is not None: head_position[:,2] = dz/divider
 
-def extruder_to_point(points:list[Tensor], extruder:Tensor, max_stepsize:float=0.001, travel_type:str='hypot' ) -> list[Tensor]:
+def extruder_to_point(points:list[Tensor], extruder:Tensor, max_stepsize:float=0.001, travel_type:str='hypot', via:Tensor|None=None ) -> list[Tensor]:
     '''
     Will create a path from the extruder to each point in a shape \n
     :param points: Points in shape
     :param extruder: Extruder location
     :param max_stepsize: Maximum stepsize allowed, default 1mm
+    :param travel_type: Type of movement to use, hypot: will use the shortest path, legsXY: will move in the XY plane then Z plane, legsZ: will move in the Z plane then XY plane, bezier, Will use a quadratic bezier in 3D
+    :param via: A point to move all paths through before going to the end point
     :returns all points in path: 
     '''
     
@@ -227,46 +238,64 @@ def extruder_to_point(points:list[Tensor], extruder:Tensor, max_stepsize:float=0
 
     all_points = []
     for p in points:
-        if travel_type == 'legsXY': #Move in XY plane then move in Z
-        
-            mid_point = create_points(1,1,x=p[0].item(), y=p[1].item(), z=extruder[:,2].item())
-            d = distance(p, mid_point)
-            N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
-            all_points += interpolate_points(extruder, mid_point, N)
-
-            d = distance(mid_point, p)
-            N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
-            all_points += interpolate_points(mid_point, p, N)
-        
-        elif travel_type == 'legsZ': #Move in XY plane then move in Z
-        
-            mid_point = create_points(1,1,x=extruder[:,0].item(), y=extruder[:,1].item(), z=p[2].item())
-            
-
-            d = distance(mid_point, p)
-            N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
-            all_points += interpolate_points(extruder, mid_point, N)
-
-            d = distance(p, mid_point)
-            N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
-            all_points += interpolate_points(mid_point, p, N)
-
-        elif travel_type == 'bezier': #Move along Bezier curve - paramatarised? 
-            mid_point = create_points(1,1,x=p[0].item(), y=p[1].item(), z=extruder[:,2].item())
-            offset_2 = mid_point - extruder
-
-            bezier = [extruder,  p, [0,0,0], offset_2]
-            
-            all_points += bezier_to_distance(bezier)
-
-        else: #default is hypot
-            d = distance(p, extruder)
-            N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
-            all_points += interpolate_points(extruder, p, N)
+        if via is not None:
+            all_points += start_to_end(extruder, via, max_stepsize, travel_type) #can be replaced by a 'function' call
+            all_points += start_to_end(via, p, max_stepsize, travel_type)
+        else:
+            all_points += start_to_end(extruder, p, max_stepsize, travel_type)
     
     return all_points
 
+def start_to_end(end:Tensor, start:Tensor, max_stepsize:float=0.001, travel_type:str='hypot'):
+    '''
+    Will create a path from the a start position to an end \n
+    :param points: start point location
+    :param end: end point location
+    :param max_stepsize: Maximum stepsize allowed, default 1mm
+    :returns all points in path: 
+    '''
+
+    points = []
+    if travel_type == 'legsXY': #Move in XY plane then move in Z
+    
+        mid_point = create_points(1,1,x=start[0].item(), y=start[1].item(), z=end[:,2].item())
+        d = distance(start, mid_point)
+        N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
+        points += interpolate_points(end, mid_point, N)
+
+        d = distance(mid_point, start)
+        N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
+        points += interpolate_points(mid_point, start, N)
+    
+    elif travel_type == 'legsZ': #Move in XY plane then move in Z
+    
+        mid_point = create_points(1,1,x=end[:,0].item(), y=end[:,1].item(), z=start[2].item())
         
+
+        d = distance(mid_point, start)
+        N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
+        points += interpolate_points(end, mid_point, N)
+
+        d = distance(start, mid_point)
+        N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
+        points += interpolate_points(mid_point, start, N)
+
+    elif travel_type == 'bezier': #Move along Bezier curve - paramatarised? 
+        mid_point = create_points(1,1,x=start[0].item(), y=start[1].item(), z=end[:,2].item())
+        offset_2 = mid_point - end
+
+        bezier = [end,  start, [0,0,0], offset_2]
+        
+        points += bezier_to_distance(bezier)
+
+    else: #default is hypot
+        d = distance(start, end)
+        N  = int(torch.ceil(torch.max(d / max_stepsize)).item())
+        points += interpolate_points(end, start, N)
+    
+    return points
+
+
 
 def points_to_lcode_trap(points:list[Tensor], sig:str='Trap') -> tuple[str,Tensor]:
     '''
@@ -306,7 +335,7 @@ def convert_G00(*args:str, head_position:Tensor, divider:float = 1000, relative:
 
 def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float = 1000, 
                 relative:bool=False, max_stepsize:bool=0.001, pre_print_command:str = '', post_print_command:str = '', 
-                sig:str='Trap', travel_type:str='hypot', add_optimisation_commands:bool=True) -> tuple[str, Tensor]:
+                sig:str='Trap', travel_type:str='hypot', add_optimisation_commands:bool=True, via:Tensor|None=None,functions:dict|None=None) -> tuple[str, Tensor]:
     '''
     Comverts G00 commands to line of points \n
     :param args: Arguments to G00 command
@@ -319,6 +348,7 @@ def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float 
     :param post_print_command: commands to put after generated commands
     :param sig: Signature to use 
     :param add_optimisation_commands: If True will add commands to help `acoustools.Fabrication.Optimsation` functions work correctly
+    :param via: A point to move all paths through before going to the end point
     :returns command, head_position: Returns the commands and the new head position
 
     '''
@@ -329,24 +359,19 @@ def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float 
     update_head(end_position, dx, dy, dz, divider, relative)
 
     N = int(torch.ceil(torch.max(distance(head_position, end_position) / max_stepsize)).item())
-    command = ''
     if N > 0:
         print_points = interpolate_points(head_position, end_position,N)
 
-        for point in print_points:
-            pt = extruder_to_point(point, extruder, travel_type=travel_type, max_stepsize=max_stepsize)
-            cmd, head_position =  points_to_lcode_trap(pt,sig=sig)
-            command += pre_print_command
-            command += cmd
-            command += post_print_command
-            if add_optimisation_commands: command += 'O0;\n'
-
+        command, head_position = print_points_to_commands(print_points, extruder=extruder, max_stepsize=max_stepsize, 
+                                                      pre_print_command=pre_print_command, post_print_command=post_print_command,
+                                                      sig=sig, travel_type=travel_type, add_optimisation_commands=add_optimisation_commands, via=via,
+                                                     functions=functions)
     return command, end_position, N
 
 def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float = 1000, 
                     relative:bool=False, max_stepsize:float=0.001, anticlockwise:bool = False, 
                     pre_print_command:str = '', post_print_command:str = '', sig:str='Trap', 
-                    travel_type:str='hypot', add_optimisation_commands:bool=True)-> tuple[str, Tensor]:
+                    travel_type:str='hypot', add_optimisation_commands:bool=True, via:Tensor|None=None, functions:dict|None=None)-> tuple[str, Tensor]:
     '''
     Comverts G02 and G03 commands to arc of points \n
     :param args: Arguments to G00 command
@@ -360,6 +385,7 @@ def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float 
     :param post_print_command: commands to put after generated commands
     :param sig: Signature to use 
     :param add_optimisation_commands: If True will add commands to help `acoustools.Fabrication.Optimsation` functions work correctly
+    :param via: A point to move all paths through before going to the end point
     :returns command, head_position: Returns the commands and the new head position
     '''
 
@@ -391,15 +417,69 @@ def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float 
     N = int(torch.ceil(torch.max( d / max_stepsize)).item())
     print_points = interpolate_arc(head_position, end_position, origin,n=N,anticlockwise=anticlockwise)
     
-    command = ''
-    for point in print_points:
-        pt = extruder_to_point(point, extruder, travel_type=travel_type, max_stepsize=max_stepsize)
-        cmd, head_position =  points_to_lcode_trap(pt, sig=sig)
-        command += pre_print_command
-        command += cmd
-        command += post_print_command
-        if add_optimisation_commands: command += 'O0;\n'
+    command, head_position = print_points_to_commands(print_points, extruder=extruder, max_stepsize=max_stepsize, 
+                                                      pre_print_command=pre_print_command, post_print_command=post_print_command,
+                                                      sig=sig, travel_type=travel_type, add_optimisation_commands=add_optimisation_commands, via=via, 
+                                                      functions=functions)
 
     return command, end_position, N
 
+def print_points_to_commands(print_points, extruder:Tensor, max_stepsize:float=0.001, 
+                    pre_print_command:str = '', post_print_command:str = '', sig:str='Trap', 
+                    travel_type:str='hypot', add_optimisation_commands:bool=True, via:Tensor|None=None, functions:dict|None={}):
+    '''
+    @private
+    '''
+    command = ''
+    for point in print_points:
+        if via is not None and functions is not None:
+            '''Check if we can use a function - if we have seen the same (extruder, travel_type, max_stepsize, via) before'''
+            extruder_x = extruder[:,0].item()
+            extruder_y = extruder[:,1].item()
+            extruder_z = extruder[:,2].item()
 
+            via_x = extruder[:,0].item()
+            via_y = extruder[:,1].item()
+            via_z = extruder[:,2].item()
+
+            idx = str(extruder_x) + '_' + str(extruder_y)+ '_' + str(extruder_z)+ '_' + travel_type+ '_' + \
+                    str(max_stepsize) + '_'+ str(via_x)+ '_' + str(via_y) + '_'+ str(via_z)
+            
+            if idx not in functions:
+
+                pt = extruder_to_point(via, extruder, travel_type=travel_type, max_stepsize=max_stepsize)
+                cmd, head_position =  points_to_lcode_trap(pt, sig=sig)
+                command += pre_print_command
+                command += cmd
+                
+                if 'names' not in functions:
+                    functions['names'] = 0
+                
+                name = functions['names'] + 1 
+                functions['names'] = name
+                
+                functions[idx] = (f"F{name};\n", head_position)
+
+            else:
+                '''Just use precomputed path'''
+                cmd, head_position = functions[idx]
+                command += cmd
+            
+            pt = extruder_to_point(point, via, travel_type=travel_type, max_stepsize=max_stepsize)
+            cmd, head_position =  points_to_lcode_trap(pt, sig=sig)
+            command += cmd
+            command += post_print_command
+            if add_optimisation_commands: command += 'O0;\n'
+            
+            
+        else:
+
+
+            pt = extruder_to_point(point, extruder, travel_type=travel_type, max_stepsize=max_stepsize, via=via)
+            cmd, head_position =  points_to_lcode_trap(pt, sig=sig)
+            command += pre_print_command
+            command += cmd
+            command += post_print_command
+            if add_optimisation_commands: command += 'O0;\n'
+    
+    return command, head_position
