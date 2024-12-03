@@ -693,7 +693,7 @@ def animate_lcode(pth, ax:mpl.axes.Axes|None=None, fig:plt.Figure=None, skip:int
     :param extruder: If not None the position of the extruder to plot as Tensor
     :param xlims: Tuple of xlims, if None will use  (-0.12,0.12)
     :param ylims: Tuple of ylims, if None will use  (-0.12,0.12)
-    :param zlims: Tuple of `lims, if None will use  (-0.12,0.12)
+    :param zlims: Tuple of zlims, if None will use  (-0.12,0.12)
     :param dpi: dpi to use when saving gif
     :param inetrval: Time to wait between frames
     :param legend: If True will add figure legend
