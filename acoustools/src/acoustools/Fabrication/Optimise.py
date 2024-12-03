@@ -11,6 +11,10 @@ def interweave_points(lcode:str, num_points:int=2, min_offset_lines:int=100, ext
     :param extruder: extruder position:
     :param codes_to_combine: The codes that can be combined in one line - note that if different codes are present it may break
     '''
+
+    #The rogue single lines after a C0 i think come from the fact that the interweaved line becomes L1...; C0; which is then split so the C0 is placed first
+    #This means the L command is left alone on a line and the C0 comes after -> this seems like its ok? There isnt two drops to levitate 
+    #It is slightly less efficient -> You could move the C0 above the rogue line and then have two on the next but on thw whole isnt too bad
     blocks = []
     c_blocks = []
     pre_c_blocks = []
@@ -97,7 +101,7 @@ def interweave_points(lcode:str, num_points:int=2, min_offset_lines:int=100, ext
             interweaved.append([c_blocks[blocks_done],]) #Add the post commands ...
             blocks_done += 1 # And remember we have completed a block
 
-        if len(current_blocks) == 0 and blocks_done < N_blocks: #Check we dont run out of a block befoer starting the next one
+        if len(current_blocks) == 0 and blocks_done < N_blocks: #Check we dont run out of blocks before starting the next one
             current_blocks.append(blocks[blocks_done])
 
     i = 0

@@ -716,8 +716,12 @@ def animate_lcode(pth, ax:mpl.axes.Axes|None=None, fig:plt.Figure=None, skip:int
             split = line.split(':')
             cmd = split[0]
             if cmd in point_commands:
-                point = split[1].split(',')
-                frames.append([float(p) for p in point])
+                points = split[1:]
+                ps = []
+                for point in points:
+                    ps.append(point.split(','))
+
+                frames.append([[float(p) for p in pt] for pt in ps])
             
             frame_printed_points = printed_points[-1].copy()
             if cmd == 'C1':
@@ -751,11 +755,12 @@ def animate_lcode(pth, ax:mpl.axes.Axes|None=None, fig:plt.Figure=None, skip:int
         index = index*skip
         ax.clear()
         print(f"Line {index/skip}/{FRAMES}", end='\r')
-        ax.scatter(*frames[index], label='Trap')
+        for pt in frames[index]:
+            ax.scatter(*pt, label='Trap')
         
-        printed_xs = [p[0] for p in printed_points[index]]
-        printed_ys = [p[1] for p in printed_points[index]]
-        printed_zs = [p[2] for p in printed_points[index]]
+        printed_xs = [i for i in [[p[0] for p in pt] for pt in printed_points[index]]]
+        printed_ys = [i for i in [[p[1] for p in pt] for pt in printed_points[index]]]
+        printed_zs = [i for i in [[p[2] for p in pt] for pt in printed_points[index]]]
 
         ax.scatter(printed_xs,printed_ys, printed_zs, label='Printed', edgecolor='black')
 
