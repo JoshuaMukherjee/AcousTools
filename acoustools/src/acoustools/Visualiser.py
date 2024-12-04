@@ -709,19 +709,45 @@ def animate_lcode(pth, ax:mpl.axes.Axes|None=None, fig:plt.Figure=None, skip:int
     frames = []
     printed_points = [[],]
 
+    functions = {}
+    in_function = None
+
     with open(pth,'r') as file:
         lines = file.readlines()
         for line in lines:
             line = line.replace(';','').rstrip()
             split = line.split(':')
             cmd = split[0]
-            if cmd in point_commands:
+            
+            if cmd == 'function':
+                name = split[1]
+                functions[name] = []
+                in_function = name
+            
+            elif cmd == 'end':
+                name = split[1]
+                in_function = None
+            
+            elif cmd.startswith('F'):
+                frame_points = functions[cmd]
+                for frame in frame_points:
+                    frames.append(frame)
+                    frame_printed_points = printed_points[-1].copy()
+                    printed_points.append(frame_printed_points)
+
+
+
+            elif cmd in point_commands:
                 points = split[1:]
                 ps = []
                 for point in points:
                     ps.append(point.split(','))
 
-                frames.append([[float(p) for p in pt] for pt in ps])
+                frame_points = [[float(p) for p in pt] for pt in ps]
+                frames.append(frame_points)
+
+                if in_function is not None:
+                    functions[in_function].append(frame_points)
             
             frame_printed_points = printed_points[-1].copy()
             if cmd == 'C1':

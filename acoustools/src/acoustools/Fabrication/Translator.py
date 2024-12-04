@@ -297,13 +297,17 @@ def start_to_end(end:Tensor, start:Tensor, max_stepsize:float=0.001, travel_type
 
 
 
-def points_to_lcode_trap(points:list[Tensor], sig:str='Trap') -> tuple[str,Tensor]:
+def points_to_lcode_trap(points:list[Tensor], sig:str='Trap', function_name:str='') -> tuple[str,Tensor]:
     '''
     Converts a set of points to a number of L1 commands (Traps) \n
     :param points: The point locations
+    :param sig: The signature name to use
+    :param function_name: The name of the function these commands make up, if any
     :returns command, head_position: The commands as string and the final head position
     '''
     command = ''
+    if function_name != '':
+        command += f"function:{function_name}: \n"
     for point in points:
         N = point.shape[2]
         sig_num = {'Focal':'0','Trap':"1",'Twin':'2','Vortex':'3'}[sig]
@@ -315,6 +319,9 @@ def points_to_lcode_trap(points:list[Tensor], sig:str='Trap') -> tuple[str,Tenso
         command += ';\n'
     
         head_position = point
+    
+    if function_name != '':
+        command += f"end:{function_name}; \n"
 
     return command, head_position
 
@@ -445,20 +452,21 @@ def print_points_to_commands(print_points, extruder:Tensor, max_stepsize:float=0
             idx = str(extruder_x) + '_' + str(extruder_y)+ '_' + str(extruder_z)+ '_' + travel_type+ '_' + \
                     str(max_stepsize) + '_'+ str(via_x)+ '_' + str(via_y) + '_'+ str(via_z)
             
-            if idx not in functions:
+            if idx not in functions: #This is the first time we've seen this so create it
 
-                pt = extruder_to_point(via, extruder, travel_type=travel_type, max_stepsize=max_stepsize)
-                cmd, head_position =  points_to_lcode_trap(pt, sig=sig)
-                command += pre_print_command
-                command += cmd
-                
                 if 'names' not in functions:
                     functions['names'] = 0
                 
                 name = functions['names'] + 1 
                 functions['names'] = name
                 
+                pt = extruder_to_point(via, extruder, travel_type=travel_type, max_stepsize=max_stepsize)
+                cmd, head_position =  points_to_lcode_trap(pt, sig=sig,function_name=f"F{name}")
+                command += pre_print_command
+                command += cmd
+                
                 functions[idx] = (f"F{name};\n", head_position)
+                
 
             else:
                 '''Just use precomputed path'''

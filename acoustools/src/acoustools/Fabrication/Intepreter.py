@@ -25,7 +25,9 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     delay = 0
     layer_z = 0
     cut_mesh = None
+    in_function = None
 
+    functions = {}
 
     start_from_focal_point = ['L0','L1','L2','L3']
     signature = ['Focal','Trap','Twin','Vortex']
@@ -49,11 +51,20 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 groups = line.split(':')
                 command = groups[0]
 
-                if command in start_from_focal_point:
+                if command.startswith('F'):
+                    xs = functions[command]
+                    lev.levitate(xs)
+
+                elif command in start_from_focal_point:
 
                     x = L0(*groups[1:], iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,BEM_path=BEM_path, H=H)
                     sig = signature[start_from_focal_point.index(command)]
                     x = add_lev_sig(x, board=board,mode=sig)
+
+                    if in_function is not None:
+                        functions[in_function].append(x)
+
+
                     total_size += x.element_size() * x.nelement()
                     if save_holo_name is not None: holograms.append(x)
                     lev.levitate(x)
@@ -85,6 +96,15 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 elif command == 'C10':
                     cut_mesh = cut_mesh_to_walls(mesh, layer_z=layer_z, wall_thickness=thickness)
                     H = get_cache_or_compute_H(cut_mesh,board=board,path=BEM_path)
+                elif command == 'function':
+                    name = groups[1]
+                    in_function = name
+                    functions[name] = []
+                elif command == 'end':
+                    name = groups[1]
+                    in_function = None
+                elif command.startswith('O'):
+                    pass
                 else:
                     raise NotImplementedError(command)
                 
