@@ -1,7 +1,7 @@
 if __name__ == '__main__':
 
     from acoustools.Utilities import create_points, forward_model_batched, device, TRANSDUCERS, propagate
-    from acoustools.Solvers import wgs_wrapper, temporal_wgs,wgs_batch
+    from acoustools.Solvers import wgs, temporal_wgs
 
     import torch
     import matplotlib.pyplot as plt
@@ -12,7 +12,7 @@ if __name__ == '__main__':
     
     point = create_points(N,1)
     A=forward_model_batched(point).to(device)
-    _, _, x_wgs = wgs_batch(A,torch.ones(N,1).to(device)+0j,200)
+    x_wgs = wgs(point, A=A)
     z_wgs = A@x_wgs
 
     x_temp = x_wgs
@@ -40,7 +40,7 @@ if __name__ == '__main__':
         temp_pressure.append(torch.mean(torch.abs(z_temp)))
 
 
-        _, _, x_wgs = wgs_batch(A,torch.ones(N,1).to(device)+0j,200)
+        x_wgs =  wgs(point, A=A)
         wgs_phases.append(torch.mean(torch.angle(x_wgs)))
         wgs_pressure.append(torch.mean(torch.abs(A@x_wgs)))
         
