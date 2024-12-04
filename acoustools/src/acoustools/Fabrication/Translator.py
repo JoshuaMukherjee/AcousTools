@@ -22,9 +22,14 @@ Commands
 `C8;` Set to top board setup
 `C9;` Set to bottom board setup
 `C10;` Update BEM to use layer at last z position 
-`C11:<Sig>;` Update the type of signature that movemenets will be converted to - will change which of L1-L4 are used for G01 moves. 
+`C11:<Frame-rate>;` Set the framerate of the levitator device
+`C12:<Extruder>;` Set a new extruder position
 
 `O0;` End of droplet
+
+`function F<x>
+...
+end` define a function that can latter be called by name
 '''
 # NEED TO ADD FRAME RATE CONTROL
 
@@ -122,7 +127,7 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
             line = line.rstrip()
             line_split = line.split()
             if len(line_split) == 0 or line.startswith(';'):
-                if log: log_file.write(f'Line {i+1}, Ignoring code {code} ({line})\n')
+                if log: log_file.write(f'Line {i+1}, Ignoring line {line})\n')
                 continue
             code = line_split[0]
             args = line_split[1:]
@@ -373,6 +378,8 @@ def convert_G01(*args:str, head_position:Tensor, extruder:Tensor, divider:float 
                                                       pre_print_command=pre_print_command, post_print_command=post_print_command,
                                                       sig=sig, travel_type=travel_type, add_optimisation_commands=add_optimisation_commands, via=via,
                                                      functions=functions)
+    else:
+        command = ''
     return command, end_position, N
 
 def convert_G02_G03(*args, head_position:Tensor, extruder:Tensor, divider:float = 1000, 
@@ -471,6 +478,7 @@ def print_points_to_commands(print_points, extruder:Tensor, max_stepsize:float=0
             else:
                 '''Just use precomputed path'''
                 cmd, head_position = functions[idx]
+                command += pre_print_command
                 command += cmd
             
             pt = extruder_to_point(point, via, travel_type=travel_type, max_stepsize=max_stepsize)

@@ -96,6 +96,9 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 elif command == 'C10':
                     cut_mesh = cut_mesh_to_walls(mesh, layer_z=layer_z, wall_thickness=thickness)
                     H = get_cache_or_compute_H(cut_mesh,board=board,path=BEM_path)
+                elif command == 'C11':
+                    frame_rate = float(groups[1])
+                    lev.set_frame_rate(frame_rate)
                 elif command == 'function':
                     name = groups[1]
                     in_function = name

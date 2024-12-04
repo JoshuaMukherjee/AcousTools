@@ -712,9 +712,13 @@ def animate_lcode(pth, ax:mpl.axes.Axes|None=None, fig:plt.Figure=None, skip:int
     functions = {}
     in_function = None
 
+    
+
     with open(pth,'r') as file:
         lines = file.readlines()
-        for line in lines:
+        LINES = len(lines)
+        for i,line in enumerate(lines):
+            print(f"Line {i}/{LINES}", end='\r')
             line = line.replace(';','').rstrip()
             split = line.split(':')
             cmd = split[0]
