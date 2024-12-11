@@ -251,7 +251,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     if show:
         plt.show(block=block)
     else:
-        return plt
+        return fig
     
 
 def get_point_pos(A:Tensor,B:Tensor,C:Tensor, points:Tensor, res:tuple[int]=(200,200),flip:bool=True) -> list[int]:

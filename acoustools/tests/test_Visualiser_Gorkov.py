@@ -16,4 +16,4 @@ if __name__ == "__main__":
     normal = (0,1,0)
     origin = (0,0,0)
 
-    Visualise(A,B,C, x, points=p, colour_functions=[propagate_abs,gorkov_analytical],clr_labels=['Pressure','Gor\'kov'], res=(200,200))
+    Visualise(A,B,C, x, points=p, colour_functions=[propagate_abs,gorkov_analytical],clr_labels=['Pressure','Gor\'kov'], res=(200,200),link_ax=[0,])

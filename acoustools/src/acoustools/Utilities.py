@@ -581,7 +581,7 @@ def create_points(N:int,B:int=1,x:float|None=None,y:float|None=None,z:float|None
     return points
     
 def add_lev_sig(activation:Tensor, board:Tensor|None=None, 
-                mode:Literal['Focal', 'Trap', 'Vortex','Twin']='Trap', sig:Tensor|None=None, return_sig:bool=False) -> Tensor:
+                mode:Literal['Focal', 'Trap', 'Vortex','Twin', 'Eye']='Trap', sig:Tensor|None=None, return_sig:bool=False) -> Tensor:
     '''
     Adds signature to hologram for a board \n
     :param activation: Hologram input
@@ -591,6 +591,7 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
     * Trap: Add $\\pi$ to the top board - creates a trap
     * Vortex: Add a circular signature to create a circular trap
     * Twin: Add $\\pi$ to half of the board laterally to create a twin trap
+    * Eye: Add a vortex trap combined with a central disk of the Trap method. Produces a eye like shape around the focus
     :param sig: signature to add to top board. If `None` then value is determined by value of `mode`
     :return: hologram with signature added
 
@@ -627,6 +628,18 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
         if mode == 'Twin':
             plane = board[:,0:2]
             sig = torch.zeros_like(sig) + torch.pi * (plane[:,0] > 0).unsqueeze(0).unsqueeze(2).reshape((B,-1, 256))
+        if mode == 'Eye':
+            
+            b = board.reshape(-1,256,3)
+
+            plane = board[:,0:2]
+            sig = torch.atan2(plane[:,0], plane[:,1]).unsqueeze(0).unsqueeze(2).reshape((B,-1, 256))
+            mask = torch.sqrt(b[:,:,0] ** 2 + b[:,:,1] ** 2) < 0.06
+
+            
+
+            sig[0,0,:][mask[0,:] == 1] = torch.pi
+            sig[0,1,:][mask[0,:] == 1] = 0
 
 
     x = torch.abs(act) * torch.exp(1j* (torch.angle(act) + sig))

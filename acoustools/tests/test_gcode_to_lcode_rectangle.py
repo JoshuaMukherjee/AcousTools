@@ -1,4 +1,4 @@
-from acoustools.Fabrication.Translater import gcode_to_lcode
+from acoustools.Fabrication.Translator import gcode_to_lcode
 
 
 pth = 'acoustools/tests/data/gcode/rectangle.gcode'
