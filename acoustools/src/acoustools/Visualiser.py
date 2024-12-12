@@ -24,7 +24,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
               colour_functions:list[FunctionType]|None=[propagate_abs], colour_function_args:list[dict]|None=None, 
               res:tuple[int]=(200,200), cmaps:list[str]=[], add_lines_functions:list[FunctionType]|None=None, 
               add_line_args:list[dict]|None=None,vmin:int|list[int]|None=None,vmax:int|list[int]|None=None, 
-              matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None, depth:int=2, link_ax:str|list='all',
+              matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None, depth:int=2, link_ax:str|list|None='all',
               cursor:bool=False, arangement:tuple|None = None, titles:list[str]|None=None ) -> None:
     '''
     Visualises any number of fields generated from activation to the plane ABC and arranges them in a (1,N) grid \n
@@ -46,7 +46,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     :param block: Will be passed to `plot.show(block=block)`. Default True
     :param clr_label: Label for colourbar
     :param depth: Number of times to tile image
-    :param link_ax: Axes to link colourbar of `'all'` to link all axes
+    :param link_ax: Axes to link colourbar of `'all'` to link all axes. To unlink all axis, pass one of ['none', False, None]
     :param cursor: If `True` will show cursor across plots
     :param arangement: Arangment of subplots 
     :param title: Titles for each subplot
@@ -76,6 +76,8 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     results = []
     lines = []
     if len(points) > 0:
+        if type(points) == list:
+            points  = torch.concatenate(points,axis=0)
         pts_pos = get_point_pos(A,B,C,points,res)
         # print(pts_pos)
         pts_pos_t = torch.stack(pts_pos).T
@@ -121,10 +123,13 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     
     norms = {}
     
-    if link_ax == 'all':
+    if link_ax == 'all' or link_ax == True:
         norm = mcolors.Normalize(vmin=v_min, vmax=v_max)
         for i in range(len(results)):
             norms[i] = norm
+    elif link_ax == 'none' or link_ax is None or link_ax == False:
+        for i in range(len(results)):
+            norms[i] = None
     
     else:
         if type(link_ax[0]) == list or type(link_ax[0]) == tuple:
@@ -582,6 +587,8 @@ def ABC(size:int, plane:Literal['xz', 'yz', 'xy'] = 'xz', origin:Tensor|tuple=No
         origin = torch.tensor((0,0,0))
     if type(origin) == tuple or type(origin) == list:
         origin = torch.tensor(origin)
+    
+    origin = origin.squeeze() 
 
     
     if plane == 'xz':
