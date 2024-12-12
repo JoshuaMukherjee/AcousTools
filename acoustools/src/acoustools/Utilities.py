@@ -258,7 +258,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     B = points.shape[0]
     N = points.shape[2]
     M = transducers.shape[0]
-
+    
     transducers = torch.unsqueeze(transducers,2)
     transducers = transducers.expand((B,-1,-1,N))
     points = torch.unsqueeze(points,1)

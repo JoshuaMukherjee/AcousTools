@@ -1,7 +1,7 @@
 
 if __name__ == "__main__":
     from acoustools.Utilities import forward_model_batched, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed, TRANSDUCERS, create_points, add_lev_sig, propagate,DTYPE
-    from acoustools.Solvers import wgs_wrapper
+    from acoustools.Solvers import wgs
     from acoustools.Gorkov import get_finite_diff_points_all_axis
     from acoustools.Utilities import device, propagate_abs
     import acoustools.Constants as c
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         points = create_points(N,B)
         print(points)
         points = torch.autograd.Variable(points.data, requires_grad=True).to(device).to(DTYPE)
-        x = wgs_wrapper(points).to(DTYPE)
+        x = wgs(points).to(DTYPE)
         activations = add_lev_sig(x)
 
         board = TRANSDUCERS
