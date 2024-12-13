@@ -36,7 +36,6 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
     F =  (split[:,0,:] - split[:,1,:]) / (2*stepsize)
     return F
 
-
 def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
     Returns the force on a particle using the analytical derivative of the Gor'kov potential and the piston model\n
@@ -46,6 +45,9 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     :param return_components: If true returns force as one tensor otherwise returns Fx, Fy, Fz
     :return: force  
     '''
+
+    #Bk.2 Pg.319
+
     if board is None:
         board = TRANSDUCERS
     
@@ -54,34 +56,88 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board)
     Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=board)
 
-    p   = torch.abs(F@activations)
-    Px  = torch.abs(Fx@activations)
-    Py  = torch.abs(Fy@activations)
-    Pz  = torch.abs(Fz@activations)
-    Pxx = torch.abs(Fxx@activations)
-    Pyy = torch.abs(Fyy@activations)
-    Pzz = torch.abs(Fzz@activations)
-    Pxy = torch.abs(Fxy@activations)
-    Pxz = torch.abs(Fxz@activations)
-    Pyz = torch.abs(Fyz@activations)
+    p   = (F@activations)
+    Px  = (Fx@activations)
+    Py  = (Fy@activations)
+    Pz  = (Fz@activations)
+    Pxx = (Fxx@activations)
+    Pyy = (Fyy@activations)
+    Pzz = (Fzz@activations)
+    Pxy = (Fxy@activations)
+    Pxz = (Fxz@activations)
+    Pyz = (Fyz@activations)
 
+    grad_p = torch.stack([Px,Py,Pz])
+    grad_px = torch.stack([Pxx,Pxy,Pxz])
+    grad_py = torch.stack([Pxy,Pyy,Pyz])
+    grad_pz = torch.stack([Pxz,Pyz,Pzz])
 
-    
+    p_term = p*grad_p.conj() + p.conj()*grad_p
+
+    px_term = Px*grad_px.conj() + Px.conj()*grad_px
+    py_term = Py*grad_py.conj() + Py.conj()*grad_py
+    pz_term = Pz*grad_pz.conj() + Pz.conj()*grad_pz
+
     K1 = c.V / (4*c.p_0*c.c_0**2)
     K2 = 3*c.V / (4*(2*c.f**2 * c.p_0))
 
-    single_sum = 2*K2*(Pz+Py+Pz)
-
-    force_x = -1 * (2*p * (K1 * Px - K2*(Pxz+Pxy+Pxx)) - Px*single_sum)
-    force_y = -1 * (2*p * (K1 * Py - K2*(Pyz+Pyy+Pxy)) - Py*single_sum)
-    force_z = -1 * (2*p * (K1 * Pz - K2*(Pzz+Pyz+Pxz)) - Pz*single_sum)
+    grad_U = K1 * p_term - K2 * (px_term + py_term + pz_term)
+    force = (-1 * grad_U).squeeze()
 
 
     if return_components:
-        return force_x, force_y, force_z
+        return force[0], force[1], force[1]
     else:
-        force = torch.cat([force_x, force_y, force_z],2)
-        return force
+        return force 
+
+
+
+
+# def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+#     '''
+#     Returns the force on a particle using the analytical derivative of the Gor'kov potential and the piston model\n
+#     :param activations: Transducer hologram
+#     :param points: Points to propagate to
+#     :param board: Transducers to use, if `None` uses `acoustools.Utilities.TRANSDUCERS`
+#     :param return_components: If true returns force as one tensor otherwise returns Fx, Fy, Fz
+#     :return: force  
+#     '''
+#     if board is None:
+#         board = TRANSDUCERS
+    
+#     F = forward_model_batched(points,transducers=board)
+#     Fx, Fy, Fz = forward_model_grad(points,transducers=board)
+#     Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board)
+#     Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=board)
+
+#     p   = torch.abs(F@activations)
+#     Px  = torch.abs(Fx@activations)
+#     Py  = torch.abs(Fy@activations)
+#     Pz  = torch.abs(Fz@activations)
+#     Pxx = torch.abs(Fxx@activations)
+#     Pyy = torch.abs(Fyy@activations)
+#     Pzz = torch.abs(Fzz@activations)
+#     Pxy = torch.abs(Fxy@activations)
+#     Pxz = torch.abs(Fxz@activations)
+#     Pyz = torch.abs(Fyz@activations)
+
+
+    
+#     K1 = c.V / (4*c.p_0*c.c_0**2)
+#     K2 = 3*c.V / (4*(2*c.f**2 * c.p_0))
+
+#     single_sum = 2*K2*(Pz+Py+Pz)
+
+#     force_x = -1 * (2*p * (K1 * Px - K2*(Pxz+Pxy+Pxx)) - Px*single_sum)
+#     force_y = -1 * (2*p * (K1 * Py - K2*(Pyz+Pyy+Pxy)) - Py*single_sum)
+#     force_z = -1 * (2*p * (K1 * Pz - K2*(Pzz+Pyz+Pxz)) - Pz*single_sum)
+
+
+#     if return_components:
+#         return force_x, force_y, force_z
+#     else:
+#         force = torch.cat([force_x, force_y, force_z],2)
+#         return force
     
 def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axis:int=2) -> Tensor:
     '''
