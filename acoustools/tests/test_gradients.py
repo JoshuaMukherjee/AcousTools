@@ -76,7 +76,7 @@ if __name__ == "__main__":
         Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board)
         Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=board)
 
-        stepsize = 0.000135156253
+        stepsize = 0.000135156253/10
 
         fin_diff_points = get_finite_diff_points_all_axis(points,stepsize=stepsize)
         pressure_points = propagate(activations, fin_diff_points)
@@ -104,7 +104,6 @@ if __name__ == "__main__":
 
         grad_unmixed = (split[:,0,:] - 2*pressure + split[:,1,:]) / (stepsize**2)
 
-        Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board)
         Pxx = torch.abs(Fxx@activations)
         print("Pxx", Pxx, torch.abs(grad_unmixed[0,0]), torch.abs(grad_unmixed[0,0]) / Pxx,sep="\t")
         Pyy = torch.abs(Fyy@activations)

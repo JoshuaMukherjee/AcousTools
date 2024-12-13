@@ -353,8 +353,6 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
 
     return Faa[:,:,0,:].permute((0,2,1)), Faa[:,:,1,:].permute((0,2,1)), Faa[:,:,2,:].permute((0,2,1))
 
-
-
 def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|None = None)->Tensor:
     '''
     Computes the second degree mixed analytical gradient of the piston model\n
@@ -363,97 +361,223 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     Returns second degree mixed derivatives of forward model wrt x,y,z position - Pxy, Pxz, Pyz
     '''
 
+    #Bk.2 Pg.317
+
     if transducers is None:
         transducers= TRANSDUCERS
-    
-    F,G,H, Fa, Ga, Ha , Fu, Ua = compute_gradients(points, transducers)
 
     B = points.shape[0]
     N = points.shape[2]
     M = transducers.shape[0]
-
+    
     transducers = torch.unsqueeze(transducers,2)
     transducers = transducers.expand((B,-1,-1,N))
     points = torch.unsqueeze(points,1)
     points = points.expand((-1,M,-1,-1))
-    
+
     diff = transducers - points
-    distance_axis = diff**2
-    distances = torch.sqrt(torch.sum(distance_axis, 2))
-    planar_distance= torch.sqrt(torch.sum(distance_axis[:,:,0:2,:],dim=2))
-
-    sin_theta = torch.divide(planar_distance,distances)
-
-    dx = distance_axis[:,:,0,:] #Should this be distance_axis or diff
-    dy = distance_axis[:,:,1,:]
-    dz = distance_axis[:,:,2,:]
-
-    # distances_sqaured = distances**2
-    distances_five = distances**5
-    distances_cube = distances**3
-    # planar_distance_squared = planar_distance**2
-
-    Fxy = torch.ones((B,M,1,N))
-    Fxz = torch.ones((B,M,1,N))
-    Fyz = torch.ones((B,M,1,N))
     
-    planar_distance_distances_five = planar_distance * distances_five
-    Uxy = -1*(dx*dy*dz**2 * (4*dx**2+4*dy**2+dz**2)) / (planar_distance**3 * distances_five)
-    Uxz = ((dx*dz) * (2*dx**2 + 2*dy**2 -dz**2)) / planar_distance_distances_five
-    Uyz = ((dy*dz)*(2*dx**2 + 2*dy**2 - dz**2)) / planar_distance_distances_five
+    diff_square = diff**2
+    distances = torch.sqrt(torch.sum(diff_square, 2))
+    distances_cube = distances ** 3
+    distances_five = distances ** 5
+    
+    distances_expanded = distances.unsqueeze(2).expand((1,-1,3,1))
+    distances_expanded_square = distances_expanded**2
+    
+    planar_distance= torch.sqrt(torch.sum(diff_square[:,:,0:2,:],dim=2))
+    planar_distance_cube = planar_distance**3
 
-    Ux = Ua[:,:,0,:]
-    Uy = Ua[:,:,1,:]
-    Uz = Ua[:,:,2,:]
+    sin_theta = planar_distance / distances
+    sin_theta_expand = sin_theta.unsqueeze(2).expand((1,-1,3,1))
 
-    # F_second_U = -1 * (Constants.k**2 * Constants.radius**2)/4 + (Constants.k**4 * Constants.radius**4)/16 * sin_theta**2
-    # F_first_U = -1* (Constants.k**2 * Constants.radius**2)/4 * sin_theta + (Constants.k**4 * Constants.radius**4)/48 * sin_theta**3
+    dx = diff[:,:,0,:]
+    dy = diff[:,:,1,:]
+    dz = diff[:,:,2,:]
 
-    F_second_U = -1/8 *Constants.k**3*Constants.radius**3  + 1/32 * Constants.k**5 * Constants.radius**5 * sin_theta**2 - 5/3072 * sin_theta**4 * Constants.k**7 * Constants.radius**7
-    F_first_U = -1* (Constants.k**3 * Constants.radius**3)/8 * sin_theta + 1/96 * Constants.k**5 * Constants.radius**5 * sin_theta**3 - 1/3072 * sin_theta**7 * Constants.k**7 * Constants.radius**7
+    # F = G * H 
+    # G  = Pref * e^(ikd) / d
+    # H = 1 - (kr sin(theta))^2 / 8 + (kr sin(theta))^4 / 192
 
-    Fxy = Ux * Uy * F_second_U + Uxy*F_first_U
-    Fxz = Ux * Uz * F_second_U + Uxz*F_first_U
-    Fyz = Uy * Uz * F_second_U + Uyz*F_first_U
+    G = Constants.P_ref * torch.exp(1j * Constants.k * distances) / distances
 
-    dist_xy = (dx*dy) / distances_cube
-    dist_xz = (dx*dz) / distances_cube
-    dist_yz = (dy*dz) / distances_cube
+    kr = Constants.k * Constants.radius
+    kr_sine = kr*sin_theta
+    H = 1 - ((kr_sine)**2) / 8 + ((kr_sine)**4)/192 
 
-    dist_x = -1 * dx / distances
-    dist_y = -1 * dy / distances
-    dist_z = -1 * dz / distances
+    #(a = {x,y,z})
+    #Faa = 2*Ga*Ha + Gaa * H + G * Haa
 
-    Hxy = -Constants.k *  H[:,:,0,:] * (Constants.k * dist_y * dist_x - 1j*dist_xy)
-    Hxz = -Constants.k *  H[:,:,1,:] * (Constants.k * dist_z * dist_x - 1j*dist_xz)
-    Hyz = -Constants.k *  H[:,:,2,:] * (Constants.k * dist_y * dist_z - 1j*dist_yz)
+    #Ga = Pref * [i*da * e^{ikd} * (kd+i) / d^2]
 
-    Gxy = Constants.P_ref * (2*dist_y*dist_x - distances * dist_xy) / distances_cube
-    Gxz = Constants.P_ref * (2*dist_z*dist_x - distances * dist_xz) / distances_cube
-    Gyz = Constants.P_ref * (2*dist_z*dist_y - distances * dist_yz) / distances_cube
+    #d = distance
+    #da = -(at - a)^2 / d
 
-    Fx = Fa[:,:,0,:] 
-    Fy = Fa[:,:,1,:] 
-    Fz = Fa[:,:,2,:]
+    da = -1 * diff / distances_expanded
+    dax = da[:,:,0,:]
+    day = da[:,:,1,:]
+    daz = da[:,:,2,:]
 
-    Hx = Ha[:,:,0,:] 
-    Hy = Ha[:,:,1,:] 
+
+    kd_exp = Constants.k * distances_expanded
+    kd = Constants.k * distances
+    phase = torch.exp(1j*kd_exp)
+    Ga = Constants.P_ref * ( (1j*da*phase * (kd_exp + 1j))/ (distances_expanded_square))
+
+    #Ha = (kr)^2/48 * s * sa * ((kr)^2 * s^2 - 12)
+    #s = planar_distance / distance = sin_theta
+    #sb = -1 * (db * dz^2) / (sqrt(dx^2+dy^2) * distance^3). b = {x,y}
+    #sz = (dz * sqrt(dx^2 + dy^2)) / distance^3
+
+    sx = -1 * (dx * dz**2) / (planar_distance * distances_cube)
+    sy = -1 * (dy * dz**2) / (planar_distance * distances_cube)
+    sz = (dz * planar_distance) / distances_cube
+    sa = torch.stack([sx,sy,sz],axis=2)
+
+    Ha = 1/48 * kr**2 * sin_theta_expand * sa * (kr**2 * sin_theta_expand**2 - 12)
+
+    #Gab = P_ref * e^{ikd} * (db * da * ( (kd)^2 + 2ikd - 2) + d * dab * (1-ikd))
+    #dab = -da*db / d^3
+
+    dxy = -1*dx*dy / distances_cube
+    dxz = -1*dx*dz / distances_cube
+    dyz = -1*dy*dz / distances_cube
+
+
+    Gxy = (Constants.P_ref * torch.exp(1j * kd) * (day * dax * (kd**2 + 2*1j*distances - 2) + distances * dxy * (1 - 1j*kd))) / (-1 * distances_cube)
+    Gxz = (Constants.P_ref * torch.exp(1j * kd) * (daz * dax * (kd**2 + 2*1j*distances - 2) + distances * dxz * (1 - 1j*kd))) / (-1 * distances_cube)
+    Gyz = (Constants.P_ref * torch.exp(1j * kd) * (day * daz * (kd**2 + 2*1j*distances - 2) + distances * dyz * (1 - 1j*kd))) / (-1 * distances_cube)
+
+    #Hab = (kr)^2/ 48 * (3*Sb*Sa * ((kr)^2 S^2 - 4) + S*Sab*((kr)^2 S^2 - 12))
+
+    #Sxy = -dx * dy * dz^2 ( 4 * (dx^2 + dy^2) + dz^2 ) / (dx^2 + dy^2)^(3/2) * d^5
+    #Saz = da * dz * (2 * dx**2 + 2 * dy**2 - dz**2) / (dx^2 + dy^2)^(1/2) * d^5
+
+    Sxy = -1 * dx * dy * dz**2 * (4 * (dx**2 + dy**2) + dz**2) / (planar_distance_cube* distances_five)
+    Sxz = dx * dz * (2 * dx**2 + 2 * dy**2 - dz**2) / (planar_distance * distances_five)
+    Syz = dy * dz * (2 * dx**2 + 2 * dy**2 - dz**2) / (planar_distance * distances_five)
+
+    Hxy = kr**2 / 48 * (3 * sx * sy * (kr**2 * sin_theta**2 - 4) + sin_theta * Sxy * (kr**2 * sin_theta**2  -12))
+    Hxz = kr**2 / 48 * (3 * sx * sz * (kr**2 * sin_theta**2 - 4) + sin_theta * Sxz * (kr**2 * sin_theta**2  -12))
+    Hyz = kr**2 / 48 * (3 * sy * sz * (kr**2 * sin_theta**2 - 4) + sin_theta * Syz * (kr**2 * sin_theta**2  -12))
+
+    #Fab = Ga*Hb + Gb*Ha + Gab * H + G * Hab
+
+    Gx = Ga[:,:,0,:]
+    Gy = Ga[:,:,1,:]
+    Gz = Ga[:,:,2,:]
+
+    Hx = Ha[:,:,0,:]
+    Hy = Ha[:,:,1,:]
     Hz = Ha[:,:,2,:]
 
-    Gx = Ga[:,:,0,:] 
-    Gy = Ga[:,:,1,:] 
-    Gz = Ga[:,:,2,:] 
 
-    F_ = F[:,:,0,:]
-    H_ = H[:,:,0,:]
-    G_ = G[:,:,0,:]
+    Fxy = Gx * Hy + Gy * Hx + Gxy * H + G*Hxy
+    Fxz = Gx * Hz + Gz * Hx + Gxz * H + G*Hxz
+    Fyz = Gy * Hz + Gz * Hy + Gyz * H + G*Hyz
 
-    Pxy =  (H_*(Fx * Gy + Fy*Gx + Fxy*G_ + F_*Gxy) + G_ * (Fx*Hy+Fy*Hx + F_*Hxy) + F_*(Gx*Hy + Gy*Hx))
-    Pxz =  (H_*(Fx * Gz + Fz*Gx + Fxz*G_ + F_*Gxz) + G_ * (Fx*Hz+Fz*Hx + F_*Hxz) + F_*(Gx*Hz + Gz*Hx))
-    Pyz =  (H_*(Fy * Gz + Fz*Gy + Fyz*G_ + F_*Gyz) + G_ * (Fy*Hz+Fz*Hy + F_*Hyz) + F_*(Gy*Hz + Gz*Hy))
+    return Fxy.permute((0,2,1)), Fxz.permute((0,2,1)), Fyz.permute((0,2,1))
 
 
-    return Pxy.permute(0,2,1),Pxz.permute(0,2,1), Pyz.permute(0,2,1)
+# def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|None = None)->Tensor:
+#     '''
+#     Computes the second degree mixed analytical gradient of the piston model\n
+#     :param points: Point position to compute propagation to 
+#     :param transducers: The Transducer array, default two 16x16 arrays 
+#     Returns second degree mixed derivatives of forward model wrt x,y,z position - Pxy, Pxz, Pyz
+#     '''
+
+#     if transducers is None:
+#         transducers= TRANSDUCERS
+    
+#     F,G,H, Fa, Ga, Ha , Fu, Ua = compute_gradients(points, transducers)
+
+#     B = points.shape[0]
+#     N = points.shape[2]
+#     M = transducers.shape[0]
+
+#     transducers = torch.unsqueeze(transducers,2)
+#     transducers = transducers.expand((B,-1,-1,N))
+#     points = torch.unsqueeze(points,1)
+#     points = points.expand((-1,M,-1,-1))
+    
+#     diff = transducers - points
+#     distance_axis = diff**2
+#     distances = torch.sqrt(torch.sum(distance_axis, 2))
+#     planar_distance= torch.sqrt(torch.sum(distance_axis[:,:,0:2,:],dim=2))
+
+#     sin_theta = torch.divide(planar_distance,distances)
+
+#     dx = distance_axis[:,:,0,:] #Should this be distance_axis or diff
+#     dy = distance_axis[:,:,1,:]
+#     dz = distance_axis[:,:,2,:]
+
+#     # distances_sqaured = distances**2
+#     distances_five = distances**5
+#     distances_cube = distances**3
+#     # planar_distance_squared = planar_distance**2
+
+#     Fxy = torch.ones((B,M,1,N))
+#     Fxz = torch.ones((B,M,1,N))
+#     Fyz = torch.ones((B,M,1,N))
+    
+#     planar_distance_distances_five = planar_distance * distances_five
+#     Uxy = -1*(dx*dy*dz**2 * (4*dx**2+4*dy**2+dz**2)) / (planar_distance**3 * distances_five)
+#     Uxz = ((dx*dz) * (2*dx**2 + 2*dy**2 -dz**2)) / planar_distance_distances_five
+#     Uyz = ((dy*dz)*(2*dx**2 + 2*dy**2 - dz**2)) / planar_distance_distances_five
+
+#     Ux = Ua[:,:,0,:]
+#     Uy = Ua[:,:,1,:]
+#     Uz = Ua[:,:,2,:]
+
+#     # F_second_U = -1 * (Constants.k**2 * Constants.radius**2)/4 + (Constants.k**4 * Constants.radius**4)/16 * sin_theta**2
+#     # F_first_U = -1* (Constants.k**2 * Constants.radius**2)/4 * sin_theta + (Constants.k**4 * Constants.radius**4)/48 * sin_theta**3
+
+#     F_second_U = -1/8 *Constants.k**3*Constants.radius**3  + 1/32 * Constants.k**5 * Constants.radius**5 * sin_theta**2 - 5/3072 * sin_theta**4 * Constants.k**7 * Constants.radius**7
+#     F_first_U = -1* (Constants.k**3 * Constants.radius**3)/8 * sin_theta + 1/96 * Constants.k**5 * Constants.radius**5 * sin_theta**3 - 1/3072 * sin_theta**7 * Constants.k**7 * Constants.radius**7
+
+#     Fxy = Ux * Uy * F_second_U + Uxy*F_first_U
+#     Fxz = Ux * Uz * F_second_U + Uxz*F_first_U
+#     Fyz = Uy * Uz * F_second_U + Uyz*F_first_U
+
+#     dist_xy = (dx*dy) / distances_cube
+#     dist_xz = (dx*dz) / distances_cube
+#     dist_yz = (dy*dz) / distances_cube
+
+#     dist_x = -1 * dx / distances
+#     dist_y = -1 * dy / distances
+#     dist_z = -1 * dz / distances
+
+#     Hxy = -Constants.k *  H[:,:,0,:] * (Constants.k * dist_y * dist_x - 1j*dist_xy)
+#     Hxz = -Constants.k *  H[:,:,1,:] * (Constants.k * dist_z * dist_x - 1j*dist_xz)
+#     Hyz = -Constants.k *  H[:,:,2,:] * (Constants.k * dist_y * dist_z - 1j*dist_yz)
+
+#     Gxy = Constants.P_ref * (2*dist_y*dist_x - distances * dist_xy) / distances_cube
+#     Gxz = Constants.P_ref * (2*dist_z*dist_x - distances * dist_xz) / distances_cube
+#     Gyz = Constants.P_ref * (2*dist_z*dist_y - distances * dist_yz) / distances_cube
+
+#     Fx = Fa[:,:,0,:] 
+#     Fy = Fa[:,:,1,:] 
+#     Fz = Fa[:,:,2,:]
+
+#     Hx = Ha[:,:,0,:] 
+#     Hy = Ha[:,:,1,:] 
+#     Hz = Ha[:,:,2,:]
+
+#     Gx = Ga[:,:,0,:] 
+#     Gy = Ga[:,:,1,:] 
+#     Gz = Ga[:,:,2,:] 
+
+#     F_ = F[:,:,0,:]
+#     H_ = H[:,:,0,:]
+#     G_ = G[:,:,0,:]
+
+#     Pxy =  (H_*(Fx * Gy + Fy*Gx + Fxy*G_ + F_*Gxy) + G_ * (Fx*Hy+Fy*Hx + F_*Hxy) + F_*(Gx*Hy + Gy*Hx))
+#     Pxz =  (H_*(Fx * Gz + Fz*Gx + Fxz*G_ + F_*Gxz) + G_ * (Fx*Hz+Fz*Hx + F_*Hxz) + F_*(Gx*Hz + Gz*Hx))
+#     Pyz =  (H_*(Fy * Gz + Fz*Gy + Fyz*G_ + F_*Gyz) + G_ * (Fy*Hz+Fz*Hy + F_*Hyz) + F_*(Gy*Hz + Gz*Hy))
+
+
+#     return Pxy.permute(0,2,1),Pxz.permute(0,2,1), Pyz.permute(0,2,1)
     
 def propagate(activations: Tensor, points: Tensor,board: Tensor|None=None, A:Tensor|None=None) -> Tensor:
     '''

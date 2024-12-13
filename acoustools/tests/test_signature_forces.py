@@ -73,26 +73,26 @@ for i in range(N):
     pd = p + create_points(1,1,d,0,0)
     pos.append(d)
 
-    # F_trap_x, _, _ = compute_force(x_trap,pd,board, return_components=True)
-    # F_twin_x, _, _ = compute_force(x_twin,pd,board, return_components=True)
-    # F_vortex_x, _, _ = compute_force(x_vortex,pd,board, return_components=True)
-    # F_eye_x, _, _ = compute_force(x_eye,pd,board, return_components=True)
+    F_trap_x, _, _ = compute_force(x_trap,pd,board, return_components=True)
+    F_twin_x, _, _ = compute_force(x_twin,pd,board, return_components=True)
+    F_vortex_x, _, _ = compute_force(x_vortex,pd,board, return_components=True)
+    F_eye_x, _, _ = compute_force(x_eye,pd,board, return_components=True)
 
-    # F_trap_xs.append(F_trap_x.detach().cpu().item())
-    # F_twin_xs.append(F_twin_x.detach().cpu().item())
-    # F_vortex_xs.append(F_vortex_x.detach().cpu().item())
-    # F_eye_xs.append(F_eye_x.detach().cpu().item())
+    F_trap_xs.append(F_trap_x.detach().cpu().item())
+    F_twin_xs.append(F_twin_x.detach().cpu().item())
+    F_vortex_xs.append(F_vortex_x.detach().cpu().item())
+    F_eye_xs.append(F_eye_x.detach().cpu().item())
 
-    F_trap = force_fin_diff(x_trap, pd)
-    F_twin = force_fin_diff(x_twin, pd)
-    F_vortex = force_fin_diff(x_vortex, pd)
-    F_eye = force_fin_diff(x_eye, pd)
+    # F_trap = force_fin_diff(x_trap, pd)
+    # F_twin = force_fin_diff(x_twin, pd)
+    # F_vortex = force_fin_diff(x_vortex, pd)
+    # F_eye = force_fin_diff(x_eye, pd)
     
     
-    F_trap_xs.append(F_trap.squeeze()[0])
-    F_twin_xs.append(F_twin.squeeze()[0])
-    F_vortex_xs.append(F_vortex.squeeze()[0])
-    F_eye_xs.append(F_eye.squeeze()[0])
+    # F_trap_xs.append(F_trap.squeeze()[0])
+    # F_twin_xs.append(F_twin.squeeze()[0])
+    # F_vortex_xs.append(F_vortex.squeeze()[0])
+    # F_eye_xs.append(F_eye.squeeze()[0])
 
 
 
@@ -100,53 +100,53 @@ for i in range(N):
     d = -1 * MAX_d + i * step
     pd = p + create_points(1,1,0,d,0)
 
-    # _, F_trap_y, _ = compute_force(x_trap,pd,board, return_components=True)
-    # _, F_twin_y, _= compute_force(x_twin,pd,board, return_components=True)
-    # _, F_vortex_y, _ = compute_force(x_vortex,pd,board, return_components=True)
-    # _, F_eye_y, _ = compute_force(x_eye,pd,board, return_components=True)
+    _, F_trap_y, _ = compute_force(x_trap,pd,board, return_components=True)
+    _, F_twin_y, _= compute_force(x_twin,pd,board, return_components=True)
+    _, F_vortex_y, _ = compute_force(x_vortex,pd,board, return_components=True)
+    _, F_eye_y, _ = compute_force(x_eye,pd,board, return_components=True)
 
-    # F_trap_ys.append(F_trap_y.detach().cpu().item())
-    # F_twin_ys.append(F_twin_y.detach().cpu().item())
-    # F_vortex_ys.append(F_vortex_y.detach().cpu().item())
-    # F_eye_ys.append(F_eye_y.detach().cpu().item())
+    F_trap_ys.append(F_trap_y.detach().cpu().item())
+    F_twin_ys.append(F_twin_y.detach().cpu().item())
+    F_vortex_ys.append(F_vortex_y.detach().cpu().item())
+    F_eye_ys.append(F_eye_y.detach().cpu().item())
 
-    F_trap = force_fin_diff(x_trap, pd)
-    F_twin = force_fin_diff(x_twin, pd)
-    F_vortex = force_fin_diff(x_vortex, pd)
-    F_eye = force_fin_diff(x_eye, pd)
+    # F_trap = force_fin_diff(x_trap, pd)
+    # F_twin = force_fin_diff(x_twin, pd)
+    # F_vortex = force_fin_diff(x_vortex, pd)
+    # F_eye = force_fin_diff(x_eye, pd)
     
     
-    F_trap_ys.append(F_trap.squeeze()[1])
-    F_twin_ys.append(F_twin.squeeze()[1])
-    F_vortex_ys.append(F_vortex.squeeze()[1])
-    F_eye_ys.append(F_eye.squeeze()[1])
+    # F_trap_ys.append(F_trap.squeeze()[1])
+    # F_twin_ys.append(F_twin.squeeze()[1])
+    # F_vortex_ys.append(F_vortex.squeeze()[1])
+    # F_eye_ys.append(F_eye.squeeze()[1])
 
 
 for i in range(N):
     d = -1 * MAX_d + i * step
     pd = p + create_points(1,1,0,0,d)
 
-    # _, _,F_trap_z = compute_force(x_trap,pd,board, return_components=True)
-    # _, _, F_twin_z = compute_force(x_twin,pd,board, return_components=True)
-    # _, _, F_vortex_z = compute_force(x_vortex,pd,board, return_components=True)
-    # _, _,F_eye_z = compute_force(x_eye,pd,board, return_components=True)
+    _, _,F_trap_z = compute_force(x_trap,pd,board, return_components=True)
+    _, _, F_twin_z = compute_force(x_twin,pd,board, return_components=True)
+    _, _, F_vortex_z = compute_force(x_vortex,pd,board, return_components=True)
+    _, _,F_eye_z = compute_force(x_eye,pd,board, return_components=True)
 
-    # F_trap_zs.append(F_trap_z.detach().cpu().item())
-    # F_twin_zs.append(F_twin_z.detach().cpu().item())
-    # F_vortex_zs.append(F_vortex_z.detach().cpu().item())
-    # F_eye_zs.append(F_eye_z.detach().cpu().item())
+    F_trap_zs.append(F_trap_z.detach().cpu().item())
+    F_twin_zs.append(F_twin_z.detach().cpu().item())
+    F_vortex_zs.append(F_vortex_z.detach().cpu().item())
+    F_eye_zs.append(F_eye_z.detach().cpu().item())
 
 
-    F_trap = force_fin_diff(x_trap, pd)
-    F_twin = force_fin_diff(x_twin, pd)
-    F_vortex = force_fin_diff(x_vortex, pd)
-    F_eye = force_fin_diff(x_eye, pd)
+    # F_trap = force_fin_diff(x_trap, pd)
+    # F_twin = force_fin_diff(x_twin, pd)
+    # F_vortex = force_fin_diff(x_vortex, pd)
+    # F_eye = force_fin_diff(x_eye, pd)
     
     
-    F_trap_zs.append(F_trap.squeeze()[2])
-    F_twin_zs.append(F_twin.squeeze()[2])
-    F_vortex_zs.append(F_vortex.squeeze()[2])
-    F_eye_zs.append(F_eye.squeeze()[2])
+    # F_trap_zs.append(F_trap.squeeze()[2])
+    # F_twin_zs.append(F_twin.squeeze()[2])
+    # F_vortex_zs.append(F_vortex.squeeze()[2])
+    # F_eye_zs.append(F_eye.squeeze()[2])
 
 
 
