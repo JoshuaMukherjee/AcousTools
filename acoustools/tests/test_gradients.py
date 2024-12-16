@@ -8,6 +8,8 @@ if __name__ == "__main__":
 
     import torch
 
+    # torch.random.manual_seed(1)
+
 
     def return_mixed_points(points,stepsize=0.000135156253, stepsize_x=None,stepsize_y=None,stepsize_z=None ):
         '''
@@ -67,7 +69,7 @@ if __name__ == "__main__":
         print(points)
         points = torch.autograd.Variable(points.data, requires_grad=True).to(device).to(DTYPE)
         x = wgs(points).to(DTYPE)
-        activations = add_lev_sig(x)
+        activations = add_lev_sig(x, mode='Twin')
 
         board = TRANSDUCERS
 
@@ -76,7 +78,7 @@ if __name__ == "__main__":
         Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board)
         Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=board)
 
-        stepsize = 0.000135156253/10
+        stepsize = 0.000135156253
 
         fin_diff_points = get_finite_diff_points_all_axis(points,stepsize=stepsize)
         pressure_points = propagate(activations, fin_diff_points)
@@ -91,25 +93,26 @@ if __name__ == "__main__":
         P_a = torch.autograd.grad (p, points, retain_graph=True, create_graph=True)[0]   # creates graph of first derivative
         pa = torch.abs(P_a)
 
-        print("p", p)
+        print("p", p.item())
         print("Grad","Analytical","Finite Differences","Autograd",sep="\t")
         Px  = torch.abs(Fx@activations)
-        print("px", Px, torch.abs(grad[0,0]),pa[:,0],sep="\t")
+        print("px", Px.item(), torch.abs(grad[0,0]).item(),pa[:,0].item(),sep="\t")
         Py  = torch.abs(Fy@activations)
-        print("py", Py,torch.abs(grad[0,1]),pa[:,1],sep="\t")
+        print("py", Py.item(),torch.abs(grad[0,1]).item(),pa[:,1].item(),sep="\t")
         Pz  = torch.abs(Fz@activations)
-        print("pz", Pz, torch.abs(grad[0,2]),pa[:,2],sep="\t")
+        print("pz", Pz.item(), torch.abs(grad[0,2]).item(),pa[:,2].item(),sep="\t")
         
         print()
+        print("grad", 'Analytical', 'Finite Differences', 'Ratio', sep='\t')
 
         grad_unmixed = (split[:,0,:] - 2*pressure + split[:,1,:]) / (stepsize**2)
 
         Pxx = torch.abs(Fxx@activations)
-        print("Pxx", Pxx, torch.abs(grad_unmixed[0,0]), torch.abs(grad_unmixed[0,0]) / Pxx,sep="\t")
+        print("Pxx", Pxx.item(), torch.abs(grad_unmixed[0,0]).item(), torch.abs(grad_unmixed[0,0]).item() / Pxx.item(),sep="\t")
         Pyy = torch.abs(Fyy@activations)
-        print("Pyy", Pyy, torch.abs(grad_unmixed[0,1]), torch.abs(grad_unmixed[0,1]) / Pyy,sep="\t")
+        print("Pyy", Pyy.item(), torch.abs(grad_unmixed[0,1]).item(), torch.abs(grad_unmixed[0,1]).item() / Pyy.item(),sep="\t")
         Pzz = torch.abs(Fzz@activations)
-        print("Pzz", Pzz, torch.abs(grad_unmixed[0,2]), torch.abs(grad_unmixed[0,2]) / Pzz,sep="\t")
+        print("Pzz", Pzz.item(), torch.abs(grad_unmixed[0,2]).item(), torch.abs(grad_unmixed[0,2]).item() / Pzz.item(),sep="\t")
 
         print()
 
@@ -123,14 +126,14 @@ if __name__ == "__main__":
         Pxy = torch.abs(Fxy@activations)
         mixed_pressure_fin_diff_xy = mixed_pressure_points[:,1:5] * torch.tensor([1,-1,-1,1])
         Pxy_fd = torch.sum(mixed_pressure_fin_diff_xy) / (4*stepsize_x*stepsize_y)
-        print("Pxy",Pxy, torch.abs(Pxy_fd),torch.abs(Pxy_fd)/Pxy,sep='\t')
+        print("Pxy",Pxy.item(), torch.abs(Pxy_fd).item(),torch.abs(Pxy_fd).item()/Pxy.item(),sep='\t')
 
         Pxz = torch.abs(Fxz@activations)
         mixed_pressure_fin_diff_xz = mixed_pressure_points[:,5:9] * torch.tensor([1,-1,-1,1])
         Pxz_fd = torch.sum(mixed_pressure_fin_diff_xz) / (4*stepsize_x*stepsize_y)
-        print("Pxz",Pxz, torch.abs(Pxz_fd), torch.abs(Pxz_fd)/Pxz ,sep='\t')
+        print("Pxz",Pxz.item(), torch.abs(Pxz_fd).item(), torch.abs(Pxz_fd).item()/Pxz.item() ,sep='\t')
 
         Pyz = torch.abs(Fyz@activations)
         mixed_pressure_fin_diff_yz = mixed_pressure_points[:,9:] * torch.tensor([1,-1,-1,1])
         Pyz_fd = torch.sum(mixed_pressure_fin_diff_yz) / (4*stepsize_y*stepsize_z)
-        print("Pyz",Pyz, torch.abs(Pyz_fd), torch.abs(Pyz_fd)/Pyz ,sep='\t')
+        print("Pyz",Pyz.item(), torch.abs(Pyz_fd).item(), torch.abs(Pyz_fd).item()/Pyz.item() ,sep='\t')

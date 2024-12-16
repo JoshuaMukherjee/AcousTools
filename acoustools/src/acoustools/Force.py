@@ -86,7 +86,7 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
 
 
     if return_components:
-        return force[0], force[1], force[1]
+        return force[0], force[1], force[2]
     else:
         return force 
 
