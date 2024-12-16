@@ -273,7 +273,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     distances_cube = distances ** 3
     distances_five = distances ** 5
     
-    distances_expanded = distances.unsqueeze(2).expand((1,-1,3,1))
+    distances_expanded = distances.unsqueeze(2).expand((1,M,3,N))
     distances_expanded_square = distances_expanded**2
     distances_expanded_cube = distances_expanded ** 3
     
@@ -281,7 +281,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     planar_distance_square = planar_distance**2
 
     sin_theta = planar_distance / distances
-    sin_theta_expand = sin_theta.unsqueeze(2).expand((1,-1,3,1))
+    sin_theta_expand = sin_theta.unsqueeze(2).expand((1,M,3,N))
     sin_theta_expand_square = sin_theta_expand**2
 
     dx = diff[:,:,0,:]
@@ -347,8 +347,8 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     Haa = 1/48 * kr**2 * (3*sa**2 * (kr**2 * sin_theta_expand_square- 4) + sin_theta_expand*saa * (kr**2*sin_theta_expand_square - 12))
 
 
-    H_expand = H.unsqueeze(2).expand(1,-1,3,1)
-    G_expand = G.unsqueeze(2).expand(1,-1,3,1)
+    H_expand = H.unsqueeze(2).expand((1,M,3,N))
+    G_expand = G.unsqueeze(2).expand((1,M,3,N))
     Faa = 2*Ga*Ha + Gaa*H_expand + G_expand*Haa
 
     return Faa[:,:,0,:].permute((0,2,1)), Faa[:,:,1,:].permute((0,2,1)), Faa[:,:,2,:].permute((0,2,1))
@@ -382,14 +382,14 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     distances_cube = distances ** 3
     distances_five = distances ** 5
     
-    distances_expanded = distances.unsqueeze(2).expand((1,-1,3,1))
+    distances_expanded = distances.unsqueeze(2).expand((1,M,3,N))
     distances_expanded_square = distances_expanded**2
     
     planar_distance= torch.sqrt(torch.sum(diff_square[:,:,0:2,:],dim=2))
     planar_distance_cube = planar_distance**3
 
     sin_theta = planar_distance / distances
-    sin_theta_expand = sin_theta.unsqueeze(2).expand((1,-1,3,1))
+    sin_theta_expand = sin_theta.unsqueeze(2).expand((1,M,3,N))
 
     dx = diff[:,:,0,:]
     dy = diff[:,:,1,:]
