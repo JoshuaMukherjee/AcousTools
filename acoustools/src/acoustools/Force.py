@@ -82,8 +82,7 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     K2 = 3*c.V / (4*(2*c.f**2 * c.p_0))
 
     grad_U = K1 * p_term - K2 * (px_term + py_term + pz_term)
-    force = (-1 * grad_U).squeeze()
-
+    force = (-1 * grad_U).squeeze().real
 
     if return_components:
         return force[0], force[1], force[2]
