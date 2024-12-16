@@ -3,7 +3,7 @@ from acoustools.Paths import interpolate_points, distance
 from acoustools.Solvers import wgs, gradient_descent_solver
 from acoustools.Gorkov import gorkov_analytical
 from acoustools.Force import compute_force
-from acoustools.Visualiser import Visualise, ABC
+from acoustools.Visualiser import Visualise, ABC, get_image_positions, force_quiver
 
 from torch import Tensor
 import torch
@@ -29,20 +29,20 @@ xs = []
 #     xs.append(x)
 
 def grad_dead_stop(transducer_phases: Tensor, points:Tensor, board:Tensor, targets:Tensor, **objective_params):
-    Uz = gorkov_analytical(transducer_phases, points, board, axis='Z')
+    Uz = gorkov_analytical(transducer_phases, points, board)
     direction_norm  = ((end - start) / distance(start, end)).squeeze()
     F = compute_force(transducer_phases, points, board).squeeze()
 
     F_dir = torch.dot(F, direction_norm) * direction_norm
 
-    objective = Uz - 10*torch.sum(F_dir) #Maximise Force while minimising Gorkov in Z
+    objective = Uz - 1e-1*torch.sum(F_dir) #Maximise Force while minimising Gorkov in Z
     objective = objective.reshape((1,))
-    # print(Uz, F_dir, objective)
 
+    print(Uz.item(), 1e-1*torch.sum(F_dir).item())
     return objective
 
 
-iters = 1000
+iters = 2000
 lr =0.1
 
 x_stop = gradient_descent_solver(end, grad_dead_stop, board, log=False, iters=iters, lr=lr)
@@ -50,3 +50,7 @@ x_stop = gradient_descent_solver(end, grad_dead_stop, board, log=False, iters=it
 abc = ABC(0.02, plane = 'xy', origin=end)
 
 Visualise(*abc, activation=x_stop, points=end, colour_functions=[propagate_abs, gorkov_analytical], link_ax='none')
+
+# positions = get_image_positions(*abc)
+# F = compute_force(x_stop, positions, board).squeeze()
+# force_quiver(positions, F[0], F[1])
