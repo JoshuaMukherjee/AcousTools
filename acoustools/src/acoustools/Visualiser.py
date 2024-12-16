@@ -303,6 +303,29 @@ def get_point_pos(A:Tensor,B:Tensor,C:Tensor, points:Tensor, res:tuple[int]=(200
 
     return pts_norm
 
+def get_image_positions(A:Tensor,B:Tensor,C:Tensor, res:tuple[int]=(200,200)):
+    '''
+    Gets res[0] x res[1] points in the plane defined by ABC
+    :param A: Position of the top left corner of the image
+    :param B: Position of the top right corner of the image
+    :param C: Position of the bottom left corner of the image
+    :param res: Number of pixels as a tuple (X,Y). Default (200,200)
+    :returnns positions: The positions of pixels
+    '''
+    AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]]).to(device)
+    AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]]).to(device)
+
+    step_x = AB / res[0]
+    step_y = AC / res[1]
+
+    positions = torch.zeros((1,3,res[0]*res[1])).to(device)
+
+    for i in range(0,res[0]):
+        for j in range(res[1]):
+            positions[:,:,i*res[0]+j] = A + step_x * i + step_y * j
+        
+    return positions
+
 
 def Visualise_single(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
                      colour_function:FunctionType=propagate_abs, colour_function_args:dict={}, 
@@ -322,18 +345,8 @@ def Visualise_single(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
     if len(activation.shape) < 3:
         activation = activation.unsqueeze(0)
     
-
-    AB = torch.tensor([B[0] - A[0], B[1] - A[1], B[2] - A[2]]).to(device)
-    AC = torch.tensor([C[0] - A[0], C[1] - A[1], C[2] - A[2]]).to(device)
-
-    step_x = AB / res[0]
-    step_y = AC / res[1]
-
-    positions = torch.zeros((1,3,res[0]*res[1])).to(device)
-
-    for i in range(0,res[0]):
-        for j in range(res[1]):
-            positions[:,:,i*res[0]+j] = A + step_x * i + step_y * j
+    positions = get_image_positions(A,B,C,res)
+   
     
     # print(positions.shape)
     # print(colour_function_args)
