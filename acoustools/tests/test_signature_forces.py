@@ -19,10 +19,11 @@ print(p)
 
 x = wgs(p, board=board)
 
+
 labels = ['Trap','Twin','Vortex','Eye' ]
 
 
-x_trap = add_lev_sig(x, board, mode = 'Trap')
+x_trap = 0.65*add_lev_sig(x, board, mode = 'Trap')
 x_twin = add_lev_sig(x, board, mode = 'Twin')
 x_vortex = add_lev_sig(x, board, mode = 'Vortex')
 x_eye = add_lev_sig(x, board, mode = 'Eye')
