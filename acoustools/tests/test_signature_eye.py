@@ -8,7 +8,7 @@ import torch
 
 board = TRANSDUCERS
 
-p = create_points(1,1, min_pos=-0.05, max_pos=0.05)
+p = create_points(1,1, min_pos=-0.05, max_pos=0.05, x=0,y=0,z=0)
 print(p)
 
 x = wgs(p,board=board)
