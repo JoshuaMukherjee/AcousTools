@@ -1,14 +1,16 @@
-from acoustools.Utilities import create_points, TRANSDUCERS, add_lev_sig, propagate_abs
+from acoustools.Utilities import create_points, TRANSDUCERS, add_lev_sig, propagate_abs, transducers
 from acoustools.Solvers import wgs
 from acoustools.Gorkov import gorkov_analytical
 from acoustools.Force import compute_force, force_fin_diff
 from acoustools.Visualiser import Visualise_single_blocks, ABC
 
+# board = transducers(z=0.108)
 board = TRANSDUCERS
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 
 import torch
 
@@ -19,11 +21,14 @@ print(p)
 
 x = wgs(p, board=board)
 
+scale = 1
 
-labels = ['Trap','Twin','Vortex','Eye' ]
+if scale != 1: 
+    labels = [f'{scale}*\nTrap','Twin','Vortex','Eye' ] 
+else: 
+    labels = ['Trap','Twin','Vortex','Eye' ]
 
-
-x_trap = 0.65*add_lev_sig(x, board, mode = 'Trap')
+x_trap = scale*add_lev_sig(x, board, mode = 'Trap')
 x_twin = add_lev_sig(x, board, mode = 'Twin')
 x_vortex = add_lev_sig(x, board, mode = 'Vortex')
 x_eye = add_lev_sig(x, board, mode = 'Eye')
@@ -176,6 +181,7 @@ plt.plot(pos,F_trap_xs)
 plt.plot(pos,F_twin_xs)
 plt.plot(pos,F_vortex_xs)
 plt.plot(pos,F_eye_xs)
+plt.ylim(-0.009,0.009 )
 plt.ylabel('$F_x$ (N)')
 
 plt.subplot(2,3,5)
@@ -184,6 +190,7 @@ plt.plot(pos,F_trap_ys)
 plt.plot(pos,F_twin_ys)
 plt.plot(pos,F_vortex_ys)
 plt.plot(pos,F_eye_ys)
+plt.ylim(-0.009,0.009 )
 plt.ylabel('$F_y$ (N)')
 
 plt.subplot(2,3,6)
@@ -192,6 +199,7 @@ plt.plot(pos,F_trap_zs)
 plt.plot(pos,F_twin_zs)
 plt.plot(pos,F_vortex_zs)
 plt.plot(pos,F_eye_zs)
+plt.ylim(-0.025,0.025 )
 plt.ylabel('$F_z$ (N)')
 
 

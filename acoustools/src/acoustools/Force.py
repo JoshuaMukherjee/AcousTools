@@ -10,7 +10,7 @@ from types import FunctionType
 from vedo import Mesh
 
 def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:float= 0.000135156253,K1:float|None=None, 
-                   K2:float|None=None,U_function:FunctionType=gorkov_fin_diff,U_fun_args:dict={}) -> Tensor:
+                   K2:float|None=None,U_function:FunctionType=gorkov_fin_diff,U_fun_args:dict={}, board:Tensor|None=None) -> Tensor:
     '''
     Returns the force on a particle using finite differences to approximate the derivative of the gor'kov potential\n
     :param activations: Transducer hologram
@@ -21,19 +21,23 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
     :param K2: Value for K1 to be used in the gor'kov computation, see `Holographic acoustic elements for manipulation of levitated objects` for more information
     :param U_function: The function used to compute the gor'kov potential
     :param U_fun_args: arguments for `U_function` 
+    :param board: Transducers to use, if `None` uses `acoustools.Utilities.TRANSDUCERS`
     :return: Force
     '''
     B = points.shape[0]
     D = len(axis)
     N = points.shape[2]
 
+    if board is None:
+        board = TRANSDUCERS
+
     fin_diff_points = get_finite_diff_points_all_axis(points, axis, stepsize)
     
-    U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/10 ,K1=K1,K2=K2,**U_fun_args)
+    U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/10 ,K1=K1,K2=K2,**U_fun_args, board=board)
     U_grads = U_points[:,N:]
     split = torch.reshape(U_grads,(B,2,-1))
     
-    F =  (split[:,0,:] - split[:,1,:]) / (2*stepsize)
+    F = -1* (split[:,0,:] - split[:,1,:]) / (2*stepsize)
     return F
 
 def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False) -> Tensor | tuple[Tensor, Tensor, Tensor]:
@@ -85,9 +89,9 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     force = (-1 * grad_U).squeeze().real
 
     if return_components:
-        return force[0], force[1], force[2]
+        return -1*force[0], -1*force[1], -1*force[2] #Force seems to act in wrong direction
     else:
-        return force 
+        return -1*force 
 
     
 def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axis:int=2) -> Tensor:

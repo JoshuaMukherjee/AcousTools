@@ -35,18 +35,20 @@ def create_board(N:int, z:float) -> Tensor:
     trans_z=z*torch.ones((torch.numel(x),1)).to(device)
     trans_pos=torch.cat((trans_x, trans_y, trans_z), axis=1)
     return trans_pos
-  
-def transducers() -> Tensor:
-  '''
-  :return: the 'standard' transducer arrays with 2 16x16 boards at `z = +-234/2 `
-  '''
-  return torch.cat((create_board(17,BOARD_POSITIONS),create_board(17,-1*BOARD_POSITIONS)),axis=0).to(device)
 
 # BOARD_POSITIONS = .234/2
 BOARD_POSITIONS:float = 0.2365/2
 '''
 Static variable for the z-position of the boards, positive for top board, negative for bottom board
 '''
+  
+def transducers(N=16,z=BOARD_POSITIONS) -> Tensor:
+  '''
+  :return: the 'standard' transducer arrays with 2 16x16 boards at `z = +-234/2 `
+  '''
+  return torch.cat((create_board(N+1,z),create_board(N+1,-1*z)),axis=0).to(device)
+
+
 
 TRANSDUCERS:Tensor = transducers()
 '''

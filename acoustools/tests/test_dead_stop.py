@@ -35,22 +35,26 @@ def grad_dead_stop(transducer_phases: Tensor, points:Tensor, board:Tensor, targe
 
     F_dir = torch.dot(F, direction_norm) * direction_norm
 
-    objective = Uz - 1e-1*torch.sum(F_dir) #Maximise Force while minimising Gorkov in Z
+    objective = Uz - 100*torch.sum(F_dir) #Maximise Force while minimising Gorkov in Z
     objective = objective.reshape((1,))
 
-    print(Uz.item(), 1e-1*torch.sum(F_dir).item())
+    print(Uz.item(), torch.sum(F_dir).item())
     return objective
 
 
-iters = 2000
-lr =0.1
+iters = 1000
+lr =0.01
 
 x_stop = gradient_descent_solver(end, grad_dead_stop, board, log=False, iters=iters, lr=lr)
 
-abc = ABC(0.02, plane = 'xy', origin=end)
+A1,B1,C1 = ABC(0.02, plane = 'xy', origin=end)
+A2,B2,C2 = ABC(0.02, plane = 'xz', origin=end)
 
-Visualise(*abc, activation=x_stop, points=end, colour_functions=[propagate_abs, gorkov_analytical], link_ax='none')
+abc = [[A1,A1,A2], [B1,B1,B2], [C1,C1,C2]]
 
-# positions = get_image_positions(*abc)
-# F = compute_force(x_stop, positions, board).squeeze()
-# force_quiver(positions, F[0], F[1])
+# Visualise(*abc, activation=x_stop, points=end, colour_functions=[propagate_abs,gorkov_analytical, propagate_abs], link_ax='none')
+
+
+positions = get_image_positions(A1,B1,C1, res=(20,20))
+F = compute_force(x_stop, positions, board).squeeze()
+force_quiver(positions, F[0], F[1], scale=10)

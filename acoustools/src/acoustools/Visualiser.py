@@ -75,23 +75,25 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     axs =[]
     results = []
     lines = []
-    if len(points) > 0:
-        if type(points) == list:
-            points  = torch.concatenate(points,axis=0)
-        pts_pos = get_point_pos(A,B,C,points,res)
-        # print(pts_pos)
-        pts_pos_t = torch.stack(pts_pos).T
+    
 
 
     if colour_function_args is None and colour_functions is not None:
         colour_function_args = [{}]*len(colour_functions)
     
+    if type(A) != list:
+        A = [A] * len(colour_functions)
+    if type(B) != list:
+        B = [B] * len(colour_functions)
+    if type(C) != list:
+        C = [C] * len(colour_functions)
+    
     if colour_functions is not None:
         for i,colour_function in enumerate(colour_functions):
             if depth > 0:
-                result = Visualise_single_blocks(A,B,C,activation,colour_function, colour_function_args[i], res, depth=depth)
+                result = Visualise_single_blocks(A[i],B[i],C[i],activation,colour_function, colour_function_args[i], res, depth=depth)
             else:
-                result = Visualise_single(A,B,C,activation,colour_function, colour_function_args[i], res)
+                result = Visualise_single(A[i],B[i],C[i],activation,colour_function, colour_function_args[i], res)
             results.append(result)
         
             if add_lines_functions is not None:
@@ -193,6 +195,13 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
         plt.xticks([])
 
         if len(points) >0:
+            
+            if type(points) == list:
+                points  = torch.concatenate(points,axis=0)
+            pts_pos = get_point_pos(A[i],B[i],C[i],points,res)
+            # print(pts_pos)
+            pts_pos_t = torch.stack(pts_pos).T
+
             ax.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
 
         divider = make_axes_locatable(ax)
@@ -361,7 +370,7 @@ def Visualise_single(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
     return result
 
 def force_quiver(points: Tensor, U:Tensor,V:Tensor,norm:tuple[int]=(0,0,0), ylims:int|None=None, xlims:int|None=None,
-                 log:bool=False,show:bool=True,colour:str|None=None, reciprocal:bool = False, block:bool=True) -> None:
+                 log:bool=False,show:bool=True,colour:str|None=None, reciprocal:bool = False, block:bool=True, scale:float=1) -> None:
     '''
     Plot the force on a mesh as a quiver plot\n
     :param points: The centre of the mesh faces
@@ -375,6 +384,7 @@ def force_quiver(points: Tensor, U:Tensor,V:Tensor,norm:tuple[int]=(0,0,0), ylim
     :param colour: colour of arrows
     :param reciprocal: if `True` plot reciprocal of values
     :param block: passed into `plt.show`
+    :param scale: value to scale arrows by - note will pass 1/scale to matplotlib
     '''
 
     B = points.shape[0]
@@ -401,7 +411,7 @@ def force_quiver(points: Tensor, U:Tensor,V:Tensor,norm:tuple[int]=(0,0,0), ylim
         V = 1/V
     
 
-    plt.quiver(xs, ys, U.cpu().detach().numpy(),V.cpu().detach().numpy(),color = colour,linewidths=0.01)
+    plt.quiver(xs, ys, U.cpu().detach().numpy(),V.cpu().detach().numpy(),color = colour,linewidths=0.01,scale=1/scale)
     plt.axis('equal')
 
 
