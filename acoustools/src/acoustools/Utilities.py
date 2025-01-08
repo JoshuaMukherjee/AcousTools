@@ -615,19 +615,25 @@ def convert_to_complex(matrix: Tensor) -> Tensor:
     matrix = torch.view_as_complex(matrix.contiguous())
     return torch.permute(matrix,(0,2,1))
 
-def get_convert_indexes(n:int=512) -> Tensor:
+def get_convert_indexes(n:int=512, single_mode:Literal['bottom','top']='bottom') -> Tensor:
     '''
     Gets indexes to swap between transducer order for acoustools and OpenMPD for two boards\n
     Use: `row = row[:,FLIP_INDEXES]` and invert with `_,INVIDX = torch.sort(IDX)` 
     :param n: number of Transducers
+    :param single_mode: When using only one board is that board a top or bottom baord. Default bottom
     :return: Indexes
     '''
 
     indexes = torch.arange(0,n)
     # Flip top board
-    indexes[:256] = torch.flip(indexes[:256],dims=[0])
+    if single_mode.lower() == 'top':
+        indexes[:256] = torch.flip(indexes[:256],dims=[0])
+    elif single_mode.lower() == 'bottom':
+        indexes[:256] = torch.flatten(torch.flip(torch.reshape(indexes[:256],(16,-1)),dims=[1]))
+    
     if n > 256:
         indexes[256:] = torch.flatten(torch.flip(torch.reshape(indexes[256:],(16,-1)),dims=[1]))
+    
     return indexes
 
 
