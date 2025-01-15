@@ -1,4 +1,4 @@
-from acoustools.Utilities import create_points, TOP_BOARD, device, DTYPE
+from acoustools.Utilities import create_points, TOP_BOARD, device, DTYPE, create_board
 from acoustools.Mesh import load_scatterer
 from acoustools.BEM import BEM_gorkov_analytical, compute_E, propagate_BEM_pressure
 
@@ -15,6 +15,7 @@ root_path = r"C:\Users\joshu\Documents\BEMMedia"
 reflector = load_scatterer(path,dz=-0.05)
 
 board = TOP_BOARD
+# board = create_board(17,0.06)
 
 p = create_points(1,1,x=0,y=0,z=-0.04)
 
