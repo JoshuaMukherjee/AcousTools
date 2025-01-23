@@ -62,7 +62,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                     xs = functions[command]
                     lev.levitate(xs)
                     if wait_for_key_press and not done_one_holo:
-                        input('Press key to start...')
+                        input('Press enter to start...')
                     done_one_holo = True
                     
 
