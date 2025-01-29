@@ -35,7 +35,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
 
     current_points = ''
     extruder_text = str(extruder[:,0].item()) + ',' + str(extruder[:,1].item()) + str(extruder[:,2].item())
-    last_L = 'L1'
+    last_L = 'L2'
 
     functions = {}
 
