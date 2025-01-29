@@ -11,7 +11,7 @@ from torch import Tensor
 from types import FunctionType
 
 def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=0.001, BEM_path='../BEMMedia', 
-               save_holo_name:str|None=None, wait_for_key_press:bool=False, C0_function = None, C0_params={}):
+               save_holo_name:str|None=None, wait_for_key_press:bool=False, C0_function = None, C0_params={}, extruder:Tensor|None = None):
     '''
     Reads lcode and runs the commands on the levitator device \n
     :param pth: Path to lcode file
@@ -32,6 +32,10 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     layer_z = 0
     cut_mesh = None
     in_function = None
+
+    current_points = ''
+    extruder_text = str(extruder[:,0].item()) + ',' + str(extruder[:,1].item()) + str(extruder[:,2].item())
+    last_L = 'L1'
 
     functions = {}
 
@@ -58,7 +62,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 groups = line.split(':')
                 command = groups[0]
 
-                if command.startswith('F'):
+                if command.startswith('F'): #the command starts a Functions 
                     xs = functions[command]
                     lev.levitate(xs)
                     if wait_for_key_press and not done_one_holo:
@@ -67,10 +71,11 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                     
 
                 elif command in start_from_focal_point:
-
-                    x = L0(*groups[1:], iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,BEM_path=BEM_path, H=H)
+                    current_points = groups[1:]
+                    x = L0(*current_points, iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,BEM_path=BEM_path, H=H)
                     sig = signature[start_from_focal_point.index(command)]
                     x = add_lev_sig(x, board=board,mode=sig)
+                    last_L = command
 
                     if in_function is not None:
                         functions[in_function].append(x)
@@ -85,8 +90,18 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 elif command == 'L4':
                     lev.turn_off()
                 elif command == 'C0':
-                    if C0_function is not None:
+                    current_points_ext = current_points + extruder_text
+                    x = L0(*current_points_ext, iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,BEM_path=BEM_path, H=H)
+                    sig = signature[last_L.index(command)]
+                    x = add_lev_sig(x, board=board,mode=sig)
+                                            
+                    total_size += x.element_size() * x.nelement()
+                    if save_holo_name is not None: holograms.append(x)
+                    lev.levitate(x)
+                    
+                    if C0_function is not None:                    
                         C0_function(**C0_params)
+
                     else:
                         C0()
                 elif command == 'C1':
@@ -154,6 +169,7 @@ def L0(*args, solver:FunctionType=wgs, iterations:int=50, board:Tensor=TOP_BOARD
         x = iterative_backpropagation(points, iterations=iterations, board=board, A=A)
     elif solver == naive:
         x = naive(points, board=board)
+    #TARGETED GORKOV!!!
     else:
         raise NotImplementedError()
     
