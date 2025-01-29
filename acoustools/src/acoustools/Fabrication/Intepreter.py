@@ -64,10 +64,8 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
 
                 if command.startswith('F'): #the command starts a Functions 
                     xs = functions[command]
+
                     lev.levitate(xs)
-                    if wait_for_key_press and not done_one_holo:
-                        input('Press enter to start...')
-                    done_one_holo = True
                     
 
                 elif command in start_from_focal_point:
@@ -77,6 +75,8 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                     x = add_lev_sig(x, board=board,mode=sig)
                     last_L = command
 
+                    
+
                     if in_function is not None:
                         functions[in_function].append(x)
 
@@ -84,6 +84,8 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                     total_size += x.element_size() * x.nelement()
                     if save_holo_name is not None: holograms.append(x)
                     lev.levitate(x)
+
+        
 
                     layer_z = float(groups[1].split(',')[2])
 
@@ -98,6 +100,9 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                     total_size += x.element_size() * x.nelement()
                     if save_holo_name is not None: holograms.append(x)
                     lev.levitate(x)
+
+                    if wait_for_key_press :
+                        input('Press enter to start...')
                     
                     if C0_function is not None:                    
                         C0_function(**C0_params)
