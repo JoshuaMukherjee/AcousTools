@@ -21,7 +21,7 @@ if __name__ == '__main__':
         xs.append(x)
     print('Finished\nConnecting...')
 
-    lev = LevitatorController(ids=(73,53))
+    lev = LevitatorController(ids=(999,1000))
 
     lev.levitate(xs[0])
     print(poss[0])

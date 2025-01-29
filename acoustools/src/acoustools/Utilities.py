@@ -625,11 +625,13 @@ def get_convert_indexes(n:int=512, single_mode:Literal['bottom','top']='bottom')
     '''
 
     indexes = torch.arange(0,n)
-    # Flip top board
-    if single_mode.lower() == 'top':
-        indexes[:256] = torch.flip(indexes[:256],dims=[0])
-    elif single_mode.lower() == 'bottom':
-        indexes[:256] = torch.flatten(torch.flip(torch.reshape(indexes[:256],(16,-1)),dims=[1]))
+    # # Flip top board
+    # if single_mode.lower() == 'top':
+    #     indexes[:256] = torch.flip(indexes[:256],dims=[0])
+    # elif single_mode.lower() == 'bottom':
+    #     indexes[:256] = torch.flatten(torch.flip(torch.reshape(indexes[:256],(16,-1)),dims=[1]))
+
+    indexes[:256] = torch.flip(indexes[:256],dims=[0])
     
     if n > 256:
         indexes[256:] = torch.flatten(torch.flip(torch.reshape(indexes[256:],(16,-1)),dims=[1]))

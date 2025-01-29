@@ -14,7 +14,7 @@ class LevitatorController():
     '''
 
     def __init__(self, bin_path:str|None = None, ids:tuple[int] = (1000,999), matBoardToWorld:list[int]|None=None, 
-                 print_lines:bool=False, single_mode:Literal['bottom','top']='bottom'):
+                 print_lines:bool=False):
         '''
         Creates the controller\n
         ```python
@@ -42,7 +42,6 @@ class LevitatorController():
         :param ids: IDs of boards. Default `(1000,999)`. For two board setup will be (Top, Bottom) if `-1` then all messages will be ignored. Use when testing code but no device is conncted 
         :param matBoardToWorld: Matric defining the mapping between simulated and real boards. When `None` uses a default setting. Default `None`.
         :param print_lines: If False supresses some print messages
-        :param single_mode: When using only one board is that board a top or bottom baord. Default bottom
         '''
         
         self.mode = 1
@@ -116,7 +115,7 @@ class LevitatorController():
 
             os.chdir(cwd)
 
-            self.IDX = get_convert_indexes(256*self.board_number, single_mode=single_mode)
+            self.IDX = get_convert_indexes(256*self.board_number)
     
     
     def send_message(self, phases, amplitudes=None, relative_amplitude=1, num_geometries = 1, sleep_ms = 0, loop=False, num_loops = 0):
