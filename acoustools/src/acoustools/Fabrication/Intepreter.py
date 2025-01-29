@@ -11,7 +11,7 @@ from torch import Tensor
 from types import FunctionType
 
 def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=0.001, BEM_path='../BEMMedia', 
-               save_holo_name:str|None=None, wait_for_key_press:bool=False):
+               save_holo_name:str|None=None, wait_for_key_press:bool=False, C0_function = None, C0_params={}):
     '''
     Reads lcode and runs the commands on the levitator device \n
     :param pth: Path to lcode file
@@ -85,7 +85,10 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 elif command == 'L4':
                     lev.turn_off()
                 elif command == 'C0':
-                    C0()
+                    if C0_function is not None:
+                        C0_function(**C0_params)
+                    else:
+                        C0()
                 elif command == 'C1':
                     C1()
                 elif command == 'C2':
