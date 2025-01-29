@@ -79,6 +79,9 @@ def gcode_to_lcode(fname:str, output_name:str|None=None, output_dir:str|None=Non
     :param add_optimisation_commands: If True will add commands to help `acoustools.Fabrication.Optimsation` functions work correctly
     :param via: A point to move all paths through before going to the end point
     :param use_functions: If true will collapse common code into functions - needs `via` to be specified too
+    :param use_BEM: If True will use scattering for the mesh while it is built
+    :param sig_type: Defined signature to use for traps
+    :param travel_type: Way to move the particle
 
     '''
 

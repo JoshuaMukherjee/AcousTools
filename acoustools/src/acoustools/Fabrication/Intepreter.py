@@ -10,11 +10,17 @@ import vedo
 from torch import Tensor
 from types import FunctionType
 
-def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=0.001, BEM_path='../BEMMedia', save_holo_name:str|None=None):
+def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=0.001, BEM_path='../BEMMedia', 
+               save_holo_name:str|None=None, wait_for_key_press:bool=False):
     '''
     Reads lcode and runs the commands on the levitator device \n
     :param pth: Path to lcode file
     :param ids: Ids for the levitator 
+    :param mesh: Mesh to be printed
+    :param thickness: The wall thickness of the object
+    :param BEM_path: Path to BEM folder
+    :param save_holo_name: Out to save holograms to, if any:
+    :param wait_for_key_press: If true will wait for keypress after first hologram
     '''
 
     iterations = 100
@@ -37,6 +43,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     lev = LevitatorController(ids=ids)
 
     t0 = time.time_ns()
+    done_one_holo= False
     with open(pth,'r') as file:
         lines = file.read().rstrip().replace(';','').split('\n')
         lines=lines[:-1]
@@ -54,6 +61,10 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 if command.startswith('F'):
                     xs = functions[command]
                     lev.levitate(xs)
+                    if wait_for_key_press and not done_one_holo:
+                        input('Press enter to start...')
+                    done_one_holo = True
+                    
 
                 elif command in start_from_focal_point:
 
