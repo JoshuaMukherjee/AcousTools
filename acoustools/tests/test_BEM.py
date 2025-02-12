@@ -10,7 +10,6 @@ if __name__ == "__main__":
 
     import torch, vedo
 
-    from pytorch_memlab import profile
 
 
     # @profile
@@ -45,12 +44,12 @@ if __name__ == "__main__":
         
         Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],
                   colour_function_args=[{"scatterer":scatterer,"board":TOP_BOARD,"path":path,'H':H}],
-                  vmax=8621,res=[256,256], show=False)
+                  vmax=8621,res=[256,256], show=True)
 
-        d = torch.device('cuda:0')
-        free, total = torch.cuda.mem_get_info(d)
-        mem_used_MB = (total - free) / 1024 ** 2
-        print(mem_used_MB)
+        # d = torch.device('cuda:0')
+        # free, total = torch.cuda.mem_get_info(d)
+        # mem_used_MB = (total - free) / 1024 ** 2
+        # print(mem_used_MB)
 
 
     run()
