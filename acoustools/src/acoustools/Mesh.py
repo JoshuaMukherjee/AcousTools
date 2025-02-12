@@ -253,7 +253,7 @@ def get_centres_as_points(*scatterers:Mesh, permute_to_points:bool=True, add_nor
     '''
     centre_list = []
     for scatterer in scatterers:
-        centres =  torch.tensor(scatterer.cell_centers).to(device)
+        centres =  torch.tensor(scatterer.cell_centers().points).to(device)
 
         if permute_to_points:
             centres = torch.permute(centres,(1,0)).unsqueeze_(0)

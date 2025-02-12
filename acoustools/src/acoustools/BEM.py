@@ -88,7 +88,7 @@ def compute_G(points: Tensor, scatterer: Mesh) -> Tensor:
     #Compute the partial derivative of Green's Function
 
     #Firstly compute the distances from mesh points -> control points
-    centres = torch.tensor(scatterer.cell_centers).to(device).real #Uses centre points as position of mesh
+    centres = torch.tensor(scatterer.cell_centers().points).to(device).real #Uses centre points as position of mesh
     centres = centres.expand((B,N,-1,-1))
     
     # print(points.shape)
@@ -116,7 +116,7 @@ def compute_A(scatterer: Mesh) -> Tensor:
 
     areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
 
-    centres = torch.tensor(scatterer.cell_centers).to(device)
+    centres = torch.tensor(scatterer.cell_centers().points).to(device)
     m = centres
     M = m.shape[0]
     m = m.expand((M,M,3))
@@ -143,7 +143,7 @@ def compute_bs(scatterer: Mesh, board:Tensor) -> Tensor:
     :param board: Transducers to use 
     :return B: B tensor
     '''
-    centres = torch.tensor(scatterer.cell_centers).to(device).T.unsqueeze_(0)
+    centres = torch.tensor(scatterer.cell_centers().points).to(device).T.unsqueeze_(0)
     bs = forward_model_batched(centres,board)
     return bs.to(DTYPE)
 
@@ -180,7 +180,7 @@ def grad_H(points: Tensor, scatterer: Mesh, transducers: Tensor, return_componen
     :param return_components: if true will return the subparts used to compute the derivative
     :return grad_H: The gradient of the H matrix wrt the position of the mesh
     '''
-    centres = torch.tensor(scatterer.cell_centers).to(device).T.unsqueeze_(0)
+    centres = torch.tensor(scatterer.cell_centers().points).to(device).T.unsqueeze_(0)
 
     M = centres.shape[2]
 
