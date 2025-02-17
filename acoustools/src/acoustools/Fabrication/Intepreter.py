@@ -33,11 +33,11 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     cut_mesh = None
     in_function = None
 
-    current_points = ''
+    current_points = []
     if extruder is None:
         extruder = create_points(1,1,0,-0.04, 0.04)
         
-    extruder_text = str(extruder[:,0].item()) + ',' + str(extruder[:,1].item()) + str(extruder[:,2].item())
+    extruder_text = str(extruder[:,0].item()) + ',' + str(extruder[:,1].item()) + ',' + str(extruder[:,2].item())
     last_L = 'L2'
 
     functions = {}
@@ -95,9 +95,13 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 elif command == 'L4':
                     lev.turn_off()
                 elif command == 'C0':
-                    current_points_ext = current_points + extruder_text
+                    current_points_ext = current_points + [extruder_text,]
                     x = L0(*current_points_ext, iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,BEM_path=BEM_path, H=H)
-                    sig = signature[last_L.index(command)]
+                    try:
+                        sig = signature[last_L.index(command)]
+                    except ValueError:
+                        sig = 'Twin'
+
                     x = add_lev_sig(x, board=board,mode=sig)
                                             
                     total_size += x.element_size() * x.nelement()
