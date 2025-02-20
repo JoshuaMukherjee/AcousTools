@@ -24,6 +24,7 @@ Commands
 * `C10;` Update BEM to use layer at last z position 
 * `C11:<Frame-rate>;` Set the framerate of the levitator device
 * `C12:<Extruder>;` Set a new extruder position
+* `C13:<z>;` Use a reflector and set the position
 
 * `O0;` End of droplet
 

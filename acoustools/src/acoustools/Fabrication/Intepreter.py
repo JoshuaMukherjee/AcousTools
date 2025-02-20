@@ -1,7 +1,7 @@
 from acoustools.Utilities import create_points, TOP_BOARD, BOTTOM_BOARD, TRANSDUCERS, add_lev_sig
 from acoustools.Solvers import wgs, gspat, iterative_backpropagation, naive
 from acoustools.Levitator import LevitatorController
-from acoustools.Mesh import cut_mesh_to_walls
+from acoustools.Mesh import cut_mesh_to_walls, load_scatterer
 from acoustools.BEM import compute_E, get_cache_or_compute_H
 
 import torch, time, pickle
@@ -33,6 +33,8 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     cut_mesh = None
     in_function = None
 
+    reflector = None
+
     current_points = []
     if extruder is None:
         extruder = create_points(1,1,0,-0.04, 0.04)
@@ -53,7 +55,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     done_one_holo= False
     with open(pth,'r') as file:
         lines = file.read().rstrip().replace(';','').split('\n')
-        lines=lines[:-1]
+        # lines=lines[:-1]
 
         total_size = 0
         holograms = []
@@ -70,7 +72,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
 
                     lev.levitate(xs)
                     
-
+            
                 elif command in start_from_focal_point:
                     current_points = groups[1:]
                     x = L0(*current_points, iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,BEM_path=BEM_path, H=H)
@@ -78,14 +80,13 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                     x = add_lev_sig(x, board=board,mode=sig)
                     last_L = command
 
-                    
-
                     if in_function is not None:
                         functions[in_function].append(x)
 
 
                     total_size += x.element_size() * x.nelement()
-                    if save_holo_name is not None: holograms.append(x)
+                    if save_holo_name is not None: 
+                        holograms.append(x)
                     lev.levitate(x)
 
         
@@ -96,16 +97,16 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                     lev.turn_off()
                 elif command == 'C0':
                     current_points_ext = current_points + [extruder_text,]
-                    x = L0(*current_points_ext, iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,BEM_path=BEM_path, H=H)
+                    x = L0(*current_points_ext, iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,BEM_path=BEM_path, H=H, reflector=reflector)
                     try:
-                        sig = signature[last_L.index(command)]
-                    except ValueError:
+                        sig = signature[start_from_focal_point.index(command)]
+                    except ValueError as e:
                         sig = 'Twin'
 
                     x = add_lev_sig(x, board=board,mode=sig)
                                             
                     total_size += x.element_size() * x.nelement()
-                    if save_holo_name is not None: holograms.append(x)
+                    if save_holo_name is not None: holograms.append(x.clone())
                     lev.levitate(x)
 
                     if wait_for_key_press :
@@ -135,11 +136,16 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 elif command == 'C9':
                     board = BOTTOM_BOARD
                 elif command == 'C10':
-                    cut_mesh = cut_mesh_to_walls(mesh, layer_z=layer_z, wall_thickness=thickness)
-                    H = get_cache_or_compute_H(cut_mesh,board=board,path=BEM_path)
+                    print('C10 Currently Disabled...')
+                    # cut_mesh = cut_mesh_to_walls(mesh, layer_z=layer_z, wall_thickness=thickness)
+                    # H = get_cache_or_compute_H(cut_mesh,board=board,path=BEM_path)
                 elif command == 'C11':
                     frame_rate = float(groups[1])
                     lev.set_frame_rate(frame_rate)
+                elif command == 'C13':
+                    z = float(groups[1])
+                    reflector = load_scatterer(BEM_path+'/flat-lam2.stl', dz=z)
+                    H = get_cache_or_compute_H(reflector,board=board,path=BEM_path)
                 elif command == 'function':
                     name = groups[1]
                     in_function = name
@@ -159,7 +165,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     print(total_size/1e6, 'MB')
     if save_holo_name is not None: pickle.dump(holograms, open(save_holo_name,'wb'))
 
-def L0(*args, solver:FunctionType=wgs, iterations:int=50, board:Tensor=TOP_BOARD, A:Tensor=None, mesh:Mesh=None, BEM_path:str='', H:Tensor=None):
+def L0(*args, solver:FunctionType=wgs, iterations:int=50, board:Tensor=TOP_BOARD, A:Tensor=None, mesh:Mesh=None, BEM_path:str='', H:Tensor=None, reflector:Mesh=None):
     '''
     @private
     '''
@@ -170,8 +176,11 @@ def L0(*args, solver:FunctionType=wgs, iterations:int=50, board:Tensor=TOP_BOARD
         ps.append(p)
     points = torch.concatenate(ps, dim=2) 
 
-    if mesh is not None and A is None:
-        A = compute_E(mesh, points=points, board=board, print_lines=False, path=BEM_path,H=H)
+    if (mesh is not None or reflector is not None) and A is None:
+        if mesh is None and reflector is not None:
+            A = compute_E(reflector, points=points, board=board, print_lines=False, path=BEM_path,H=H)
+        else:
+            A = compute_E(mesh, points=points, board=board, print_lines=False, path=BEM_path,H=H)
     
     if solver == wgs:
         x = wgs(points, iter=iterations,board=board, A=A )
