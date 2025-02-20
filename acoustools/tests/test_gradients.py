@@ -92,6 +92,7 @@ if __name__ == "__main__":
 
         P_a = torch.autograd.grad (p, points, retain_graph=True, create_graph=True)[0]   # creates graph of first derivative
         pa = torch.abs(P_a)
+        p_angle = torch.angle(P_a)
 
         print("p", p.item())
         print("Grad","Analytical","Finite Differences","Autograd",sep="\t")
@@ -103,6 +104,8 @@ if __name__ == "__main__":
         print("pz", Pz.item(), torch.abs(grad[0,2]).item(),pa[:,2].item(),sep="\t")
         
         print()
+
+
         print("grad", 'Analytical', 'Finite Differences', 'Ratio', sep='\t')
 
         grad_unmixed = (split[:,0,:] - 2*pressure + split[:,1,:]) / (stepsize**2)
