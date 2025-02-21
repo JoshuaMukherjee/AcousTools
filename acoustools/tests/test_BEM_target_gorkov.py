@@ -9,10 +9,12 @@ from acoustools.Visualiser import Visualise, ABC
 import torch
 
 
-path = r"C:\Users\joshu\Documents\BEMMedia\flat-lam2.stl"
-root_path = r"C:\Users\joshu\Documents\BEMMedia"
+# path = r"C:\Users\joshu\Documents\BEMMedia\flat-lam2.stl"
+# root_path = r"C:\Users\joshu\Documents\BEMMedia"
+path = 'flat-lam2.stl'
+root_path = '../BEMMedia/'
 
-reflector = load_scatterer(path,dz=-0.05)
+reflector = load_scatterer(root_path+path,dz=-0.05)
 
 board = TOP_BOARD
 # board = create_board(17,0.06)
@@ -33,4 +35,4 @@ x = gradient_descent_solver(p, MSE_gorkov, board, log=True, targets=U_target, it
 print(BEM_gorkov_analytical(x, p, reflector, board, path=root_path))
 
 abc = ABC(0.06)
-Visualise(*abc, x, colour_functions=[propagate_BEM_pressure,], colour_function_args=[{'board':board,'scatterer':reflector, 'path':root_path}], res=(200,200))
+Visualise(*abc, x,points=p, colour_functions=[propagate_BEM_pressure,], colour_function_args=[{'board':board,'scatterer':reflector, 'path':root_path}], res=(200,200))
