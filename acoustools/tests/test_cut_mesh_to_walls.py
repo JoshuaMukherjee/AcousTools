@@ -15,6 +15,6 @@ cut = cut_mesh_to_walls(scatterer, layer_z=0.008253261256963015, wall_thickness=
 normals = get_normals_as_points(cut)
 centres = get_centres_as_points(cut)
 
-force_quiver_3d(centres,normals[:,0],normals[:,1],normals[:,2], scale=1e-4)
+force_quiver_3d(centres,normals[:,0],normals[:,1],normals[:,2], scale=1e-3)
 # vedo.show(normals)
 # Visualise_mesh(cut,equalise_axis=True)
