@@ -599,7 +599,7 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     Computes gradient of the G matrix in BEM \n
     :param points: Points to propagate to
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
-    :param board: Transducers to use, if `None` will use `acoustools.Utilities.TRANSDUCERS`
+    :param board: Ignored
     :param return_components: if true will return the subparts used to compute
     :return: Gradient of the G matrix in BEM
     '''
@@ -642,13 +642,7 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     #Pa = da / d^2
     Pa = da / distances_expanded_square
 
-    #C = cos(psi) = dz/d(x,y,z)
-    # dz = diff[:,2,:]
-    # C = dz / distances_expanded
-    # C_x = (dz * da[:,0]) / distances_square
-    # C_y = (dz * da[:,1]) / distances_square
-    # C_z = (dz * da[:,2] + distances) / distances_square
-    # Ca = torch.cat([C_x, C_y, C_z],axis=1).unsqueeze(2)
+    #C = distance \cdot normals
     C = (diff.squeeze() * normals).sum(dim=1) / distances
 
     nx = normals[:,0]
