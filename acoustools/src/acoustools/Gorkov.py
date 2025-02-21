@@ -167,7 +167,7 @@ def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None
     if board is None:
         board = TRANSDUCERS
 
-    Fx, Fy, Fz = forward_model_grad(points)
+    Fx, Fy, Fz = forward_model_grad(points, transducers=board)
     F = forward_model_batched(points,board)
     
     p = torch.abs(F@activations)**2
