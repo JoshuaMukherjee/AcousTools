@@ -603,11 +603,13 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     :param return_components: if true will return the subparts used to compute
     :return: Gradient of the G matrix in BEM
     '''
-    #Bk1. Page 273
-    if board is None:
-        board = TRANSDUCERS
+    #Bk3. Pg. 26
+    # if board is None:
+    #     board = TRANSDUCERS
+
     areas = get_areas(scatterer)
     centres = get_centres_as_points(scatterer)
+    normals = get_normals_as_points(scatterer)
 
     N = points.shape[2]
     M = centres.shape[2]
@@ -615,18 +617,60 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     points = points.unsqueeze(3).expand(-1,-1,-1,M)
     centres = centres.unsqueeze(2).expand(-1,-1,N,-1)
 
-    vecs = points - centres #Centres -> Points
-    vecs = vecs.to(DTYPE)
-    distances = torch.sum(vecs**2)
-    norms = get_normals_as_points(scatterer).to(DTYPE).unsqueeze(2).expand(-1,-1,N,-1)
+    diff = points - centres    
+    diff_square = diff**2
+    distances = torch.sqrt(torch.sum(diff_square, 1))
+    distances_square = distances**2
+    distances_expanded = distances.unsqueeze(1).expand((1,3,N,M))
+    distances_expanded_square = distances_expanded**2
 
-    vec_norm = torch.norm(vecs,2,dim=1)
-    angle = torch.einsum('ijkh,ijkh->ikh', vecs, norms).unsqueeze(1) / vec_norm
-    angle_grad = -1*norms / vec_norm
-    phase = torch.exp(1j * Constants.k * distances)
+    # G  =  e^(ikd) / 4pi d
+    G = torch.exp(1j * Constants.k * distances) / (4*3.1415*distances)
 
-    grad_G = areas * (-1 * phase / (4*torch.pi*distances**3) * (vecs / distances * angle * (Constants.k**2 * distances**2 + 2j*Constants.k*distances - 2) + distances * angle_grad * (1-1j*Constants.k*distances)))
-    grad_G = grad_G.to(DTYPE)
+    #Ga =  [i*da * e^{ikd} * (kd+i) / 4pi d^2]
+
+    #d = distance
+    #da = -(at - a)^2 / d
+
+    da = diff / distances_expanded
+    kd = Constants.k * distances_expanded
+    phase = torch.exp(1j*kd)
+    Ga =  ( (1j*da*phase * (kd + 1j))/ (4*3.1415*distances_expanded_square))
+
+    #P = (ik - 1/d)
+    P = (1j*Constants.k - 1/distances_expanded)
+    #Pa = da / d^2
+    Pa = da / distances_expanded_square
+
+    #C = cos(psi) = dz/d(x,y,z)
+    # dz = diff[:,2,:]
+    # C = dz / distances_expanded
+    # C_x = (dz * da[:,0]) / distances_square
+    # C_y = (dz * da[:,1]) / distances_square
+    # C_z = (dz * da[:,2] + distances) / distances_square
+    # Ca = torch.cat([C_x, C_y, C_z],axis=1).unsqueeze(2)
+    C = (diff.squeeze() * normals).sum(dim=1) / distances
+
+    nx = normals[:,0]
+    ny = normals[:,1]
+    nz = normals[:,2]
+
+    dx = diff[:,0,:]
+    dy = diff[:,1,:]
+    dz = diff[:,2,:]
+
+    distances_cubed = distances**3
+
+    Cx = (nx*(dy**2 + dz**2) - dx * (ny*dy + nz*dz)) / distances_cubed
+    Cy = (ny*(dx**2 + dz**2) - dy * (nx*dx + nz*dz)) / distances_cubed
+    Cz = (nz*(dx**2 + dy**2) - dz * (nx*dx + ny*dy)) / distances_cubed
+
+    Ca = torch.cat([Cx, Cy, Cz],axis=1).unsqueeze(2)
+
+    
+    grad_G = Ga*P*C + G*P*Ca + G*Pa*C
+
+    grad_G = areas * grad_G.to(DTYPE)
     
     return grad_G[:,0,:], grad_G[:,1,:], grad_G[:,2,:]
 
