@@ -625,7 +625,7 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     distances_expanded_square = distances_expanded**2
 
     # G  =  e^(ikd) / 4pi d
-    G = torch.exp(1j * Constants.k * distances) / (4*3.1415*distances)
+    G = torch.exp(1j * Constants.k * distances_expanded) / (4*3.1415*distances_expanded)
 
     #Ga =  [i*da * e^{ikd} * (kd+i) / 4pi d^2]
 
@@ -643,7 +643,7 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     Pa = da / distances_expanded_square
 
     #C = distance \cdot normals
-    C = (diff.squeeze() * normals).sum(dim=1) / distances
+    C = (diff * normals.unsqueeze(2)).sum(dim=1) / distances
 
     nx = normals[:,0]
     ny = normals[:,1]
@@ -659,12 +659,17 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     Cy = (ny*(dx**2 + dz**2) - dy * (nx*dx + nz*dz)) / distances_cubed
     Cz = (nz*(dx**2 + dy**2) - dz * (nx*dx + ny*dy)) / distances_cubed
 
-    Ca = torch.cat([Cx, Cy, Cz],axis=1).unsqueeze(2)
+    Cx.unsqueeze_(1)
+    Cy.unsqueeze_(1)
+    Cz.unsqueeze_(1)
 
-    
+    Ca = torch.cat([Cx, Cy, Cz],axis=1)
+
     grad_G = Ga*P*C + G*P*Ca + G*Pa*C
 
     grad_G = areas * grad_G.to(DTYPE)
+
+
     
     return grad_G[:,0,:], grad_G[:,1,:], grad_G[:,2,:]
 

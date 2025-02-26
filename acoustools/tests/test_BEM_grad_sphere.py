@@ -37,19 +37,19 @@ if __name__ == "__main__":
 
     Ex, Ey, Ez, Fx, Fy, Fz, Gx, Gy, Gz, H = BEM_forward_model_grad(p,sphere, board, path=path, use_cache_H=USE_CACHE, return_components=True)
 
-    PGx = torch.abs(Gx@H@x)
-    PGy = torch.abs(Gy@H@x)
-    PGz = torch.abs(Gz@H@x)
+    PGx = torch.abs(Gx@H@x).squeeze()
+    PGy = torch.abs(Gy@H@x).squeeze()
+    PGz = torch.abs(Gz@H@x).squeeze()
 
-    PEx = torch.abs(Ex@x)
-    PEy = torch.abs(Ey@x)
-    PEz = torch.abs(Ez@x)
+    PEx = torch.abs(Ex@x).squeeze()
+    PEy = torch.abs(Ey@x).squeeze()
+    PEz = torch.abs(Ez@x).squeeze()
 
    
 
-    PFx = torch.abs(Fx@x)
-    PFy = torch.abs(Fy@x)
-    PFz = torch.abs(Fz@x)
+    PFx = torch.abs(Fx@x).squeeze()
+    PFy = torch.abs(Fy@x).squeeze()
+    PFz = torch.abs(Fz@x).squeeze()
 
     # f_grad = torch.stack((Fx@x, Fy@x, Fz@x)).reshape((3,1))
 
@@ -62,11 +62,12 @@ if __name__ == "__main__":
     step = 0.000135156253
     ps = get_finite_diff_points_all_axis(p, stepsize=step)
     Efd,Ffd,Gfd,Hfd = compute_E(sphere, ps, board=board, path=path, use_cache_H=USE_CACHE, return_components=True)
+    
     x_fd = wgs(p, A=E)
     
     Fx = Ffd@x_fd
-    p = Fx[:,0,:]
-    Fx_fd = Fx[:,1:,:].reshape(2,-1,1)
+    p = Fx[:,0:N,:]
+    Fx_fd = Fx[:,N:,:].reshape(2,3,N)
 
     Fx_fd_1 = Fx_fd[0,:,:]
     Fx_fd_2 = Fx_fd[1,:,:]
@@ -83,8 +84,8 @@ if __name__ == "__main__":
     GH = Gfd@Hfd
 
     GHx = GH@x_fd
-    p = GHx[:,0,:]
-    GHx_fd = GHx[:,1:,:].reshape(2,-1,1)
+    p = GHx[:,0:N,:]
+    GHx_fd = GHx[:,N:,:].reshape(2,3,N)
 
     GHx_fd_1 = GHx_fd[0,:,:]
     GHx_fd_2 = GHx_fd[1,:,:]
@@ -99,8 +100,8 @@ if __name__ == "__main__":
 
 
     Efdx = Efd@x_fd
-    pE = Efdx[:,0,:]
-    Efd_fd = Efdx[:,1:,:].reshape(2,-1,1)
+    pE = Efdx[:,0:N,:]
+    Efd_fd = Efdx[:,N:,:].reshape(2,3,N)
 
     Efd_fd_1 = Efd_fd[0,:,:]
     Efd_fd_2 = Efd_fd[1,:,:]
