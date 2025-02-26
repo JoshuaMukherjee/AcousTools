@@ -38,7 +38,7 @@ MAX= -4
 MIN= -7
 
 inits = ['rand', 'ones', 'focal', 'trap']
-iters = 20
+iters = 10
 
 for it in inits:
     targets[it] = []
