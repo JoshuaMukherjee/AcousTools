@@ -722,7 +722,7 @@ def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor|Mes
 
 
 def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|str=None,
-                          board:Tensor|None=None,H:Tensor|None=None,E:Tensor|None=None, return_components:bool=False,
+                          board:Tensor|None=None,H:Tensor|None=None,E:Tensor|None=None, return_components:bool=False, dims='XYZ',
                           **params) -> Tensor:
     '''
     Returns Gor'kov potential computed analytically from the BEM model\n
@@ -733,6 +733,7 @@ def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|s
     :param H: Precomputed H - if None H will be computed
     :param E: Precomputed E - if None E will be computed
     :param return_components: 
+    :param dims: Dimensions to consider gradient in
     :return: Gor'kov potential at point U
     '''
     if board is None:
@@ -748,10 +749,21 @@ def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|s
     Ex, Ey, Ez = BEM_forward_model_grad(points,scatterer,board,H=H,path=path)
 
     p = E@activations
-    px = Ex@activations
-    py = Ey@activations
-    pz = Ez@activations
-
+    
+    if 'X' in dims.upper():
+        px = Ex@activations
+    else:
+        px = torch.Tensor((0,)).to(device)
+    
+    if 'Y' in dims.upper():
+        py = Ey@activations
+    else:
+        py = torch.Tensor((0,)).to(device)
+    
+    if 'Z' in dims.upper():
+        pz = Ez@activations
+    else:
+        pz = torch.Tensor((0,)).to(device)
     
     K1 = Constants.V / (4*Constants.p_0*Constants.c_0**2)
     K2 = 3*Constants.V / (4*(2*Constants.f**2 * Constants.p_0))

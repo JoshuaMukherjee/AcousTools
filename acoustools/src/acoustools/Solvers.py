@@ -1,6 +1,7 @@
 from acoustools.Utilities import *
 from acoustools.Optimise.Constraints import constrain_phase_only
 from acoustools.Constraints import constrain_amplitude, constrain_field, constrain_field_weighted
+from acoustools.BEM import compute_E
 import torch
 
 from torch import Tensor
@@ -186,7 +187,7 @@ def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:T
     return phase_hologram
 
 
-def naive_solver_batched(points,board=TRANSDUCERS, activation=None):
+def naive_solver_batched(points,board=TRANSDUCERS, activation=None, A=None):
     '''
     @private
     Batched naive (backpropagation) algorithm for phase retrieval\\
@@ -198,16 +199,18 @@ def naive_solver_batched(points,board=TRANSDUCERS, activation=None):
     if activation is None:
         activation = torch.ones(points.shape[2],1) +0j
         activation = activation.to(device)
-    forward = forward_model_batched(points,board)
-    back = torch.conj(forward).mT
+    
+    if A is None:
+        A = forward_model_batched(points,board)
+    back = torch.conj(A).mT
     trans = back@activation
     trans_phase=  constrain_amplitude(trans)
-    out = forward@trans_phase
+    out = A@trans_phase
 
 
     return out, trans_phase
 
-def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None):
+def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None,A=None):
     '''
     @private
     Unbatched naive (backpropagation) algorithm for phase retrieval\\
@@ -219,30 +222,32 @@ def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None):
     if activation is None:
         activation = torch.ones(points.shape[1]) +0j
         activation = activation.to(device)
-    forward = forward_model(points,board)
-    back = torch.conj(forward).T
+    if A is None:
+        A = forward_model(points,board)
+    back = torch.conj(A).T
     trans = back@activation
     trans_phase=  constrain_amplitude(trans)
-    out = forward@trans_phase
+    out = A@trans_phase
 
 
     return out, trans_phase
 
-def naive(points:Tensor, board:Tensor|None = None, return_components:bool=False, activation:Tensor|None=None) -> Tensor:
+def naive(points:Tensor, board:Tensor|None = None, return_components:bool=False, activation:Tensor|None=None, A=None) -> Tensor:
     '''
     Naive solver\n
     :param points: Target point positions
     :param board: The Transducer array, default two 16x16 arrays
     :param return_components: If `True` will return `hologram, pressure` else will return `hologram`, default False
     :param activation: Initial starting point activation 
+    :param A: propagator to use
     :return: hologram
     '''
     if board is None:
         board = TRANSDUCERS
     if is_batched_points(points):
-        out,act = naive_solver_batched(points,board=board, activation=activation)
+        out,act = naive_solver_batched(points,board=board, activation=activation, A=A)
     else:
-        out,act = naive_solver_unbatched(points,board=board, activation=activation)
+        out,act = naive_solver_unbatched(points,board=board, activation=activation, A=A)
     if return_components:
         return act, out
     return act
@@ -350,7 +355,7 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
                             objective_params:dict={}, start:Tensor|None=None, iters:int=200, 
                             maximise:bool=False, targets:Tensor=None, constrains:FunctionType=constrain_phase_only, log:bool=False, return_loss:bool=False,
                             scheduler:torch.optim.lr_scheduler.LRScheduler=None, scheduler_args:dict=None, save_each_n:int = 0, save_set_n:list[int] = None,
-                            init_type:Literal['rand', 'ones','focal','trap']|Tensor='rand') -> Tensor:
+                            init_type:Literal['rand', 'ones','focal','trap']|Tensor='rand', H=None) -> Tensor:
     '''
     Solves phases using gradient descent\n
     :param points: Target point positions 
@@ -370,6 +375,7 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
     :param scheduler_args: Parameters to pass to `scheduler`
     :param save_each_n: For n>0 will save the optimiser results at every n steps. Set either `save_each_n` or `save_set_iters`
     :param save_set_iters: List containing exact iterations to save optimiser results at. Set either `save_each_n` or `save_set_iters`
+    :param init_type: type of initialisation to use. rand:random, ones:tensor of 1, focal:naive focal point, trap:two focal points offset in the z-axis
     :return: optimised result and optionally the objective values and results (see `return_loss`, `save_each_n` and `save_set_iters`). If either are returned both will be returned but maybe empty if not asked for
     
     ```Python
@@ -403,13 +409,18 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
             if init_type == 'ones':
                 start = torch.ones((B,M,1))
             elif init_type == 'focal':
+    
                 start = naive(points, board=board,return_components=False)
             elif init_type == 'trap':
                 new_points = points.expand(B,3,2*N).clone()
-                new_points[:,2,N:] += Constants.wavelength / 32
+                SCALE = 2
+                new_points[:,2,:N] -= Constants.wavelength / SCALE
+                new_points[:,2,N:] += Constants.wavelength / SCALE
                 target_phases = torch.zeros(B,2*N)
-                target_phases[:,N:] = Constants.pi
+                # target_phases[:,N:] = Constants.pi
                 activation = torch.exp(1j * target_phases).unsqueeze(2).to(device)
+                
+            
                 start = naive(new_points, board, return_components=False, activation=activation)
                 
             else: #rand is default
