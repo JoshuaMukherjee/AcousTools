@@ -350,7 +350,7 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
                             objective_params:dict={}, start:Tensor|None=None, iters:int=200, 
                             maximise:bool=False, targets:Tensor=None, constrains:FunctionType=constrain_phase_only, log:bool=False, return_loss:bool=False,
                             scheduler:torch.optim.lr_scheduler.LRScheduler=None, scheduler_args:dict=None, save_each_n:int = 0, save_set_n:list[int] = None,
-                            init_type:Literal['rand', 'ones','focal','trap']='rand') -> Tensor:
+                            init_type:Literal['rand', 'ones','focal','trap']|Tensor='rand') -> Tensor:
     '''
     Solves phases using gradient descent\n
     :param points: Target point positions 
@@ -397,20 +397,23 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
     M = board.shape[0]
     if start is None:
         # start = torch.ones((B,M,1)).to(device) +0j
-        if init_type == 'ones':
-            start = torch.ones((B,M,1))
-        elif init_type == 'focal':
-            start = naive(points, board=board,return_components=False)
-        elif init_type == 'trap':
-            new_points = points.expand(B,3,2*N).clone()
-            new_points[:,2,N:] += Constants.wavelength / 32
-            target_phases = torch.zeros(B,2*N)
-            target_phases[:,N:] = Constants.pi
-            activation = torch.exp(1j * target_phases).unsqueeze(2).to(device)
-            start = naive(new_points, board, return_components=False, activation=activation)
-            
-        else: #rand is default
-            start = torch.e**(1j*torch.rand((B,M,1))*torch.pi)
+        if type(init_type) == Tensor:
+            start = init_type
+        else: 
+            if init_type == 'ones':
+                start = torch.ones((B,M,1))
+            elif init_type == 'focal':
+                start = naive(points, board=board,return_components=False)
+            elif init_type == 'trap':
+                new_points = points.expand(B,3,2*N).clone()
+                new_points[:,2,N:] += Constants.wavelength / 32
+                target_phases = torch.zeros(B,2*N)
+                target_phases[:,N:] = Constants.pi
+                activation = torch.exp(1j * target_phases).unsqueeze(2).to(device)
+                start = naive(new_points, board, return_components=False, activation=activation)
+                
+            else: #rand is default
+                start = torch.e**(1j*torch.rand((B,M,1))*torch.pi)
 
         start=start.to(device).to(DTYPE)
     
