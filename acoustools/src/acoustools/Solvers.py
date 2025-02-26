@@ -204,6 +204,7 @@ def naive_solver_batched(points,board=TRANSDUCERS, activation=None):
     trans_phase=  constrain_amplitude(trans)
     out = forward@trans_phase
 
+
     return out, trans_phase
 
 def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None):
@@ -232,7 +233,7 @@ def naive(points:Tensor, board:Tensor|None = None, return_components:bool=False,
     Naive solver\n
     :param points: Target point positions
     :param board: The Transducer array, default two 16x16 arrays
-    :param return_components: If `True` will return `hologram, pressure` else will return `hologram`, default True
+    :param return_components: If `True` will return `hologram, pressure` else will return `hologram`, default False
     :param activation: Initial starting point activation 
     :return: hologram
     '''
@@ -348,7 +349,8 @@ def temporal_wgs(A:Tensor, y:Tensor, K:int,ref_in:Tensor, ref_out:Tensor,T_in:fl
 def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tensor|None=None, optimiser:torch.optim.Optimizer=torch.optim.Adam, lr: float=0.01, 
                             objective_params:dict={}, start:Tensor|None=None, iters:int=200, 
                             maximise:bool=False, targets:Tensor=None, constrains:FunctionType=constrain_phase_only, log:bool=False, return_loss:bool=False,
-                            scheduler:torch.optim.lr_scheduler.LRScheduler=None, scheduler_args:dict=None, save_each_n:int = 0, save_set_n:list[int] = None) -> Tensor:
+                            scheduler:torch.optim.lr_scheduler.LRScheduler=None, scheduler_args:dict=None, save_each_n:int = 0, save_set_n:list[int] = None,
+                            init_type:Literal['rand', 'ones','focal','trap']='rand') -> Tensor:
     '''
     Solves phases using gradient descent\n
     :param points: Target point positions 
@@ -391,11 +393,24 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
     losses = []
     results = {}
     B = points.shape[0]
-    N = points.shape[1]
+    N = points.shape[2]
     M = board.shape[0]
     if start is None:
         # start = torch.ones((B,M,1)).to(device) +0j
-        start = torch.e**(1j*torch.rand((B,M,1))*torch.pi)
+        if init_type == 'ones':
+            start = torch.ones((B,M,1))
+        elif init_type == 'focal':
+            start = naive(points, board=board,return_components=False)
+        elif init_type == 'trap':
+            new_points = points.expand(B,3,2*N).clone()
+            new_points[:,2,N:] += Constants.wavelength / 32
+            target_phases = torch.zeros(B,2*N)
+            target_phases[:,N:] = Constants.pi
+            activation = torch.exp(1j * target_phases).unsqueeze(2).to(device)
+            start = naive(new_points, board, return_components=False, activation=activation)
+            
+        else: #rand is default
+            start = torch.e**(1j*torch.rand((B,M,1))*torch.pi)
 
         start=start.to(device).to(DTYPE)
     
