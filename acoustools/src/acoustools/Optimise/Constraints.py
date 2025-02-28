@@ -56,3 +56,9 @@ def normalise_amplitude_normal(phases: Tensor, **params)-> Tensor:
     norm_dist_amp = (amplitudes - torch.min(amplitudes,dim=1,keepdim=True).values) / (torch.max(amplitudes,dim=1,keepdim=True).values - torch.min(amplitudes,dim=1,keepdim=True).values)
     # print(torch.abs(norm_holo * norm_dist_amp))
     return norm_holo * norm_dist_amp
+
+def sine_amplitude(phases: Tensor, **params)-> Tensor:
+    amplitudes = torch.abs(phases)
+    sin_amp = torch.sin(amplitudes)
+    angles = torch.angle(phases)
+    return sin_amp * torch.exp(1j*angles)

@@ -6,6 +6,7 @@ Must have the signature (transducer_phases, points, board, targets, **objective_
 from acoustools.Utilities import propagate_abs, add_lev_sig
 from acoustools.Gorkov import gorkov_analytical
 from acoustools.BEM import propagate_BEM_pressure, BEM_gorkov_analytical
+from acoustools.Optimise.Constraints import sine_amplitude
 import torch
 
 from torch import Tensor
@@ -152,6 +153,18 @@ def target_gorkov_mse_objective(transducer_phases: Tensor, points:Tensor, board:
     return l
 
 def target_gorkov_BEM_mse_objective(transducer_phases, points, board, targets, **objective_params):
+    reflector = objective_params['reflector']
+    root = objective_params['root']
+    if 'dims' in objective_params:
+        dims = objective_params['dims']
+    else:
+        dims = 'XYZ'
+    U = BEM_gorkov_analytical(transducer_phases, points, reflector, board, path=root, dims=dims)
+    loss = torch.mean((targets-U)**2).unsqueeze_(0).real
+    return loss
+
+def target_gorkov_BEM_mse_sine_objective(transducer_phases, points, board, targets, **objective_params):
+    transducer_phases = sine_amplitude(transducer_phases)
     reflector = objective_params['reflector']
     root = objective_params['root']
     if 'dims' in objective_params:
