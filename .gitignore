@@ -5,3 +5,4 @@ read_beast_file.py
 *.pth
 *.mp4
 *.png
+times.txt
