@@ -1,7 +1,7 @@
 from acoustools.Utilities import create_points, TRANSDUCERS, add_lev_sig
 from acoustools.Gorkov import gorkov_analytical, gorkov_fin_diff
 from acoustools.Solvers import wgs
-from acoustools.BEM import propagate_BEM, BEM_gorkov_analytical
+from acoustools.BEM import propagate_BEM, BEM_gorkov_analytical, get_cache_or_compute_H, compute_E
 from acoustools.Mesh import load_scatterer
 
 import time
@@ -20,33 +20,38 @@ sphere = load_scatterer(sphere_pth, dy=-0.06, dz=0.03) #Make mesh at 0,0,3cm
 N = 1000
 points = []
 
+H = get_cache_or_compute_H(sphere, board=board, path=path )
 
 for i in range(N):
     p = create_points(1,1, max_pos=0.025)
-    x = wgs(p, board=board)
+    E = compute_E(sphere, p, board, H=H)
+    x = wgs(p, board=board, A=E, iter=10)
     x = add_lev_sig(x)
     points.append([p,x])
 
 U_fds = []
 t_fds = []
-for p,x in points:
-    start_fd = time.time()
-    U = gorkov_fin_diff(x,p, prop_function=propagate_BEM, prop_fun_args={'scatterer':sphere, 'path':path} )
-    end_fd = time.time()
-    U_fds.append(-1*U.cpu().detach().item())
-    t_fds.append(end_fd - start_fd)
+
 
 U_as = []
 t_as = []
 
+
 for p,x in points:
+    start_fd = time.time()
+    U = gorkov_fin_diff(x,p, prop_function=propagate_BEM, prop_fun_args={'scatterer':sphere, 'path':path, "H":H} )
+    end_fd = time.time()
+    U_fds.append(-1*U.cpu().detach().item())
+    t_fds.append(end_fd - start_fd)
+
     start_a = time.time()
-    U = BEM_gorkov_analytical(x,p, scatterer=sphere, path=path)
+    U = BEM_gorkov_analytical(x,p, scatterer=sphere, path=path,H=H)
     end_a = time.time()
 
     U_as.append(-1*U.cpu().detach().item())
     t_as.append(end_a - start_a)
 
+# exit()
 
 # print(end_fd - start_fd)
 # print(end_a - start_a)
