@@ -1,0 +1,13 @@
+C6:I20;#set iterations
+C6:I200;#set iterations
+C6:I10;#set iterations
+C6:U1;#set Gorkov
+C6:U100;#set Gorkov
+C6:U0.0001;#set Gorkov
+C6:U-0.0001;#set Gorkov
+C6:U-1e-9;#set Gorkov
+C6:P1000;#Set pressure
+C6:P9000;#Set pressure
+C6:P0;#Set pressure
+C6:P9000:I200:U0.001;#Set Many
+C6:P3000:I10:U-0.00001;#Set Many

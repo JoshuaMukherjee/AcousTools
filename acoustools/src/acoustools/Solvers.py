@@ -1,11 +1,15 @@
 from acoustools.Utilities import *
 from acoustools.Optimise.Constraints import constrain_phase_only
 from acoustools.Constraints import constrain_amplitude, constrain_field, constrain_field_weighted
+from acoustools.Optimise.Objectives import target_gorkov_BEM_mse_sine_objective
+from acoustools.Optimise.Constraints import sine_amplitude
 from acoustools.BEM import compute_E
 import torch
 
 from torch import Tensor
 from types import FunctionType
+
+from vedo import Mesh
 
 def wgs_solver_unbatched(A, b, K):
     '''
@@ -471,7 +475,8 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
     return param
     
 
-def iterative_backpropagation(points:Tensor,iterations:int = 200, board:Tensor|None = None, A:Tensor|None = None, b:Tensor|None=None, return_components: bool=False) -> list[Tensor]:
+def iterative_backpropagation(points:Tensor,iterations:int = 200, board:Tensor|None = None, A:Tensor|None = None, 
+                              b:Tensor|None=None, return_components: bool=False) -> list[Tensor]:
     '''
     IB solver for transducer phases\n
     :param points: Points to use
@@ -533,3 +538,32 @@ def iterative_backpropagation(points:Tensor,iterations:int = 200, board:Tensor|N
         return y, p, x
     else:
         return x
+    
+
+
+def gorkov_target(points:Tensor, objective:FunctionType = target_gorkov_BEM_mse_sine_objective,
+                  board:Tensor=None, U_targets:Tensor=None, iterations:int=20, lr:int=1e4,
+                  constraint:FunctionType=sine_amplitude, reflector:Mesh|None=None, path:str|None=None) -> Tensor:
+    '''
+    Phase retrieval to generate target gorkov values at points via `acoustools.Solvers.gradient_descent_solver` \n
+    :param points: points of interest
+    :param objective: Objevtive function to minimise, default `acoustools.Optimise.Objectives.target_gorkov_BEM_mse_sine_objective`
+    :param board: Board to use. Default `acoustools.Utilities.TOP_BOARD`
+    :param U_targets: Target Gorkov values
+    :param iterations: Iterations to use for the solver
+    :param lr: learning rate
+    :param constraint: constraint function to use in the optimiser. default `acoustools.Optimise.Constraints.sine_amplitude`
+    :param reflector: Mesh to use as reflector or None
+    :param path: BEM path
+    :returns hologram:
+    '''
+
+    if board is None:
+        board = TOP_BOARD
+
+
+    x = gradient_descent_solver(points, objective, 
+                                board, log=False, targets=U_targets, iters=iterations, 
+                                lr=lr, constrains=constraint, objective_params={'root':path,'reflector':reflector})
+    
+    return x

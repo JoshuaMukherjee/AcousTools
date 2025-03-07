@@ -16,8 +16,8 @@ Commands
 * `C2;` Turn off UV
 * `C3:<T>;` Delay for T ms
 * `C4:<T>;` Set delay for T ms between all commands
-* `C5:<Solver>;` Change to specific solver. Should be one of "IB", "WGS", "GSPAT", "NAIVE"
-* `C6:<N>;` Set number of iterations for the solver
+* `C5:<Solver>;` Change to specific solver. Should be one of "IB", "WGS", "GSPAT", "NAIVE", "GORKOV_TARGET"
+* `C6:I<I>:U<U>:P<P>;` Set parameters for the solver, I: Iterations. U:target Gorkov, P:Target Pressure. Note not all solvers support all options
 * `C7;` Set to two board setup
 * `C8;` Set to top board setup
 * `C9;` Set to bottom board setup

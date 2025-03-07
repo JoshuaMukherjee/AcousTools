@@ -1,5 +1,5 @@
 from acoustools.Utilities import create_points, TOP_BOARD, BOTTOM_BOARD, TRANSDUCERS, add_lev_sig
-from acoustools.Solvers import wgs, gspat, iterative_backpropagation, naive
+from acoustools.Solvers import wgs, gspat, iterative_backpropagation, naive, gorkov_target
 from acoustools.Levitator import LevitatorController
 from acoustools.Mesh import cut_mesh_to_walls, load_scatterer
 from acoustools.BEM import compute_E, get_cache_or_compute_H
@@ -11,7 +11,8 @@ from torch import Tensor
 from types import FunctionType
 
 def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=0.001, BEM_path='../BEMMedia', 
-               save_holo_name:str|None=None, wait_for_key_press:bool=False, C0_function = None, C0_params={}, extruder:Tensor|None = None):
+               save_holo_name:str|None=None, wait_for_key_press:bool=False, C0_function:FunctionType|None = None, C0_params:dict={}, 
+               extruder:Tensor|None = None, print_eval:bool=False, return_holos:bool=False):
     '''
     Reads lcode and runs the commands on the levitator device \n
     :param pth: Path to lcode file
@@ -21,6 +22,10 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     :param BEM_path: Path to BEM folder
     :param save_holo_name: Out to save holograms to, if any:
     :param wait_for_key_press: If true will wait for keypress after first hologram
+    :param C0_function: Function to use when C0 command seen
+    :param C0_params: Parameters for the function to use when C0 command seen
+    :params print_eval: If True will print memory and time used
+    :params return_holos: If True will save a return holograms
     '''
 
     iterations = 100
@@ -32,6 +37,9 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     layer_z = 0
     cut_mesh = None
     in_function = None
+
+    target_U = None
+    target_P = None
 
     reflector = None
 
@@ -47,7 +55,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     start_from_focal_point = ['L0','L1','L2','L3']
     signature = ['Focal','Trap','Twin','Vortex']
 
-    name_to_solver = {'wgs':wgs,'gspat':gspat, 'iterative_backpropagation':iterative_backpropagation,'naive':naive}
+    name_to_solver = {'wgs':wgs,'gspat':gspat, 'iterative_backpropagation':iterative_backpropagation,'naive':naive, 'gorkov_target':gorkov_target}
 
     lev = LevitatorController(ids=ids)
 
@@ -75,7 +83,8 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
             
                 elif command in start_from_focal_point:
                     current_points = groups[1:]
-                    x = L0(*current_points, iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,BEM_path=BEM_path, H=H)
+                    x = L0(*current_points, iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,
+                           BEM_path=BEM_path, H=H, U_target=target_U, reflector=reflector)
                     sig = signature[start_from_focal_point.index(command)]
                     x = add_lev_sig(x, board=board,mode=sig)
                     last_L = command
@@ -85,7 +94,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
 
 
                     total_size += x.element_size() * x.nelement()
-                    if save_holo_name is not None: 
+                    if save_holo_name is not None or return_holos: 
                         holograms.append(x)
                     lev.levitate(x)
 
@@ -97,7 +106,8 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                     lev.turn_off()
                 elif command == 'C0':
                     current_points_ext = current_points + [extruder_text,]
-                    x = L0(*current_points_ext, iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,BEM_path=BEM_path, H=H, reflector=reflector)
+                    x = L0(*current_points_ext, iterations=iterations, board=board, A=A, solver=solver, 
+                           mesh=cut_mesh,BEM_path=BEM_path, H=H, reflector=reflector)
                     try:
                         sig = signature[start_from_focal_point.index(command)]
                     except ValueError as e:
@@ -106,7 +116,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                     x = add_lev_sig(x, board=board,mode=sig)
                                             
                     total_size += x.element_size() * x.nelement()
-                    if save_holo_name is not None: holograms.append(x.clone())
+                    if save_holo_name is not None or return_holos: holograms.append(x.clone())
                     lev.levitate(x)
 
                     if wait_for_key_press :
@@ -126,9 +136,21 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 elif command == 'C4':
                     delay = float(groups[1])/1000
                 elif command == 'C5':
-                    solver= name_to_solver[groups[1]]
+                    solver= name_to_solver[groups[1].lower()]
                 elif command == 'C6':
-                    iterations = int(groups[1])
+                    for group in groups:
+                        if "I" in group:
+                            it = group.split("I")[-1]
+                            iterations = int(it)
+                            print("it",iterations)
+                        if "U" in group:
+                            U = group.split("U")[-1]
+                            target_U = float(U)
+                            print("U",target_U)
+                        if "P" in group:
+                            P = group.split("P")[-1]
+                            target_P = float(P)
+                            print("P",target_P)
                 elif command == 'C7':
                     board = TRANSDUCERS
                 elif command == 'C8':
@@ -161,11 +183,14 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 time.sleep(delay)
 
     t1 = time.time_ns()
-    print((t1-t0)/1e9,'seconds')
-    print(total_size/1e6, 'MB')
+    if print_eval:
+        print((t1-t0)/1e9,'seconds')
+        print(total_size/1e6, 'MB')
     if save_holo_name is not None: pickle.dump(holograms, open(save_holo_name,'wb'))
+    if return_holos: return holograms
 
-def L0(*args, solver:FunctionType=wgs, iterations:int=50, board:Tensor=TOP_BOARD, A:Tensor=None, mesh:Mesh=None, BEM_path:str='', H:Tensor=None, reflector:Mesh=None):
+def L0(*args, solver:FunctionType=wgs, iterations:int=50, board:Tensor=TOP_BOARD, A:Tensor=None, 
+       mesh:Mesh=None, BEM_path:str='', H:Tensor=None, reflector:Mesh=None, U_target=None):
     '''
     @private
     '''
@@ -190,7 +215,8 @@ def L0(*args, solver:FunctionType=wgs, iterations:int=50, board:Tensor=TOP_BOARD
         x = iterative_backpropagation(points, iterations=iterations, board=board, A=A)
     elif solver == naive:
         x = naive(points, board=board)
-    #TARGETED GORKOV!!!
+    elif solver == gorkov_target:
+        x = gorkov_target(p,board=board, U_targets=U_target, reflector=reflector, path=BEM_path)
     else:
         raise NotImplementedError()
     
