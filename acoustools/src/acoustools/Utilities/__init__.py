@@ -11,7 +11,6 @@ from torch import Tensor
 
 from acoustools.Utilities.Boards import *
 from acoustools.Utilities.Setup import *
-from acoustools.Utilities.Export import *
 from acoustools.Utilities.Forward_models import *
 from acoustools.Utilities.Piston_model_gradients import *
 from acoustools.Utilities.Points import *
