@@ -3,10 +3,12 @@ from typing import Literal
 
 def point_to_lcode(points:Tensor, sig_type:Literal['Focal', 'Trap', 'Vortex','Twin']='Focal') -> str:
     '''
-    Converts AcousTools points to lcode string
+    Converts AcousTools points to lcode string \n
+    :param points: The points to export. Each batch will be a line in the reuslting lcode
+    :param sig_type: The type of trap to create (defines L-command to use)
+    :returns lcode: Lcode as a string
     '''
 
-    B = points.shape[0]
 
     N = points.shape[2]
 
