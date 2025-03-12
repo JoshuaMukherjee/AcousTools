@@ -21,13 +21,27 @@ def create_points(N:int,B:int=1,x:float|None=None,y:float|None=None,z:float|None
     ```
     '''
     points = torch.FloatTensor(B, 3, N).uniform_(min_pos,max_pos).to(device)
+    
     if x is not None:
-        points[:,0,:] = x
+        if type(x) is float:
+            points[:,0,:] = x
+        elif type(x) is list:
+            for i in range(N):
+                points[:,0,i] = x[i]
     
     if y is not None:
-        points[:,1,:] = y
+        if type(y) is float:
+            points[:,1,:] = y
+        elif type(y) is list:
+            for i in range(N):
+                points[:,1,i] = y[i]
     
     if z is not None:
-        points[:,2,:] = z
+        if type(z) is float:
+            points[:,2,:] = y
+        elif type(z) is list:
+            for i in range(N):
+                points[:,2,i] = z[i]
+
 
     return points
