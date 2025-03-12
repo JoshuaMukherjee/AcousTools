@@ -7,3 +7,6 @@ zs = [2,4,5,6]
 
 ps = create_points(x=xs,y=ys, z=zs)
 print(ps)
+
+ps = create_points(1,1)
+print(ps)
