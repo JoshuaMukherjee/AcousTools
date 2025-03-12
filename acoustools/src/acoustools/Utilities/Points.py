@@ -25,7 +25,7 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
                       (type(x) == float and type(y) == float and type(z) == float) or
                       (type(x) == int and type(y) == int and type(z) == int)):
         N = len(x)
-    else:
+    elif N is None:
         raise ValueError("If N is not provided x,y and z need to be lists of points or single values")
 
     points = torch.FloatTensor(B, 3, N).uniform_(min_pos,max_pos).to(device)
