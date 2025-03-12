@@ -5,5 +5,5 @@ xs = [0,1,2,3]
 ys = [2,3,4,5]
 zs = [2,4,5,6]
 
-ps = create_points(4,1,x=xs,y=ys, z=zs)
+ps = create_points(x=xs,y=ys, z=zs)
 print(ps)

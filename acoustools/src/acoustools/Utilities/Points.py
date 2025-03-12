@@ -5,7 +5,7 @@ from acoustools.Utilities.Setup import device
 
 
 
-def create_points(N:int,B:int=1,x:float|None=None,y:float|None=None,z:float|None=None, min_pos:float=-0.06, max_pos:float = 0.06) -> Tensor:
+def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float|None=None, min_pos:float=-0.06, max_pos:float = 0.06) -> Tensor:
     '''
     Creates a random set of N points in B batches in shape `Bx3xN` \n
     :param N: Number of points per batch
@@ -20,6 +20,14 @@ def create_points(N:int,B:int=1,x:float|None=None,y:float|None=None,z:float|None
     p = create_points(N=3,B=1)
     ```
     '''
+
+    if N is None and ((type(x) == list and type(y) == list and type(z) == list ) or 
+                      (type(x) == float and type(y) == float and type(z) == float) or
+                      (type(x) == int and type(y) == int and type(z) == int)):
+        N = len(x)
+    else:
+        raise ValueError("If N is not provided x,y and z need to be lists of points or single values")
+
     points = torch.FloatTensor(B, 3, N).uniform_(min_pos,max_pos).to(device)
     
     if x is not None:
