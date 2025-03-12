@@ -164,7 +164,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 elif command == 'C11':
                     frame_rate = float(groups[1])
                     lev.set_frame_rate(frame_rate)
-                elif command == 'C13':
+                elif command == 'C12':
                     z = float(groups[1])
                     reflector = load_scatterer(BEM_path+'/flat-lam2.stl', dz=z)
                     H = get_cache_or_compute_H(reflector,board=board,path=BEM_path)
