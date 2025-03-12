@@ -2,7 +2,7 @@
 from torch import Tensor
 import torch
 
-from acoustools.Utilities import device
+from acoustools.Utilities.Setup import device
 
 def generate_gorkov_targets(N:int,B:int=1, max_val:float=-5, min_val:float=-5, log=True) -> Tensor:
     '''

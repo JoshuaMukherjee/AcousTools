@@ -3,7 +3,7 @@ from typing import Literal
 from torch import Tensor
 import torch
 
-from acoustools.Utilities import device
+from acoustools.Utilities.Setup import device
 
 def get_convert_indexes(n:int=512, single_mode:Literal['bottom','top']='bottom') -> Tensor:
     '''

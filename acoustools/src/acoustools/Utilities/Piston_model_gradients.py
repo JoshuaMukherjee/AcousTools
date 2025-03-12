@@ -1,4 +1,4 @@
-from acoustools.Utilities import TRANSDUCERS
+from acoustools.Utilities.Boards import TRANSDUCERS
 import acoustools.Constants as Constants
 
 import torch

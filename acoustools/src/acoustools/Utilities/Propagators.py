@@ -2,7 +2,10 @@
 import torch
 from torch import Tensor
 
-from acoustools.Utilities import TRANSDUCERS, is_batched_points, forward_model_batched, forward_model, device
+from acoustools.Utilities.Boards import TRANSDUCERS
+from acoustools.Utilities.Utilities import is_batched_points
+from acoustools.Utilities.Forward_models import forward_model_batched, forward_model
+from acoustools.Utilities.Setup import device
 
 
 from types import FunctionType

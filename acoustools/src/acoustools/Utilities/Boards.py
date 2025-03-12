@@ -1,6 +1,6 @@
 import torch
 from torch import Tensor
-from acoustools.Utilities import device
+from acoustools.Utilities.Setup import device
 
 
 def create_board(N:int, z:float) -> Tensor: 

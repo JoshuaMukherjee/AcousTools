@@ -1,9 +1,6 @@
 from torch import Tensor
 import torch
 
-from acoustools.Utilities import forward_model, device
-
-
 
 def is_batched_points(points:Tensor) -> bool:
     '''
@@ -34,20 +31,20 @@ def permute_points(points: Tensor,index: int,axis:int=0) -> Tensor:
     if axis == 3:
         return points[:,:,:,index]
 
-def swap_output_to_activations(out_mat,points):
-    '''
-    @private
-    '''
-    acts = None
-    for i,out in enumerate(out_mat):
-        out = out.T.contiguous()
-        pressures =  torch.view_as_complex(out)
-        A = forward_model(points[i]).to(device)
-        if acts == None:
-            acts =  A.T @ pressures
-        else:
-            acts = torch.stack((acts,A.T @ pressures),0)
-    return acts
+# def swap_output_to_activations(out_mat,points):
+#     '''
+#     @private
+#     '''
+#     acts = None
+#     for i,out in enumerate(out_mat):
+#         out = out.T.contiguous()
+#         pressures =  torch.view_as_complex(out)
+#         A = forward_model(points[i]).to(device)
+#         if acts == None:
+#             acts =  A.T @ pressures
+#         else:
+#             acts = torch.stack((acts,A.T @ pressures),0)
+#     return acts
 
 def convert_to_complex(matrix: Tensor) -> Tensor:
     '''

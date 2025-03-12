@@ -4,7 +4,8 @@ import torch
 
 from typing import Literal
 
-from acoustools.Utilities import TRANSDUCERS, device
+from acoustools.Utilities.Boards import TRANSDUCERS
+from acoustools.Utilities.Setup import device
 
 def add_lev_sig(activation:Tensor, board:Tensor|None=None, 
                 mode:Literal['Focal', 'Trap', 'Vortex','Twin', 'Eye']='Trap', sig:Tensor|None=None, return_sig:bool=False) -> Tensor:

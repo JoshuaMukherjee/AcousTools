@@ -1,7 +1,7 @@
 from torch import Tensor
 import torch
 
-from acoustools.Utilities import device
+from acoustools.Utilities.Setup import device
 
 
 
