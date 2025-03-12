@@ -1,5 +1,4 @@
 '''
-
 Each line starts with a command (see below) followed by the arguments for that command. The command should be followed by a colon (:). 
 Each line should end with a semi-colon (;), each argument is seperated by a comma (,) and groups or arguments can be seperated with a colon (:)
 
@@ -22,8 +21,7 @@ Commands
 * `C9;` Set to bottom board setup
 * `C10;` Update BEM to use layer at last z position 
 * `C11:<Frame-rate>;` Set the framerate of the levitator device
-* `C12:<Extruder>;` Set a new extruder position
-* `C13:<z>;` Use a reflector and set the position
+* `C12:<z>;` Use a reflector and set the position
 
 * `O0;` End of droplet
 
@@ -34,6 +32,10 @@ end` define a function that can latter be called by name
 
 from torch import Tensor
 from typing import Literal
+from types import FunctionType
+
+from acoustools.Solvers import wgs, iterative_backpropagation, gspat, naive, gorkov_target
+from acoustools.Utilities import TOP_BOARD, BOTTOM_BOARD, TRANSDUCERS
 
 def point_to_lcode(points:Tensor, sig_type:Literal['Focal', 'Trap', 'Vortex','Twin']='Focal') -> str:
     '''
@@ -62,3 +64,57 @@ def point_to_lcode(points:Tensor, sig_type:Literal['Focal', 'Trap', 'Vortex','Tw
         lcode += ';\n'
 
     return lcode.rstrip()
+
+def get_setup_commands(solver:FunctionType|None|str = None, I:int=200, U:float|None=None, P:int|None=None,
+                       board:Tensor|None=None, frame_rate:int=200, flat_reflector_z:int|None=None) -> str:
+    '''
+    Creates setup commands
+    :param Solver: String name or function of the solver to use
+    :param I: Iterations
+    :param U: Target Gorkov Value
+    :param P: Target Pressure
+    :param board: Board to use
+    :param frame_rate: Levitator frame rate
+    :param flat_reflector_z: if not None will use flat reflrctor at z position given\n
+    :returns lcode:
+    '''
+
+    command = ''
+    #Solver -> C5
+    if solver is None:
+        command += 'C5:WGS;\n'
+    else:
+        if type(solver) == FunctionType:
+            solver = {iterative_backpropagation:"IB", wgs:"WGS", gspat:"GSPAT", naive:"NAIVE", gorkov_target:"GORKOV_TARGET"}[solver]
+        command += f'C5:{solver};\n'
+
+    #solver params
+    command += f"C6:I{I}"
+    if U is not None:
+         command += f":U{U}"
+    if P is not None:
+         command += f":P{P}"
+    command += ';\n'
+
+    #Board 
+    if (board.shape == TRANSDUCERS.shape) and  (board == TRANSDUCERS).all():
+        command += 'C7;\n'
+    
+    elif (board.shape == TOP_BOARD.shape) and  (board == TOP_BOARD).all():
+        command += 'C8;\n'
+    
+    elif (board.shape == BOTTOM_BOARD.shape) and (board == BOTTOM_BOARD).all():
+        command += 'C9;\n'
+    else:
+         raise ValueError("Unknown board")
+    
+    #Frame Rate
+    command += f"C11:{frame_rate};\n"
+
+    #Reflector
+    if flat_reflector_z is not None:
+         command += f"C12:{flat_reflector_z};\n"
+
+    return command.rstrip()
+
+
