@@ -142,15 +142,12 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                         if "I" in group:
                             it = group.split("I")[-1]
                             iterations = int(it)
-                            print("it",iterations)
                         if "U" in group:
                             U = group.split("U")[-1]
                             target_U = float(U)
-                            print("U",target_U)
                         if "P" in group:
                             P = group.split("P")[-1]
                             target_P = float(P)
-                            print("P",target_P)
                 elif command == 'C7':
                     board = TRANSDUCERS
                 elif command == 'C8':

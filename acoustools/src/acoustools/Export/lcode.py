@@ -1,4 +1,5 @@
 '''
+Export points to lcode 
 Each line starts with a command (see below) followed by the arguments for that command. The command should be followed by a colon (:). 
 Each line should end with a semi-colon (;), each argument is seperated by a comma (,) and groups or arguments can be seperated with a colon (:)
 

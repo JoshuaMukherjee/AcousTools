@@ -19,4 +19,4 @@ for i in range(I):
         ps.append(p)
 
 
-export_to_lcode(f"acoustools/tests/data/lcode/circle{I}.lcode",ps)
+export_to_lcode(f"acoustools/tests/data/lcode/circle{I}.lcode",ps, solver='gspat', I=10)
