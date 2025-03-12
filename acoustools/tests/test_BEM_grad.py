@@ -1,7 +1,7 @@
 if __name__ == "__main__":
 
-    from acoustools.BEM import load_multiple_scatterers, scatterer_file_name, compute_E, propagate_BEM_pressure, BEM_forward_model_grad
-    from acoustools.Mesh import get_lines_from_plane
+    from acoustools.BEM import  compute_E, propagate_BEM_pressure, BEM_forward_model_grad
+    from acoustools.Mesh import get_lines_from_plane, load_multiple_scatterers, scatterer_file_name
     from acoustools.Utilities import create_points, TRANSDUCERS, device, add_lev_sig, forward_model_grad, propagate_abs
     from acoustools.Solvers import wgs
     from acoustools.Visualiser import Visualise
