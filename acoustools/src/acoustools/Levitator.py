@@ -75,6 +75,7 @@ class LevitatorController():
 
 
             print(os.getcwd())
+            os.add_dll_directory(self.bin_path)
             self.levitatorLib = CDLL(self.bin_path+'Levitator.dll')
 
             self.board_number = len(ids)
