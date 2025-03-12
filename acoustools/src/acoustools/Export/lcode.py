@@ -37,7 +37,7 @@ from types import FunctionType
 from acoustools.Solvers import wgs, iterative_backpropagation, gspat, naive, gorkov_target
 from acoustools.Utilities import TOP_BOARD, BOTTOM_BOARD, TRANSDUCERS
 
-def point_to_lcode(points:Tensor, sig_type:Literal['Focal', 'Trap', 'Vortex','Twin']='Focal') -> str:
+def point_to_lcode(points:Tensor|list[Tensor], sig_type:Literal['Focal', 'Trap', 'Vortex','Twin']='Focal') -> str:
     '''
     Converts AcousTools points to lcode string \n
     :param points: The points to export. Each batch will be a line in the reuslting lcode
@@ -46,22 +46,25 @@ def point_to_lcode(points:Tensor, sig_type:Literal['Focal', 'Trap', 'Vortex','Tw
     '''
 
 
-    N = points.shape[2]
 
     l_command = {'Focal':'L0','Trap':'L1','Twin':'L2','Vortex':'L3'}[sig_type.capitalize()]
 
     lcode = ''
-    for batch in points: #Each batch should be a line
-        lcode += '' + l_command
-       
-        for i in range(N):
-                lcode += ':'
-                p = batch[:,i]
-                command = str(p[0].item()) + "," + str(p[1].item()) + ',' + str(p[2].item())
-
-                lcode += command
+    if type(points) == Tensor:
+         points = [points,]
+    for batches in points:    
+        for batch in batches: #Each batch should be a line
+            N = batch.shape[1]
+            lcode += '' + l_command
         
-        lcode += ';\n'
+            for i in range(N):
+                    lcode += ':'
+                    p = batch[:,i]
+                    command = str(p[0].item()) + "," + str(p[1].item()) + ',' + str(p[2].item())
+
+                    lcode += command
+            
+            lcode += ';\n'
 
     return lcode.rstrip()
 
@@ -97,7 +100,7 @@ def get_setup_commands(solver:FunctionType|None|str = None, I:int=200, U:float|N
     command += ';\n'
 
     #Board 
-    if (board.shape == TRANSDUCERS.shape) and  (board == TRANSDUCERS).all():
+    if board is None or ((board.shape == TRANSDUCERS.shape) and  (board == TRANSDUCERS).all()):
         command += 'C7;\n'
     
     elif (board.shape == TOP_BOARD.shape) and  (board == TOP_BOARD).all():
@@ -118,3 +121,16 @@ def get_setup_commands(solver:FunctionType|None|str = None, I:int=200, U:float|N
     return command.rstrip()
 
 
+def export_to_lcode(fname, points:Tensor, sig_type:Literal['Focal', 'Trap', 'Vortex','Twin']='Focal',
+                    solver:FunctionType|None|str = None, I:int=200, U:float|None=None, P:int|None=None,
+                    board:Tensor|None=None, frame_rate:int=200, flat_reflector_z:int|None=None):
+    
+    setup_commands = get_setup_commands(solver, I, U, P,board, frame_rate, flat_reflector_z)
+    point_command = point_to_lcode(points, sig_type)
+
+    lcode = setup_commands + '\n' + point_command
+
+    with open(fname,'w') as f:
+         f.write(lcode)
+
+         
