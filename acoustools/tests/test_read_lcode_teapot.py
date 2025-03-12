@@ -1,4 +1,4 @@
-from acoustools.Fabrication.Intepreter import read_lcode
+from acoustools.Intepreter import read_lcode
 from acoustools.Mesh import load_scatterer, scale_to_diameter
 import vedo
 

@@ -1,4 +1,4 @@
-from acoustools.Fabrication.Intepreter import read_lcode
+from acoustools.Intepreter import read_lcode
 from acoustools.BEM import propagate_BEM_pressure
 from acoustools.Visualiser import Visualise, ABC
 from acoustools.Mesh import load_scatterer

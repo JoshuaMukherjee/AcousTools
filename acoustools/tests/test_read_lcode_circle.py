@@ -1,4 +1,4 @@
-from acoustools.Fabrication.Intepreter import read_lcode
+from acoustools.Intepreter import read_lcode
 
 
 pth = 'acoustools/tests/data/gcode/circle.lcode'
