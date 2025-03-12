@@ -1,8 +1,6 @@
 import torch
-from acoustools.Utilities import device, propagate, propagate_abs, add_lev_sig, forward_model_batched, forward_model_grad, TRANSDUCERS, forward_model_second_derivative_unmixed,forward_model_second_derivative_mixed, return_matrix, DTYPE
+from acoustools.Utilities import device, propagate, forward_model_batched, forward_model_grad, TRANSDUCERS, DTYPE
 import acoustools.Constants as c
-from acoustools.BEM import grad_2_H, grad_H, get_cache_or_compute_H, get_cache_or_compute_H_gradients
-from acoustools.Mesh import translate, get_centre_of_mass_as_points, get_centres_as_points, get_normals_as_points, get_areas, merge_scatterers
 
 from torch import Tensor
 from types import FunctionType
