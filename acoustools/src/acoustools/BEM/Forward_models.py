@@ -42,7 +42,7 @@ def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, r
     del norms, vecs
     torch.cuda.empty_cache()
 
-    A = ((torch.e**(1j*Constants.k*distance))/(4*torch.pi*distance))
+    A = ((torch.exp(1j*Constants.k*distance))/(4*torch.pi*distance))
     B = (1j*Constants.k - 1/(distance))
     
     del distance

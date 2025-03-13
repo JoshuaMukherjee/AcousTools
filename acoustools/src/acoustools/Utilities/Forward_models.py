@@ -55,7 +55,7 @@ def forward_model_unbatched(points, transducers = TRANSDUCERS):
     directivity=1/2-torch.pow(bessel_arg,2)/16+torch.pow(bessel_arg,4)/384
     
     p = 1j*Constants.k*distance
-    phase = torch.e**(p)
+    phase = torch.exp(p)
     
     trans_matrix=2*Constants.P_ref*torch.multiply(torch.divide(phase,distance),directivity)
     return trans_matrix

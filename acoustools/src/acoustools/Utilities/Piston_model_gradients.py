@@ -51,7 +51,7 @@ def compute_gradients(points, transducers = TRANSDUCERS):
     partialGpartialX = (Constants.P_ref * diff) / dist_expand**3
 
     #Grad of e^ikd(xt,t)
-    partialHpartialX = 1j * Constants.k * (diff / dist_expand) * torch.e**(1j * Constants.k * dist_expand)
+    partialHpartialX = 1j * Constants.k * (diff / dist_expand) * torch.exp(1j * Constants.k * dist_expand)
 
     #Combine
     bessel_arg=Constants.k*Constants.radius*torch.divide(planar_distance,distances)
@@ -60,7 +60,7 @@ def compute_gradients(points, transducers = TRANSDUCERS):
     F = F.expand((-1,-1,3,-1))
 
     G = Constants.P_ref / dist_expand
-    H = torch.e**(1j * Constants.k * dist_expand)
+    H = torch.exp(1j * Constants.k * dist_expand)
 
     return F,G,H, partialFpartialX, partialGpartialX, partialHpartialX, partialFpartialU, partialUpartiala
 

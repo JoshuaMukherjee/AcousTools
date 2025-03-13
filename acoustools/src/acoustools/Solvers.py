@@ -436,7 +436,7 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
                 start = naive(new_points, board, return_components=False, activation=activation)
                 
             else: #rand is default
-                start = torch.e**(1j*torch.rand((B,M,1))*torch.pi)
+                start = torch.exp(1j*torch.rand((B,M,1))*torch.pi)
 
         start=start.to(device).to(DTYPE)
     
