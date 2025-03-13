@@ -10,9 +10,10 @@ import vedo
 from torch import Tensor
 from types import FunctionType
 
+
 def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=0.001, BEM_path='../BEMMedia', 
                save_holo_name:str|None=None, wait_for_key_press:bool=False, C0_function:FunctionType|None = None, C0_params:dict={}, 
-               extruder:Tensor|None = None, print_eval:bool=False, return_holos:bool=False):
+               extruder:Tensor|None = None, print_eval:bool=False, return_holos:bool=False, points_per_batch:int=1):
     '''
     Reads lcode and runs the commands on the levitator device \n
     :param pth: Path to lcode file
@@ -64,11 +65,12 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
     with open(pth,'r') as file:
         lines = file.read().rstrip().replace(';','').split('\n')
         # lines=lines[:-1]
+        N_lines = len(lines)
 
         total_size = 0
         holograms = []
         for i,line in enumerate(lines):
-            print(f"{i}/{len(lines)}", end='\r')
+            if print_eval: print(f"{i}/{len(lines)}", end='\r')
             line = line.rstrip()
             if  (line[0] != '#'): #ignore comments
                 line = line.split('#')[0] #ignore comments
@@ -80,32 +82,34 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
 
                     lev.levitate(xs)
                     
-            
-                elif command in start_from_focal_point:
-                    current_points = groups[1:]
-                    x = L0(*current_points, iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,
-                           BEM_path=BEM_path, H=H, U_target=target_U, reflector=reflector)
-                    sig = signature[start_from_focal_point.index(command)]
-                    x = add_lev_sig(x, board=board,mode=sig)
-                    last_L = command
-
-                    if in_function is not None:
-                        functions[in_function].append(x)
-
-
-                    total_size += x.element_size() * x.nelement()
-                    if save_holo_name is not None or return_holos: 
-                        holograms.append(x)
-                    lev.levitate(x)
-
         
+                elif command in start_from_focal_point:
+                    current_points.append(groups[1:])
+                    if len(current_points) >= points_per_batch or (i + points_per_batch) >= points_per_batch:
+                        x = L0(*current_points, iterations=iterations, board=board, A=A, solver=solver, mesh=cut_mesh,
+                            BEM_path=BEM_path, H=H, U_target=target_U, reflector=reflector)
+                        sig = signature[start_from_focal_point.index(command)]
+                        x = add_lev_sig(x, board=board,mode=sig)
+                        last_L = command
 
-                    layer_z = float(groups[1].split(',')[2])
+                        if in_function is not None:
+                            functions[in_function].append(x)
+
+
+                        total_size += x.element_size() * x.nelement()
+                        if save_holo_name is not None or return_holos: 
+                            holograms.append(x)
+                        lev.levitate(x)
+
+            
+
+                        # layer_z = float(groups[1].split(',')[2])
 
                 elif command == 'L4':
                     lev.turn_off()
                 elif command == 'C0':
-                    current_points_ext = current_points + [extruder_text,]
+                    current_points_ext = current_points
+                    current_points_ext.append(extruder_text)
                     x = L0(*current_points_ext, iterations=iterations, board=board, A=A, solver=solver, 
                            mesh=cut_mesh,BEM_path=BEM_path, H=H, reflector=reflector)
                     try:
@@ -177,7 +181,7 @@ def read_lcode(pth:str, ids:tuple[int]=(1000,), mesh:Mesh=None, thickness:float=
                 else:
                     raise NotImplementedError(command)
                 
-                time.sleep(delay)
+                if delay > 0: time.sleep(delay)
 
     t1 = time.time_ns()
     if print_eval:
@@ -191,12 +195,16 @@ def L0(*args, solver:FunctionType=wgs, iterations:int=50, board:Tensor=TOP_BOARD
     '''
     @private
     '''
-    ps = []
-    for group in args:
-        group = [float(g) for g in group.split(',')]
-        p = create_points(1,1,group[0], group[1], group[2])
-        ps.append(p)
-    points = torch.concatenate(ps, dim=2) 
+    batches = []
+    for batch in args:
+        ps = []
+        for group in batch:
+            group = [float(g) for g in group.split(',')]
+            p = create_points(1,1,group[0], group[1], group[2])
+            ps.append(p)
+        points = torch.concatenate(ps, dim=2) 
+        batches.append(points)
+    points = torch.concatenate(batches, dim=0) 
 
     if (mesh is not None or reflector is not None) and A is None:
         if mesh is None and reflector is not None:
@@ -217,6 +225,7 @@ def L0(*args, solver:FunctionType=wgs, iterations:int=50, board:Tensor=TOP_BOARD
     else:
         raise NotImplementedError()
     
+
     return x
 
 def C0(): #Dispense Droplets

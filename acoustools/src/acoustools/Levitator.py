@@ -170,6 +170,12 @@ class LevitatorController():
             to_output = []
             to_output_amplitudes = []
 
+            if type(hologram) is Tensor and hologram.shape[0] > 1:
+                holos = []
+                for h in hologram:
+                    holos.append(h)
+                hologram = holos
+
             if type(hologram) is list:
                 num_geometries = len(hologram)
                 for phases_elem in hologram:

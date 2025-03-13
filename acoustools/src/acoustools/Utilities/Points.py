@@ -4,7 +4,6 @@ import torch
 from acoustools.Utilities.Setup import device
 
 
-
 def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float|None=None, min_pos:float=-0.06, max_pos:float = 0.06) -> Tensor:
     '''
     Creates a random set of N points in B batches in shape `Bx3xN` \n
@@ -28,7 +27,7 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
     elif N is None:
         raise ValueError("If N is not provided x,y and z need to be lists of points or single values")
 
-    points = torch.FloatTensor(B, 3, N).uniform_(min_pos,max_pos).to(device)
+    points = torch.zeros((B, 3, N)).to(device)
     
     if x is not None:
         if type(x) is float or type(x) is int:
@@ -36,6 +35,8 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
         elif type(x) is list:
             for i in range(N):
                 points[:,0,i] = x[i]
+    else:
+        points[:,0,:].uniform_(min_pos, max_pos)
     
     if y is not None:
         if type(y) is float or type(y) is int:
@@ -43,6 +44,8 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
         elif type(y) is list:
             for i in range(N):
                 points[:,1,i] = y[i]
+    else:
+        points[:,1,:].uniform_(min_pos, max_pos)
     
     if z is not None:
         if type(z) is float or type(z) is int:
@@ -50,6 +53,8 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
         elif type(z) is list:
             for i in range(N):
                 points[:,2,i] = z[i]
+    else:
+        points[:,2,:].uniform_(min_pos, max_pos)
 
 
     return points

@@ -6,7 +6,6 @@ from acoustools.Utilities.Utilities import is_batched_points
 import acoustools.Constants as Constants
 
 
-
 def forward_model(points:Tensor, transducers:Tensor|None = None) -> Tensor:
     '''
     Create the piston model forward propagation matrix for points and transducers\\
@@ -80,7 +79,10 @@ def forward_model_batched(points, transducers = TRANSDUCERS):
     points = torch.unsqueeze(points,1)
     points = points.expand((-1,M,-1,-1))
 
-    distance_axis = (transducers - points) **2
+    # distance_axis = (transducers - points) **2
+    # distance_axis_sub = transducers - points
+    distance_axis_sub = torch.sub(transducers, points)
+    distance_axis = distance_axis_sub * distance_axis_sub
     distance = torch.sqrt(torch.sum(distance_axis,dim=2))
     planar_distance= torch.sqrt(torch.sum(distance_axis[:,:,0:2,:],dim=2))
     
@@ -88,7 +90,7 @@ def forward_model_batched(points, transducers = TRANSDUCERS):
     directivity=1/2-torch.pow(bessel_arg,2)/16+torch.pow(bessel_arg,4)/384
     
     p = 1j*Constants.k*distance
-    phase = torch.e**(p)
+    phase = torch.exp(p)
 
     trans_matrix=2*Constants.P_ref*torch.multiply(torch.divide(phase,distance),directivity)
 

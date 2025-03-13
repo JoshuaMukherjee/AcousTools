@@ -4,7 +4,7 @@ from acoustools.Export import save_holograms, load_holograms
 
 path = "acoustools/tests/data/lcode/circle200.lcode"
 
-xs = read_lcode(path, ids=(-1,), return_holos =True, print_eval=True)
+xs = read_lcode(path, ids=(-1,), return_holos =True, print_eval=True, points_per_batch=32)
 
 cache_path = "acoustools/tests/data/lcode/cache/circle200.holo"
 

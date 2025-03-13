@@ -10,6 +10,7 @@ def constrain_amplitude(x:Tensor) -> Tensor:
     '''
     return x / torch.abs(x)
 
+
 def constrain_field(field:Tensor, target:Tensor) -> Tensor:
     '''
     Constrains the amplitude of points in field to be the same as target\n
@@ -17,7 +18,10 @@ def constrain_field(field:Tensor, target:Tensor) -> Tensor:
     :param target: complex number with target amplitude
     :return: constrained field
     '''
-    target_field = torch.multiply(target,torch.divide(field,torch.abs(field)))  
+    field_amp = torch.abs(field)
+    norm_field = field / field_amp
+    target_field = target * norm_field
+    # target_field = torch.multiply(target,torch.divide(field,torch.abs(field)))  
     return target_field
 
 def constrain_field_weighted(field:Tensor, target:Tensor, current:Tensor) -> tuple[Tensor, Tensor]:

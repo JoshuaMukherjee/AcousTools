@@ -11,6 +11,8 @@ from types import FunctionType
 
 from vedo import Mesh
 
+
+
 def wgs_solver_unbatched(A, b, K):
     '''
     @private
@@ -108,7 +110,7 @@ def wgs(points:Tensor,iter:int = 200, board:Tensor|None = None, A:Tensor|None = 
         return img,pha,act
     return act
 
-def gspat_solver(R,forward, backward, target, iterations):
+def gspat_solver(R,forward, backward, target, iterations,return_components=False):
     '''
     @private
     GS-PAT Solver for transducer phases\\
@@ -135,9 +137,12 @@ def gspat_solver(R,forward, backward, target, iterations):
     complex_hologram = torch.matmul(backward,target_field)
 #     keep phase 
     phase_hologram = torch.divide(complex_hologram,torch.abs(complex_hologram))
-    points = torch.matmul(forward,phase_hologram)
+    if return_components:
+        points = torch.matmul(forward,phase_hologram)
 
-    return phase_hologram, points
+        return phase_hologram, points
+    else:
+        return phase_hologram
 
 def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:Tensor|None=None, 
           R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False) -> Tensor:
@@ -184,10 +189,13 @@ def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:T
             b = torch.ones(points.shape[2],1).to(device)+0j
         else:
             b = torch.ones(points.shape[1],1).to(device)+0j
-    phase_hologram,pres = gspat_solver(R,A,B,b, iterations)
+    
     
     if return_components:
+        phase_hologram,pres = gspat_solver(R,A,B,b, iterations,return_components)
         return phase_hologram,pres
+    
+    phase_hologram = gspat_solver(R,A,B,b, iterations,return_components)
     return phase_hologram
 
 
