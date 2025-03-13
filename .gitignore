@@ -6,3 +6,4 @@ read_beast_file.py
 *.mp4
 *.png
 times.txt
+profile_output*
