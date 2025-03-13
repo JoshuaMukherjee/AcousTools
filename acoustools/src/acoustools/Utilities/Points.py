@@ -46,7 +46,7 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
     
     if z is not None:
         if type(z) is float or type(z) is int:
-            points[:,2,:] = y
+            points[:,2,:] = z
         elif type(z) is list:
             for i in range(N):
                 points[:,2,i] = z[i]
