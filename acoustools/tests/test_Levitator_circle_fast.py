@@ -15,6 +15,7 @@ if __name__ == '__main__':
     if COMPUTE:
         xs = []
         for i in range(N):
+
             t = ((3.1415926*2) / N) * i
             x = radius * math.sin(t)
             z = radius * math.cos(t)
@@ -32,7 +33,8 @@ if __name__ == '__main__':
 
     print('Finished Computing \nConnecting to PAT...')
     try:
-        lev = LevitatorController(ids=(999,1000))
+        # lev = LevitatorController(ids=(999,1000))
+        lev = LevitatorController(ids=(73,53))
         print('Connected')
         lev.levitate(xs[0])
 
