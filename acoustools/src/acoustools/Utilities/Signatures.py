@@ -68,7 +68,6 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
             sig[0,0,:][mask[0,:] == 1] = torch.pi
             sig[0,1,:][mask[0,:] == 1] = 0
 
-    print(act.shape, sig.shape)
     x = torch.abs(act) * torch.exp(1j* (torch.angle(act) + sig))
 
     x = torch.reshape(x,s)
