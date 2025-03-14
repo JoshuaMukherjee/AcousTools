@@ -4,7 +4,7 @@ from acoustools.Utilities import create_points
 import torch
 import line_profiler
 
-N=100
+N=10000
 
 @line_profiler.profile
 def run():
@@ -15,7 +15,6 @@ def run():
         if len(ps) == 32:
             p = torch.concatenate(ps, axis=0)
             ps = []
-            print(p.shape)
             x = gspat(p, iterations=10)
 
 run()

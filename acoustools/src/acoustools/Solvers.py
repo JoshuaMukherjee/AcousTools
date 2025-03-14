@@ -110,6 +110,7 @@ def wgs(points:Tensor,iter:int = 200, board:Tensor|None = None, A:Tensor|None = 
         return img,pha,act
     return act
 
+
 def gspat_solver(R,forward, backward, target, iterations,return_components=False):
     '''
     @private
@@ -143,6 +144,7 @@ def gspat_solver(R,forward, backward, target, iterations,return_components=False
         return phase_hologram, points
     else:
         return phase_hologram
+
 
 def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:Tensor|None=None, 
           R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False) -> Tensor:
