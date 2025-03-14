@@ -159,21 +159,6 @@ def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:T
     :param iterations: Number of iterations to use
     :param return_components: IF True will return `hologram, pressure` else will return `hologram`, default True
     :return: Hologram
-    
-    ```Python
-    from acoustools.Solvers import wgs
-    from acoustools.Utilities import create_points, propagate_abs
-
-    p = create_points(1,1)
-    print(p)
-    x = wgs(p)
-    print(propagate_abs(x,p))
-    
-    p = p.squeeze(0)
-    print(p)
-    x = wgs(p)
-    print(propagate_abs(x,p))
-    ```
     '''
 
     if board is None:
