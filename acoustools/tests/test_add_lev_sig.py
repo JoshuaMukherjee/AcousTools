@@ -1,4 +1,4 @@
-from acoustools.Utilities import create_points, add_lev_sig, propagate_abs, TRANSDUCERS, BOTTOM_BOARD
+from acoustools.Utilities import create_points, add_lev_sig, propagate_abs, TRANSDUCERS, BOTTOM_BOARD, device
 from acoustools.Solvers import wgs
 from acoustools.Visualiser import Visualise_single
 
@@ -18,13 +18,13 @@ N = len(modes)
 
 fig = plt.figure()
 
-A = torch.tensor((-0.02, 0.02,0))
-B = torch.tensor((0.02, 0.02,0))
-C = torch.tensor((-0.02, -0.02,0))
+A = torch.tensor((-0.02, 0.02,0)).to(device)
+B = torch.tensor((0.02, 0.02,0)).to(device)
+C = torch.tensor((-0.02, -0.02,0)).to(device)
 
-D = torch.tensor((-0.02,0, 0.02))
-E = torch.tensor((0.02,0, 0.02))
-F = torch.tensor((-0.02,0, -0.02))
+D = torch.tensor((-0.02,0, 0.02)).to(device)
+E = torch.tensor((0.02,0, 0.02)).to(device)
+F = torch.tensor((-0.02,0, -0.02)).to(device)
 
 
 M=6
