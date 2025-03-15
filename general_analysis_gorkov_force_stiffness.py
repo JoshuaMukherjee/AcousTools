@@ -5,6 +5,7 @@ from acoustools.BEM import compute_E, propagate_BEM_pressure, BEM_gorkov_analyti
 from acoustools.Visualiser import Visualise
 import acoustools.Constants as c
 from BEM_trap_force import BEM_trap_force
+from BEM_trap_stiffness import BEM_trap_stiffness
 
 import vedo, torch
 
@@ -34,8 +35,12 @@ trap_up = p
 trap_up[:,2] += c.wavelength/4
 print("trap up: ", trap_up)
 # print("bem pressure: ", propagate_BEM_pressure(x,trap_up,reflector,TOP_BOARD,path=r"C:\Users\Abdullah Saeed\Documents\BEMMedia",H=H))
-print("gorkov potential: ", BEM_gorkov_analytical(x,trap_up,reflector,TOP_BOARD,path=r"C:\Users\Abdullah Saeed\Documents\BEMMedia",H=H))
-print("trap force (Fx, Fy, Fz): ", BEM_trap_force(x,trap_up,reflector,TOP_BOARD,path=r"C:\Users\Abdullah Saeed\Documents\BEMMedia",H=H))
+print("gorkov potential (U): ", BEM_gorkov_analytical(x,trap_up,reflector,TOP_BOARD,path=r"C:\Users\Abdullah Saeed\Documents\BEMMedia",H=H, return_components=False))
+print("gorkov potential components (U, a, b)): ", BEM_gorkov_analytical(x,trap_up,reflector,TOP_BOARD,path=r"C:\Users\Abdullah Saeed\Documents\BEMMedia",H=H, return_components=True))
+print("trap force (Fx, Fy, Fz): ", BEM_trap_force(x,trap_up,reflector,TOP_BOARD,path=r"C:\Users\Abdullah Saeed\Documents\BEMMedia",H=H, return_components=True))
+print("trap force (F): ", BEM_trap_force(x,trap_up,reflector,TOP_BOARD,path=r"C:\Users\Abdullah Saeed\Documents\BEMMedia",H=H, return_components=False))
+print("trap up: ", trap_up)
+print("trap stiffness: ", BEM_trap_stiffness(x,trap_up,reflector,TOP_BOARD,path=r"C:\Users\Abdullah Saeed\Documents\BEMMedia",H=H))
 
 Visualise(A,B,C, x, colour_functions=[propagate_BEM_pressure],colour_function_args=[{"scatterer":reflector,"board":TOP_BOARD,"path":r"C:\Users\Abdullah Saeed\Documents\BEMMedia",'H':H}],vmax=5000, show=True,res=[256,256],points=trap_up)
 
