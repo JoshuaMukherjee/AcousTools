@@ -6,7 +6,7 @@ from vedo import Mesh
 
 def BEM_trap_force(activations: Tensor, points: Tensor, scatterer: Mesh|None|str=None,
                        board: Tensor|None=None, H: Tensor|None=None, E: Tensor|None=None, 
-                       delta: float=1e-6, dims: str='XYZ', return_components: bool=False, **params) -> Tensor:
+                       delta: float=0.001, dims: str='XYZ', return_components: bool=False, **params) -> Tensor:
     '''
     Calculates acoustic radiation trap force using finite differences of the Gorkov potential (taking negative gradient)
     
