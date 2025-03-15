@@ -6,7 +6,7 @@ from vedo import Mesh
 
 def BEM_trap_force(activations: Tensor, points: Tensor, scatterer: Mesh|None|str=None,
                        board: Tensor|None=None, H: Tensor|None=None, E: Tensor|None=None, 
-                       delta: float=1e-6, dims: str='XYZ', **params) -> Tensor:
+                       delta: float=1e-6, dims: str='XYZ', return_components: bool=False, **params) -> Tensor:
     '''
     Calculates acoustic radiation trap force using finite differences of the Gorkov potential (taking negative gradient)
     
@@ -30,7 +30,7 @@ def BEM_trap_force(activations: Tensor, points: Tensor, scatterer: Mesh|None|str
     N = points.shape[2]  #Number of points
     
     #Initialise force tensor
-    force = torch.zeros(B, 3, N, device=device)
+    force_xyz = torch.zeros(B, 3, N, device=device)
     
     #Calculate X component of force
     if 'X' in dims.upper():
@@ -51,7 +51,7 @@ def BEM_trap_force(activations: Tensor, points: Tensor, scatterer: Mesh|None|str
         dU_dx = (U_plus_x - U_minus_x) / (2 * delta)
         
         #Force is negative gradient
-        force[:, 0, :] = -dU_dx
+        force_xyz[:, 0, :] = -dU_dx
     
     #Calculate Y component of force
     if 'Y' in dims.upper():
@@ -66,7 +66,7 @@ def BEM_trap_force(activations: Tensor, points: Tensor, scatterer: Mesh|None|str
         
         dU_dy = (U_plus_y - U_minus_y) / (2 * delta)
     
-        force[:, 1, :] = -dU_dy
+        force_xyz[:, 1, :] = -dU_dy
     
     #Calculate Z component of force
     if 'Z' in dims.upper():
@@ -81,6 +81,12 @@ def BEM_trap_force(activations: Tensor, points: Tensor, scatterer: Mesh|None|str
         
         dU_dz = (U_plus_z - U_minus_z) / (2 * delta)
         
-        force[:, 2, :] = -dU_dz
+        force_xyz[:, 2, :] = -dU_dz
     
-    return force
+    #F = fx + fy + fz (we already made each component negative by calculating negative gradients of gorkov potential)
+    force = torch.sum(force_xyz, dim=1) 
+    if return_components:
+        return force_xyz
+    else:
+        return force
+        
