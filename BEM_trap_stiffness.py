@@ -29,7 +29,12 @@ def BEM_trap_stiffness(activations: Tensor, points: Tensor, scatterer: Mesh|None
     dz = create_points(1,1,0,0,delta)
 
 
-
+    #output of BEM_trap_force is trap force (Fx, Fy, Fz):  tensor([[[ 2.3078e-05],
+        #  [-3.6380e-06],
+        #  [-1.4968e-03]]]
+        # so i want to access this
+    Fx1 =     
+    
     Fx1 = BEM_trap_force(activations,points + dx, scatterer=scatterer,board=board, return_components=True, **params)[0]
     Fx2 = BEM_trap_force(activations,points - dx, scatterer=scatterer, board=board, return_components=True, **params)[0]
 
