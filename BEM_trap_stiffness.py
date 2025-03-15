@@ -30,7 +30,7 @@ def BEM_trap_stiffness(activations: Tensor, points: Tensor, scatterer: Mesh|None
 
     
     Fx1 = BEM_trap_force(activations,points + dx, scatterer=scatterer,board=board, return_components=True, **params).squeeze()[0].item()
-    print("Fx1: ", Fx1)
+    # print("Fx1: ", Fx1)
     Fx2 = BEM_trap_force(activations,points - dx, scatterer=scatterer, board=board, return_components=True, **params).squeeze()[0].item()
 
     Fx = ((Fx1 - Fx2) / (2*delta))
