@@ -17,6 +17,7 @@ def BEM_trap_stiffness(activations: Tensor, points: Tensor, scatterer: Mesh|None
     :param points: Points of interest
     :param board: Transducers to use
     :param delta: finite differences step size
+    :params: includes any additional parameters such as BEMMedia folder path
     
     '''
 
@@ -29,18 +30,18 @@ def BEM_trap_stiffness(activations: Tensor, points: Tensor, scatterer: Mesh|None
 
 
 
-    Fx1 = BEM_trap_force(activations,points + dx,board=board, return_components=True)[0]
-    Fx2 = BEM_trap_force(activations,points - dx,board=board, return_components=True)[0]
+    Fx1 = BEM_trap_force(activations,points + dx,board=board, return_components=True, **params)[0]
+    Fx2 = BEM_trap_force(activations,points - dx,board=board, return_components=True, **params)[0]
 
     Fx = ((Fx1 - Fx2) / (2*delta))
 
-    Fy1 = BEM_trap_force(activations,points + dy,board=board, return_components=True)[1]
-    Fy2 = BEM_trap_force(activations,points - dy,board=board, return_components=True)[1]
+    Fy1 = BEM_trap_force(activations,points + dy,board=board, return_components=True, **params)[1]
+    Fy2 = BEM_trap_force(activations,points - dy,board=board, return_components=True, **params)[1]
 
     Fy = ((Fy1 - Fy2) / (2*delta))
 
-    Fz1 = BEM_trap_force(activations,points + dz,board=board, return_components=True)[2]
-    Fz2 = BEM_trap_force(activations,points - dz,board=board, return_components=True)[2]
+    Fz1 = BEM_trap_force(activations,points + dz,board=board, return_components=True, **params)[2]
+    Fz2 = BEM_trap_force(activations,points - dz,board=board, return_components=True, **params)[2]
     
     Fz = ((Fz1 - Fz2) / (2*delta))
 

@@ -18,6 +18,7 @@ def BEM_trap_force(activations: Tensor, points: Tensor, scatterer: Mesh|None|str
     :param E: Precomputed E - if None E will be computed
     :param delta: Small displacement for finite difference calculation
     :param dims: Dimensions to calculate force in (default: XYZ)
+    :params: includes any additional parameters such as BEMMedia folder path
     :return: Force vector for each point [Fx, Fy, Fz]
     '''
     #Check if points is properly batched
