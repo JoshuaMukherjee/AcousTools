@@ -30,8 +30,8 @@ def BEM_trap_force(activations: Tensor, points: Tensor, scatterer: Mesh|None|str
     B = points.shape[0]  #Batch size
     N = points.shape[2]  #Number of points
     
-    #Initialise force tensor
-    force_xyz = torch.zeros(B, 3, N, device=device)
+    #Initialise force vector
+    force_xyz = [-9999] * 3
     
     #Calculate X component of force
     if 'X' in dims.upper():
@@ -52,7 +52,7 @@ def BEM_trap_force(activations: Tensor, points: Tensor, scatterer: Mesh|None|str
         dU_dx = (U_plus_x - U_minus_x) / (2 * delta)
         
         #Force is negative gradient
-        force_xyz[:, 0, :] = -dU_dx
+        force_xyz[0] = -dU_dx
     
     #Calculate Y component of force
     if 'Y' in dims.upper():
@@ -67,7 +67,7 @@ def BEM_trap_force(activations: Tensor, points: Tensor, scatterer: Mesh|None|str
         
         dU_dy = (U_plus_y - U_minus_y) / (2 * delta)
     
-        force_xyz[:, 1, :] = -dU_dy
+        force_xyz[1] = -dU_dy
     
     #Calculate Z component of force
     if 'Z' in dims.upper():
@@ -82,10 +82,10 @@ def BEM_trap_force(activations: Tensor, points: Tensor, scatterer: Mesh|None|str
         
         dU_dz = (U_plus_z - U_minus_z) / (2 * delta)
         
-        force_xyz[:, 2, :] = -dU_dz
+        force_xyz[2] = -dU_dz
     
     #F = fx + fy + fz (we already made each component negative by calculating negative gradients of gorkov potential)
-    force = torch.sum(force_xyz, dim=1) 
+    force = force_xyz[0] + force_xyz[1] + force_xyz[2]
     
     if return_components:
         return force_xyz
