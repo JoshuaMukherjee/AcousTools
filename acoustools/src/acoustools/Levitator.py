@@ -7,6 +7,7 @@ from acoustools.Utilities import get_convert_indexes
 from torch import Tensor
 from typing import Literal
 
+import line_profiler
 
 class LevitatorController():
     '''
@@ -115,7 +116,7 @@ class LevitatorController():
 
             os.chdir(cwd)
 
-            self.IDX = get_convert_indexes(256*self.board_number)
+            self.IDX = get_convert_indexes(256*self.board_number).cpu().detach()
     
     
     def send_message(self, phases, amplitudes=None, relative_amplitude=1, num_geometries = 1, sleep_ms = 0, loop=False, num_loops = 0):
@@ -153,7 +154,6 @@ class LevitatorController():
             self.levitatorLib.set_new_frame_rate.argtypes = [ctypes.c_void_p, ctypes.c_int]
             new_frame_rate = self.levitatorLib.set_new_frame_rate(self.controller, frame_rate)
 
-
     def levitate(self, hologram:list[Tensor]|Tensor, relative_amplitude:int=-1, permute:bool=True, sleep_ms:float = 0, loop:bool=False, num_loops:int=0):
         '''
         Send a single phase map to the levitator - This is the recomended function to use as will deal with dtype conversions etc
@@ -173,13 +173,14 @@ class LevitatorController():
             if type(hologram) is Tensor and hologram.shape[0] > 1:
                 holos = []
                 for h in hologram:
-                    holos.append(h)
+                    holos.append(h.unsqueeze(0).cpu().detach())
                 hologram = holos
 
             if type(hologram) is list:
                 #chunk this up - blocks of 32....
                 num_geometries = len(hologram)
                 for phases_elem in hologram:
+                    phases_elem = phases_elem.cpu().detach()
 
                     if permute:
                         phases_elem = phases_elem[:,self.IDX]
@@ -191,11 +192,12 @@ class LevitatorController():
                     else:
                         amp_elem = torch.ones_like(phases_elem)
             
-                    to_output = to_output + phases_elem.squeeze().cpu().detach().tolist()
-                    to_output_amplitudes = to_output_amplitudes + amp_elem.squeeze().cpu().detach().tolist()
+                    to_output = to_output + phases_elem.squeeze().tolist()
+                    to_output_amplitudes = to_output_amplitudes + amp_elem.squeeze().tolist()
             else:
                 num_geometries = 1
                 if permute:
+                        hologram = hologram.cpu().detach()
                         hologram = hologram[:,self.IDX]
 
                 if torch.is_complex(hologram):
@@ -203,8 +205,8 @@ class LevitatorController():
                         hologram = torch.angle(hologram)
                 else:
                         amp = torch.ones_like(hologram)
-                to_output = hologram[0].squeeze().cpu().detach().tolist()
-                to_output_amplitudes = amp[0].squeeze().cpu().detach().tolist()
+                to_output = hologram[0].squeeze().tolist()
+                to_output_amplitudes = amp[0].squeeze().tolist()
 
 
             phases = (ctypes.c_float * (256*self.board_number *num_geometries))(*to_output)
