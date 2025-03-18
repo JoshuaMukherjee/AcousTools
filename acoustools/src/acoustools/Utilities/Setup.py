@@ -1,7 +1,7 @@
 import torch, sys
 from typing import Literal 
 
-DTYPE = torch.complex32
+DTYPE = torch.complex64
 '''
 Data type to use for matricies - use `.to(DTYPE)` to convert
 '''
