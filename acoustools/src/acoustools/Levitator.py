@@ -177,6 +177,7 @@ class LevitatorController():
                 hologram = holos
 
             if type(hologram) is list:
+                #chunk this up - blocks of 32....
                 num_geometries = len(hologram)
                 for phases_elem in hologram:
 
