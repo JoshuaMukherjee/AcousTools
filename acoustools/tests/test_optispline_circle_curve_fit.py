@@ -1,6 +1,6 @@
 from acoustools.Paths.Bezier import create_bezier_circle, interpolate_bezier, close_bezier
 from acoustools.Paths.OptiSpline import OptiSpline
-from acoustools.Optimise.OptiSpline_Objectives import optispline_min_distance_control_points
+from acoustools.Optimise.OptiSpline_Objectives import optispline_min_distance_control_points, optispline_min_acceleration_position
 from acoustools.Paths import interpolate_arc
 from acoustools.Utilities import create_points
 
@@ -28,8 +28,8 @@ target_circle = interpolate_arc(start,origin=origin, n=n)
 target_circle = [p+create_points(1,1, x=math.sin(6*i/6.28)/100, y=math.sin(6*i/6.28)/100, z=0 ) for i,p in enumerate(target_circle)]  
 
 
-spline, saved = OptiSpline(spline_circle,target_circle,optispline_min_distance_control_points,n=int(n/N), 
-                    optimise_start=True, C1=True, get_intermediates=True, iters=100, lr=0.001)
+spline, saved = OptiSpline(spline_circle,target_circle,optispline_min_acceleration_position,n=int(n/N), 
+                    optimise_start=True, C1=True, get_intermediates=True, iters=100, lr=0.001, objective_params={'alpha':7e-6})
 
 
 fig = plt.figure()
