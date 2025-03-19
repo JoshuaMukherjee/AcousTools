@@ -4,6 +4,7 @@ import itertools, math
 
 from acoustools.Paths.Distances import total_distance
 from acoustools.Utilities.Setup import device
+from acoustools.Utilities.Points import create_points
 
 def interpolate_path(path: list[Tensor], n:int, return_distance:bool = False) -> list[Tensor]:
     '''

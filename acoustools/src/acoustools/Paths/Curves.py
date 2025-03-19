@@ -1,7 +1,10 @@
+# CURVES MUST DEFINE A get_data THAT RETURNS THE PARAMETERS FOR ITS CONSTRUCTOR SUCH THAT `curve==type(curve)(curve.get_data())`
+
 class CubicBezier():
     '''
     Cublic Bezier class defined by `start, end, offset_1, offset_2` \n
     See https://www.desmos.com/calculator/gtngeffijw for interactive Bezier demo
+    
     '''
 
     def __init__(self, start, end, offset_1, offset_2):
@@ -30,7 +33,9 @@ class CubicBezier():
             raise StopIteration
         
 
-    def get_data(self):
+    def get_data(self): 
+        
+
         return self.start, self.end, self.offset_1, self.offset_2
 
     def __getitem__(self, i):
@@ -45,6 +50,7 @@ class CubicBezier():
     def get_OptiSpline_parameters(self,start=False):
         params = [self.offset_1, self.offset_2]
         if start:
+            params.append(self.start)
             params.append(self.end)
         return params
     
@@ -84,3 +90,13 @@ class Spline():
     
     def __str__(self):
         return "Spline: "  + str(self.curves)
+    
+    def clone(self):
+        new_curves = []
+        for curve in self.curves:
+            curve_type = type(curve)
+            data = curve.get_data()
+            data = [d.clone() for d in data]
+            new = curve_type(*data)
+            new_curves.append(new)
+        return Spline(new_curves)

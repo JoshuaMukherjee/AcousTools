@@ -1,5 +1,5 @@
 
-import torch
+import torch, copy
 from torch import Tensor
 from types import FunctionType
 
@@ -8,7 +8,7 @@ from acoustools.Paths.Curves import Spline
 
 def OptiSpline(spline:Spline, target_points:list[Tensor], objective: FunctionType, 
                n:int=20, C1:bool=True, optimiser:torch.optim.Optimizer=torch.optim.Adam, 
-               lr: float=0.01, objective_params:dict={},iters:int=200,log=True, optimise_start:bool=True ):
+               lr: float=0.01, objective_params:dict={},iters:int=200,log=True, optimise_start:bool=True, get_intermediates = False ):
     '''
     Optimiser for AcousTools bezier Splines \n
     :param bezier: Bezier spline as list of (start, end, offset1, offset2) where offsets are from start 
@@ -26,6 +26,7 @@ def OptiSpline(spline:Spline, target_points:list[Tensor], objective: FunctionTyp
 
     '''
     params = []
+    saved = []
 
     
     for curve in spline:
@@ -47,8 +48,13 @@ def OptiSpline(spline:Spline, target_points:list[Tensor], objective: FunctionTyp
         loss.backward()
         optim.step()
         if C1: spline=bezier_to_C1(spline, get_points=False)
+        
+
+        if get_intermediates: saved.append(spline.clone())
 
     if C1: spline=bezier_to_C1(spline, get_points=False)
 
+    if get_intermediates:
+        return spline, saved
 
     return spline

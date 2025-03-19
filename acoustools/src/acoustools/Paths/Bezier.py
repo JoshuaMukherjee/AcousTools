@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 
-import itertools
+import itertools, math
 
 try:
     from svgpathtools import svg2paths, Line
@@ -252,12 +252,12 @@ def close_bezier(spline:Spline, n:int=20)  -> tuple[list[Tensor]]:
     new_b = [end[1], start[0],torch.zeros_like(start[0]),torch.zeros_like(start[0])]
     spline.add_curve(CubicBezier(*new_b))
 
-    points =[]
-    for bez in spline:
-        points += interpolate_bezier(bez, n)
-
-
-    return points,spline
+    if n != 0:
+        points =[]
+        for bez in spline:
+            points += interpolate_bezier(bez, n)
+        return points,spline
+    return spline
 
 def bezier_to_distance(bezier:CubicBezier, max_distance:float=0.001, start_n=20):
     '''
@@ -277,3 +277,41 @@ def bezier_to_distance(bezier:CubicBezier, max_distance:float=0.001, start_n=20)
         points += interpolate_points(p1,p2, n)
     
     return points
+
+def create_bezier_circle(N=10, origin=(0,0,0), radius=0.01, plane='xy'):
+    angle = 3.14*2 / N
+    origin = create_points(1,1,origin[0], origin[1],origin[2])
+    beziers = []
+    for i in range(N):
+        pos_1 = radius * math.sin(angle*i) 
+        pos_2 = radius * math.cos(angle*i)
+
+        if plane == 'xy':
+            start = create_points(1,1,pos_1,pos_2,0) + origin
+        elif plane == 'xz':
+            start = create_points(1,1,pos_1,0,pos_2) + origin
+        elif plane == 'yz':
+            start = create_points(1,1,0,pos_1,pos_2) + origin
+        else:
+            raise ValueError("Plane not valid. Must be xy, xz or yz")
+        
+        pos_3 = radius * math.sin(angle*(i+1)) 
+        pos_4 = radius * math.cos(angle*(i+1))
+
+        if plane == 'xy':
+            end = create_points(1,1,pos_3,pos_4,0) + origin
+        elif plane == 'xz':
+            end = create_points(1,1,pos_3,0,pos_4) + origin
+        elif plane == 'yz':
+            end = create_points(1,1,0,pos_3,pos_4) + origin
+        else:
+            raise ValueError("Plane not valid. Must be xy, xz or yz")
+
+        offset_1 = create_points(1,1,0,0,0)
+
+        bez = CubicBezier(start,end,offset_1, offset_1.clone())
+        beziers.append(bez)
+    spline = Spline(beziers)
+
+    return spline
+
