@@ -5,22 +5,22 @@ from acoustools.Optimise.OptiSpline_Objectives import optispline_min_distance_co
 import matplotlib.pyplot as plt
 
 pth = 'acoustools/tests/data/svgs/fish.svg'
-points_old, bezier_non_c1 = svg_to_beziers(pth, True, dx=-0.06, dy=-0.06)
+points_old, spline_non_C1 = svg_to_beziers(pth, True, dx=-0.06, dy=-0.06)
 
-points_c1, bezier =  bezier_to_C1(bezier_non_c1)
+points_c1, spline =  bezier_to_C1(spline_non_C1)
 
 
-new_bezier = OptiSpline(bezier, points_old, optispline_min_distance_control_points,iters=300)
+new_spline = OptiSpline(spline, points_old, optispline_min_distance_control_points,iters=300)
 points=[]
-for (P0, P3, c11, c12) in new_bezier:
-        points += interpolate_bezier(P0,P3, c11, c12, 20)
+for bez in new_spline:
+        points += interpolate_bezier(bez, 20)
 
 
-points_opy_c1, bezier_opt_c1 =  bezier_to_C1(new_bezier)
+points_opy_c1, spline_opt_c1 =  bezier_to_C1(new_spline)
 
 points_opt_c1 = []
-for (P0, P3, c11, c12) in bezier_opt_c1:
-        points_opt_c1 += interpolate_bezier(P0,P3, c11, c12, 20)
+for bez in spline_opt_c1:
+        points_opt_c1 += interpolate_bezier(bez, 20)
 
 
 

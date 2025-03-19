@@ -4,12 +4,13 @@ import matplotlib.pyplot as plt
 
 
 pth = 'acoustools/tests/data/svgs/Complex.svg'
-_, bezier_non_c1 = svg_to_beziers(pth, True, dx=-0.06, dy=-0.06)
-bezier = bezier_non_c1[0]
+_, spline = svg_to_beziers(pth, True, dx=-0.06, dy=-0.06)
+bezier = spline[0]
+
 
 points = bezier_to_distance(bezier, max_distance=0.01)
 
-bez_points = interpolate_bezier(*bezier, n=10)
+bez_points = interpolate_bezier(bezier, n=10)
 
 pts = [[p.detach().cpu()[:,0].item(),p.detach().cpu()[:,1].item()] for p in bez_points]
 xs = [p[0] for p in pts]

@@ -1,5 +1,6 @@
 from acoustools.Paths import interpolate_bezier
 from acoustools.Utilities import create_points
+from acoustools.Paths.Curves import CubicBezier
 
 import torch
 
@@ -16,9 +17,14 @@ offset_3 =  create_points(1,1, z=0) - middle
 
 N =10
 
-points = interpolate_bezier(start, middle, offset_1, offset_2,n=N)
+bez1 = CubicBezier(start, middle, offset_1, offset_2)
+bez2 = CubicBezier(middle, end, middle - (start+offset_2), offset_3)
 
-points2 = interpolate_bezier(middle, end, middle - (start+offset_2), offset_3,n=N)
+
+
+points = interpolate_bezier(bez1,n=N)
+
+points2 = interpolate_bezier(bez2,n=N)
 
 
 
