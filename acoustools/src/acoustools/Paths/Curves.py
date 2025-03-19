@@ -1,4 +1,8 @@
 class CubicBezier():
+    '''
+    Cublic Bezier class defined by `start, end, offset_1, offset_2` \n
+    See https://www.desmos.com/calculator/gtngeffijw for interactive Bezier demo
+    '''
 
     def __init__(self, start, end, offset_1, offset_2):
         self.start = start
@@ -35,6 +39,9 @@ class CubicBezier():
     def __len__(self):
         return 4
     
+    def __str__(self):
+        return f"Bezier: Start{self.start}, End{self.end}, Offset_1{self.offset_1}, Offset_2{self.offset_2}"
+    
     def get_OptiSpline_parameters(self,start=False):
         params = [self.offset_1, self.offset_2]
         if start:
@@ -43,6 +50,9 @@ class CubicBezier():
     
 
 class Spline():
+    '''
+    Container for combining curve objects into a spline
+    '''
 
     def __init__(self,curves:list = None):
         if curves is None:

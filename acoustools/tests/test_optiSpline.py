@@ -16,13 +16,6 @@ for bez in new_spline:
         points += interpolate_bezier(bez, 20)
 
 
-points_opy_c1, spline_opt_c1 =  bezier_to_C1(new_spline)
-
-points_opt_c1 = []
-for bez in spline_opt_c1:
-        points_opt_c1 += interpolate_bezier(bez, 20)
-
-
 
 pts = [[p.detach().cpu()[:,0].item(),p.detach().cpu()[:,1].item()] for p in points]
 xs = [p[0] for p in pts]

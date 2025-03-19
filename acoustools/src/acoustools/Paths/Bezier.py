@@ -238,7 +238,7 @@ def bezier_to_C1(spline:Spline, check_C0:bool=True, n:int=20) -> tuple[list[Tens
 
 def close_bezier(spline:Spline, n:int=20)  -> tuple[list[Tensor]]:
     '''
-    Links the last point in a bezier to the start of it with a new bezier
+    Links the last point in a bezier to the start of it with a new bezier \n
     :param bezier: Bezier spline to close as list of (start, end, offset1, offset2) where offsets are from start 
     :param n: number of points to sample
     :returns points,bezier: points,bezier
@@ -258,6 +258,13 @@ def close_bezier(spline:Spline, n:int=20)  -> tuple[list[Tensor]]:
     return points,spline
 
 def bezier_to_distance(bezier:CubicBezier, max_distance:float=0.001, start_n=20):
+    '''
+    Samples bezier to have at most max_distance between points. \n
+    :param bezier:`acoustools.Paths.Curves.Bezier` object
+    :param max_distance: maximum straight line distance between points
+    :param start_n: number of points to start
+    :returns points:
+    '''
     bezier_points = interpolate_bezier(bezier,n=start_n)
 
     points = []
