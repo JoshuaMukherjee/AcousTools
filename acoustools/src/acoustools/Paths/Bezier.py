@@ -49,6 +49,7 @@ def interpolate_bezier(bezier:CubicBezier, n:int=100) -> list[Tensor]:
 
     for i in range(n):
         t = i/n
+        # THIS IS QUITE SLOW - REDUCE THIS TO ONE LINE - 
         P5 = (1-t)*P1 + t*P2
         P6 = (1-t)*P2 + t*P3
         P7 = (1-t)*P3 + t*P4
@@ -184,8 +185,7 @@ def svg_to_beziers(pth:str, flip_y:bool= False, n:int=20, dx:float=0, dy:float=0
 
     return points, Spline(control_points)
 
-
-def bezier_to_C1(spline:Spline, check_C0:bool=True, n:int=20) -> tuple[list[Tensor]]:
+def bezier_to_C1(spline:Spline, check_C0:bool=True, n:int=20, get_points=True) -> tuple[list[Tensor]]:
     '''
     Converts a spline of beziers to be C1 continuous (https://en.wikipedia.org/wiki/Composite_B%C3%A9zier_curve#Smooth_joining)
     :param spline: spline of curves to convert  
@@ -228,13 +228,15 @@ def bezier_to_C1(spline:Spline, check_C0:bool=True, n:int=20) -> tuple[list[Tens
         new_spline[0] = CubicBezier(P3, P6, P4_offset, c22)
 
 
+    if get_points:
+        points =[]
+        for bez in new_spline:
+            points += interpolate_bezier(bez, n)
+    
+    
+        return points,new_spline
 
-    points =[]
-    for bez in new_spline:
-        points += interpolate_bezier(bez, n)
-    
-    
-    return points,new_spline
+    return new_spline
 
 def close_bezier(spline:Spline, n:int=20)  -> tuple[list[Tensor]]:
     '''

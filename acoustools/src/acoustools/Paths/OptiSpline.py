@@ -6,8 +6,6 @@ from types import FunctionType
 from acoustools.Paths.Bezier import bezier_to_C1
 from acoustools.Paths.Curves import Spline
 
-
-
 def OptiSpline(spline:Spline, target_points:list[Tensor], objective: FunctionType, 
                n:int=20, C1:bool=True, optimiser:torch.optim.Optimizer=torch.optim.Adam, 
                lr: float=0.01, objective_params:dict={},iters:int=200,log=True, optimise_start:bool=True ):
@@ -48,9 +46,9 @@ def OptiSpline(spline:Spline, target_points:list[Tensor], objective: FunctionTyp
 
         loss.backward()
         optim.step()
-        if C1: _,spline=bezier_to_C1(spline)
+        if C1: spline=bezier_to_C1(spline, get_points=False)
 
-    if C1: _,spline=bezier_to_C1(spline)
+    if C1: spline=bezier_to_C1(spline, get_points=False)
 
 
     return spline
