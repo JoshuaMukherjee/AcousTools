@@ -1,10 +1,13 @@
 from acoustools.Solvers import gspat
 from acoustools.Utilities import create_points
+from acoustools.Levitator import LevitatorController
 
 import torch
 import line_profiler
 
-N=100
+N=10000
+
+lev = LevitatorController(ids=(73,53))
 
 @line_profiler.profile
 def run():
@@ -15,7 +18,13 @@ def run():
         if len(ps) == 32:
             p = torch.concatenate(ps, axis=0)
             ps = []
-            print(p.shape)
             x = gspat(p, iterations=10)
+            xs = []
+            for i in x:
+                xs.append(i.unsqueeze(0))
+            lev.levitate(xs)
 
-run()
+try:
+    run()
+except KeyboardInterrupt:
+    pass

@@ -46,7 +46,7 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
     if sig is None:
         sig = torch.ones_like(act)
         if mode == 'Trap':
-            sig = torch.cat([torch.ones_like(act[:,0,:]) * torch.pi, torch.zeros_like(act[:,0,:])])
+            sig = torch.stack([torch.ones_like(act[:,0,:]) * torch.pi, torch.zeros_like(act[:,0,:])],dim=1)
         if mode == 'Focal':
             sig = torch.zeros_like(act)
         if mode == 'Vortex':
@@ -67,7 +67,6 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
 
             sig[0,0,:][mask[0,:] == 1] = torch.pi
             sig[0,1,:][mask[0,:] == 1] = 0
-
 
     x = torch.abs(act) * torch.exp(1j* (torch.angle(act) + sig))
 

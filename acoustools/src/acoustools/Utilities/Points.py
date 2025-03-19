@@ -3,7 +3,6 @@ import torch
 
 from acoustools.Utilities.Setup import device
 
-
 def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float|None=None, min_pos:float=-0.06, max_pos:float = 0.06) -> Tensor:
     '''
     Creates a random set of N points in B batches in shape `Bx3xN` \n
@@ -20,14 +19,15 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
     ```
     '''
 
-    if N is None and ((type(x) == list and type(y) == list and type(z) == list ) or 
-                      (type(x) == float and type(y) == float and type(z) == float) or
-                      (type(x) == int and type(y) == int and type(z) == int)):
-        N = len(x)
-    elif N is None:
-        raise ValueError("If N is not provided x,y and z need to be lists of points or single values")
+    if N is None:
+        if (type(x) == list and type(y) == list and type(z) == list ): 
+            N = len(x)
+        elif (type(x) == float and type(y) == float and type(z) == float) or (type(x) == int and type(y) == int and type(z) == int):
+            N = 1
+        else:
+            raise ValueError("If N is not provided x,y and z need to be lists of points or single values")
 
-    points = torch.zeros((B, 3, N)).to(device)
+    points = torch.zeros((B, 3, N), device=device)
     
     if x is not None:
         if type(x) is float or type(x) is int:
