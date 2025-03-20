@@ -315,3 +315,12 @@ def create_bezier_circle(N=10, origin=(0,0,0), radius=0.01, plane='xy'):
 
     return spline
 
+
+def connect_ends(spline:Spline):
+    '''
+    Sets the end of the last curve in spline to be the start of the first
+    '''
+    start = spline[0]
+    end = spline[-1]
+
+    end.end = start.start

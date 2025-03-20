@@ -43,7 +43,7 @@ def OptiSpline(spline:Spline, target_points:list[Tensor], objective: FunctionTyp
         optim.zero_grad()       
 
         loss = objective( spline, target_points, n=n, **objective_params)
-        if log: print(epoch, loss)
+        if log: print(epoch, loss.item())
 
         loss.backward()
         optim.step()
