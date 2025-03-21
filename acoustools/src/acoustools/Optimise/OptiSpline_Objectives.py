@@ -29,8 +29,7 @@ def optispline_min_acceleration(spline:Spline, targets:list[Tensor],n:int, **par
     '''
     acels = []
     for bez in spline:
-        s,e,o1,o2 = bez.get_data()
-        a = interpolate_bezier_acceleration(s,e,o1,o2,n)
+        a = interpolate_bezier_acceleration(bez,n)
     
         acels += a
     acels = torch.stack(acels)

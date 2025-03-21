@@ -88,7 +88,7 @@ def interpolate_bezier_velocity(bezier:CubicBezier, n:int=100) -> list[Tensor]:
     return points
 
 
-def interpolate_bezier_acceleration(start: Tensor, end:Tensor, offset_1:Tensor, offset_2:Tensor, n:int=100) -> list[Tensor]:
+def interpolate_bezier_acceleration(bezier:CubicBezier, n:int=100) -> list[Tensor]:
     '''
     Gets the acceleration of a  cubic Bezier curve based on positions given \n
     :param start: Start position
@@ -98,6 +98,8 @@ def interpolate_bezier_acceleration(start: Tensor, end:Tensor, offset_1:Tensor, 
     :param n: number of samples
     :returns points:
     '''
+
+    start,end,offset_1,offset_2 = bezier.get_data()
      
     P0 = start
     P1 = start + offset_1
