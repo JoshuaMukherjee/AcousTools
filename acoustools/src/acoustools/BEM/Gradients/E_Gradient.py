@@ -33,13 +33,13 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     N = points.shape[2]
     M = centres.shape[2]
 
+
     points = points.unsqueeze(3).expand(-1,-1,-1,M)
     centres = centres.unsqueeze(2).expand(-1,-1,N,-1)
 
     diff = points - centres    
     diff_square = diff**2
     distances = torch.sqrt(torch.sum(diff_square, 1))
-    distances_square = distances**2
     distances_expanded = distances.unsqueeze(1).expand((1,3,N,M))
     distances_expanded_square = distances_expanded**2
 

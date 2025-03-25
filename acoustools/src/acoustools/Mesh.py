@@ -263,7 +263,7 @@ def get_centres_as_points(*scatterers:Mesh, permute_to_points:bool=True, add_nor
             centres += norms.real * normal_scale
         
         centre_list.append(centres.to(DTYPE))
-        centres = torch.cat(centre_list,dim=0)
+    centres = torch.cat(centre_list,dim=0)
     return centres
 
 def get_areas(*scatterers: Mesh) -> Tensor:

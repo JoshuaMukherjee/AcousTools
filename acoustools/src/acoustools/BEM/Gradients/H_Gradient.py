@@ -6,7 +6,7 @@ from vedo import Mesh
 import hashlib, pickle
 
 from acoustools.Utilities import device, DTYPE, forward_model_batched, forward_model_grad, forward_model_second_derivative_unmixed
-from acoustools.BEM.Forward_models import compute_bs, compute_A
+from acoustools.BEM.Forward_models import compute_bs, compute_A, get_cache_or_compute_H
 from acoustools.Mesh import get_centres_as_points, get_normals_as_points, board_name
 import acoustools.Constants as Constants
 
@@ -14,7 +14,8 @@ from acoustools.BEM.Gradients.E_Gradient import get_G_partial
 
 
  
-def grad_H(points: Tensor, scatterer: Mesh, transducers: Tensor, return_components:bool = False) ->tuple[Tensor,Tensor, Tensor] | tuple[Tensor,Tensor, Tensor, Tensor,Tensor, Tensor, Tensor]:
+def grad_H(points: Tensor, scatterer: Mesh, transducers: Tensor, return_components:bool = False, 
+           path:str='', H:Tensor=None, use_cache_H:bool=True) ->tuple[Tensor,Tensor, Tensor] | tuple[Tensor,Tensor, Tensor, Tensor,Tensor, Tensor, Tensor]:
     '''
     Computes the gradient of H wrt scatterer centres\n
     Ignores `points` - for compatability with other gradient functions, takes centres of the scatterers
@@ -23,16 +24,24 @@ def grad_H(points: Tensor, scatterer: Mesh, transducers: Tensor, return_componen
     :param return_components: if true will return the subparts used to compute the derivative
     :return grad_H: The gradient of the H matrix wrt the position of the mesh
     '''
-    centres = torch.tensor(scatterer.cell_centers().points).to(device).T.unsqueeze_(0)
+
+    if H is None:
+        H = get_cache_or_compute_H(scatterer, transducers, use_cache_H, path)
+    
+    
+    # centres = torch.tensor(scatterer.cell_centers().points).to(device).T.unsqueeze_(0)
+    centres = get_centres_as_points(scatterer)
+
 
     M = centres.shape[2]
 
     B = compute_bs(scatterer,transducers)
     A = compute_A(scatterer)
     A_inv = torch.inverse(A).to(DTYPE)
+
     
     Bx, By, Bz = forward_model_grad(centres, transducers)
-    Bx = Bx.to(DTYPE)
+    Bx = Bx.to(DTYPE) 
     By = By.to(DTYPE)
     Bz = Bz.to(DTYPE)
 
@@ -46,20 +55,27 @@ def grad_H(points: Tensor, scatterer: Mesh, transducers: Tensor, return_componen
     Ay = (-1* Ay)
     Az = (-1* Az)
 
+
     
     eye = torch.eye(M).to(bool)
     Ax[:,eye] = 0
     Ay[:,eye] = 0
     Az[:,eye] = 0
-
     
     A_inv_x = (-1*A_inv @ Ax @ A_inv).to(DTYPE)
     A_inv_y = (-1*A_inv @ Ay @ A_inv).to(DTYPE)
     A_inv_z = (-1*A_inv @ Az @ A_inv).to(DTYPE)
 
-    Hx = (A_inv_x@B) + (A_inv@Bx)
-    Hy = (A_inv_y@B) + (A_inv@By)
-    Hz = (A_inv_z@B) + (A_inv@By)
+    Hx_old = (A_inv_x@B) + (A_inv@Bx)
+    Hy_old = (A_inv_y@B) + (A_inv@By)
+    Hz_old = (A_inv_z@B) + (A_inv@By)
+
+
+    print(A_inv, Bx - Ax @ H)
+    Hx = A_inv @ (Bx - Ax @ H)
+    Hy = A_inv @ (By - Ay @ H)
+    Hz = A_inv @ (Bz - Az @ H)
+
 
     Hx = Hx.to(DTYPE)
     Hy = Hy.to(DTYPE)
@@ -68,7 +84,7 @@ def grad_H(points: Tensor, scatterer: Mesh, transducers: Tensor, return_componen
     if return_components:
         return Hx, Hy, Hz, A, A_inv, Ax, Ay, Az
     else:
-        return Hx, Hy, Hz
+        return Hx, Hy, Hz, Hx_old, Hy_old, Hz_old
 
  
 def grad_2_H(points: Tensor, scatterer: Mesh, transducers: Tensor, A:Tensor|None = None, 
@@ -255,6 +271,7 @@ def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path
     :param print_lines: if true prints messages detaling progress\\
     Returns derivatives of H
     '''
+
     if use_cache_H_grad:
         
         f_name = scatterer.filename +"--"+ board_name(board)
@@ -269,13 +286,13 @@ def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path
             Hz = Hz.to(device)
         except FileNotFoundError: 
             if print_lines: print("Not found, computing H Grads...")
-            Hx, Hy, Hz = grad_H(None, transducers=board, **{"scatterer":scatterer })
+            Hx, Hy, Hz = grad_H(None, transducers=board, **{"scatterer":scatterer }, path=path)
             f = open(f_name,"wb")
             pickle.dump((Hx, Hy, Hz),f)
             f.close()
     else:
         if print_lines: print("Computing H Grad...")
-        Hx, Hy, Hz = grad_H(None, transducers=board, **{"scatterer":scatterer })
+        Hx, Hy, Hz = grad_H(None, transducers=board, **{"scatterer":scatterer }, path=path)
 
     return Hx, Hy, Hz
 

@@ -10,7 +10,7 @@ import pickle
 import acoustools.Constants as Constants
 
 from acoustools.Utilities import device, DTYPE, forward_model_batched, TOP_BOARD
-from acoustools.Mesh import get_normals_as_points, board_name
+from acoustools.Mesh import get_normals_as_points, board_name, get_centres_as_points
 
 
 def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False) -> Tensor:
@@ -113,7 +113,7 @@ def compute_A(scatterer: Mesh) -> Tensor:
     M = m.shape[0]
     m = m.expand((M,M,3))
 
-    m_prime = m.clone()
+    m_prime = m.clone() 
     m_prime = m_prime.permute((1,0,2))
 
     # norms = torch.tensor(scatterer.cell_normals).to(device)
@@ -135,7 +135,8 @@ def compute_bs(scatterer: Mesh, board:Tensor) -> Tensor:
     :param board: Transducers to use 
     :return B: B tensor
     '''
-    centres = torch.tensor(scatterer.cell_centers().points).to(device).T.unsqueeze_(0)
+    # centres = torch.tensor(scatterer.cell_centers().points).to(device).T.unsqueeze_(0)
+    centres = get_centres_as_points(scatterer)
     bs = forward_model_batched(centres,board)
     return bs.to(DTYPE)
 
@@ -175,7 +176,7 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
     :param use_LU: If true use LU decomopsition to solve for H
     :return H: H tensor
     '''
-
+    
     if use_cache_H:
         
         if cache_name is None:
