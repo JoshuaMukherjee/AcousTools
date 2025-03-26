@@ -12,28 +12,28 @@ from acoustools.Utilities.Setup import device,DTYPE
 
 from torch import Tensor
 
-def compress(phase:Tensor, levels:int=32) -> list[Tensor]:
+def compress(holgram:Tensor, levels:int=32) -> list[Tensor]:
     '''
     @private
     '''
     phase_divs = 2*3.1415/levels
-    phase_levels = torch.angle(phase)/phase_divs
+    phase_levels = torch.angle(holgram)/phase_divs
     phase_levels += levels / 2
 
     amp_divs = 1/levels
-    amp_levels = torch.abs(phase)/amp_divs
+    amp_levels = torch.abs(holgram)/amp_divs
 
     torch.round_(phase_levels).to(torch.int8)
     torch.round_(amp_levels).to(torch.int8)
     
     return phase_levels, amp_levels
 
-def decompress(phases:list, amplitudes:list, levels:int=32) -> list[Tensor]:
+def decompress(holgram:list, amplitudes:list, levels:int=32) -> list[Tensor]:
     '''
     @private
     '''
     phase_divs = 2*3.1415/levels
-    phases = [(p - levels/2) * phase_divs for p in phases]
+    phases = [(p - levels/2) * phase_divs for p in holgram]
 
     amp_divs = 1/levels
     amplitudes = [a * amp_divs for a in amplitudes]
