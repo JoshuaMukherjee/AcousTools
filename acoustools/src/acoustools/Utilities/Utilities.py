@@ -78,3 +78,12 @@ def get_convert_indexes(n:int=512, single_mode:Literal['bottom','top']='bottom')
         indexes[256:] = torch.flatten(torch.flip(torch.reshape(indexes[256:],(16,-1)),dims=[1]))
     
     return indexes
+
+def batch_list(iterable, batch=32):
+    i = 0
+    while i <= len(iterable):
+        if i + batch <= len(iterable):
+            yield iterable[i:i+batch]
+        else:
+            yield iterable[i:]
+        i += batch
