@@ -7,7 +7,12 @@ from acoustools.Utilities.Utilities import batch_list
 from acoustools.Utilities.Setup import device,DTYPE
 # from acoustools.Constants import wavelength
 
-def compress(phase, levels=32):
+from torch import Tensor
+
+def compress(phase:Tensor, levels:int=32) -> list[Tensor]:
+    '''
+    @private
+    '''
     phase_divs = 2*3.1415/levels
     phase_levels = torch.angle(phase)/phase_divs
     phase_levels += levels / 2
@@ -20,7 +25,10 @@ def compress(phase, levels=32):
     
     return phase_levels, amp_levels
 
-def decompress(phases, amplitudes, levels=32):
+def decompress(phases:list, amplitudes:list, levels:int=32) -> list[Tensor]:
+    '''
+    @private
+    '''
     phase_divs = 2*3.1415/levels
     phases = [(p - levels/2) * phase_divs for p in phases]
 
@@ -33,7 +41,12 @@ def decompress(phases, amplitudes, levels=32):
     return holo
 
 
-def save_holograms(holos, fname):
+def save_holograms(holos:list[Tensor]|Tensor, fname:str):
+    '''
+    Save holograms in .holo format. The holo format stores each phase and amplitude as a 6 bit integer with each phase and ampplitude being discritised to 32 levels
+    :param holos: Holograms to use
+    :param fname:  filename to use. Will append .holo is no extension provides
+    '''
     if '.' not in fname:
         fname += '.holo'
     # pickle.dump(holos, open(fname, 'wb'))
@@ -50,7 +63,12 @@ def save_holograms(holos, fname):
                 file.write((a).to_bytes(6, byteorder='big', signed=False))
             file.write((2**6).to_bytes(6, byteorder='big', signed=False))
 
-def load_holograms(path):
+def load_holograms(path:str) -> list[Tensor]:
+    '''
+    Reads .holo file
+    :param path: Path to read
+    :returns holgrams:
+    '''
     if '.' not in path:
         path += '.holo'
     # holos = pickle.load(open(path, 'rb'))
