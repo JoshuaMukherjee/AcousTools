@@ -126,14 +126,8 @@ class LevitatorController():
         sends messages to levitator
         '''
         if self.mode:
-            if amplitudes is not None:
-                for batch in zip(batch_list(phases), batch_list(amplitudes)):
-                    self.levitatorLib.send_message.argtypes = [ctypes.c_void_p,POINTER(ctypes.c_float), POINTER(ctypes.c_float), ctypes.c_float, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-                    self.levitatorLib.send_message(self.controller,batch,amplitudes,relative_amplitude,num_geometries, sleep_ms, loop, num_loops)
-            else:
-                for batch in batch_list(phases):
-                    self.levitatorLib.send_message.argtypes = [ctypes.c_void_p,POINTER(ctypes.c_float), POINTER(ctypes.c_float), ctypes.c_float, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-                    self.levitatorLib.send_message(self.controller,batch,amplitudes,relative_amplitude,num_geometries, sleep_ms, loop, num_loops)
+            self.levitatorLib.send_message.argtypes = [ctypes.c_void_p,POINTER(ctypes.c_float), POINTER(ctypes.c_float), ctypes.c_float, ctypes.c_int, ctypes.c_int, ctypes.c_int]
+            self.levitatorLib.send_message(self.controller,phases,amplitudes,relative_amplitude,num_geometries, sleep_ms, loop, num_loops)
 
     def disconnect(self):
         '''
