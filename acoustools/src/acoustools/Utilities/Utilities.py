@@ -1,6 +1,6 @@
 from torch import Tensor
 import torch
-from typing import Literal
+from typing import Literal, Iterable
 
 
 def is_batched_points(points:Tensor) -> bool:
@@ -79,7 +79,17 @@ def get_convert_indexes(n:int=512, single_mode:Literal['bottom','top']='bottom')
     
     return indexes
 
-def batch_list(iterable, batch=32):
+def batch_list(iterable:Iterable, batch:int=32):
+    '''
+    Split an iterable into batch sized pieces\n
+    :param iterable: The iterable to batch
+    :param batch: The size to batch
+    ```
+    x = range(100)
+    for b in batch_list(x):
+        print(b)
+    ```
+    '''
     i = 0
     while i <= len(iterable):
         if i + batch <= len(iterable):
