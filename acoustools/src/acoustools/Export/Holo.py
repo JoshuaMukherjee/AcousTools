@@ -5,7 +5,7 @@ The result of this is then compressed using pythons zlib (https://docs.python.or
 Internally stored as blocks of phase and amplitude seperated by 2^6-1 eg phase1 <11111> amplitude1 <11111> phase2 <11111> amplitude2 <11111> ...
 '''
 
-import pickle, torch, io, zlib
+import torch, io, zlib
 from acoustools.Utilities.Utilities import batch_list
 from acoustools.Utilities.Setup import device,DTYPE
 # from acoustools.Constants import wavelength
