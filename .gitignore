@@ -7,3 +7,4 @@ read_beast_file.py
 *.png
 times.txt
 profile_output*
+*.holo
