@@ -455,3 +455,8 @@ def cut_mesh_to_walls(scatterer:Mesh, layer_z:float, layer_normal:tuple[float] =
     scatterer_file_name(walls)
 
     return walls.clean()
+
+def cut_closed_scatterer(scatterer:Mesh,layer_z:float, normals=[(0,0,1)]):
+    origins=[(0,0,layer_z)]
+    closed_scatterer = scatterer.cut_closed_surface(origins=origins, normals=origins)
+    return closed_scatterer
