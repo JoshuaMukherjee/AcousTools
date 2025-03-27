@@ -62,16 +62,15 @@ def grad_H(points: Tensor, scatterer: Mesh, transducers: Tensor, return_componen
     Ay[:,eye] = 0
     Az[:,eye] = 0
     
-    A_inv_x = (-1*A_inv @ Ax @ A_inv).to(DTYPE)
-    A_inv_y = (-1*A_inv @ Ay @ A_inv).to(DTYPE)
-    A_inv_z = (-1*A_inv @ Az @ A_inv).to(DTYPE)
+    # A_inv_x = (-1*A_inv @ Ax @ A_inv).to(DTYPE)
+    # A_inv_y = (-1*A_inv @ Ay @ A_inv).to(DTYPE)
+    # A_inv_z = (-1*A_inv @ Az @ A_inv).to(DTYPE)
 
-    Hx_old = (A_inv_x@B) + (A_inv@Bx)
-    Hy_old = (A_inv_y@B) + (A_inv@By)
-    Hz_old = (A_inv_z@B) + (A_inv@By)
+    # Hx_old = (A_inv_x@B) + (A_inv@Bx)
+    # Hy_old = (A_inv_y@B) + (A_inv@By)
+    # Hz_old = (A_inv_z@B) + (A_inv@Bz)
 
 
-    print(A_inv, Bx - Ax @ H)
     Hx = A_inv @ (Bx - Ax @ H)
     Hy = A_inv @ (By - Ay @ H)
     Hz = A_inv @ (Bz - Az @ H)
@@ -84,7 +83,7 @@ def grad_H(points: Tensor, scatterer: Mesh, transducers: Tensor, return_componen
     if return_components:
         return Hx, Hy, Hz, A, A_inv, Ax, Ay, Az
     else:
-        return Hx, Hy, Hz, Hx_old, Hy_old, Hz_old
+        return Hx, Hy, Hz
 
  
 def grad_2_H(points: Tensor, scatterer: Mesh, transducers: Tensor, A:Tensor|None = None, 

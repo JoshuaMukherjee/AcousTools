@@ -87,8 +87,6 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     grad_G = Ga*P*C + G*P*Ca + G*Pa*C
 
     grad_G = areas * grad_G.to(DTYPE)
-
-
     
     return grad_G[:,0,:], grad_G[:,1,:], grad_G[:,2,:]
 

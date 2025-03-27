@@ -59,7 +59,7 @@ if __name__ == "__main__":
     # print(torch.abs(PMz@x))
     # print()
 
-    step = 0.000135156253
+    step = 0.000135156253 
     ps = get_finite_diff_points_all_axis(p, stepsize=step)
     Efd,Ffd,Gfd,Hfd = compute_E(sphere, ps, board=board, path=path, use_cache_H=USE_CACHE, return_components=True)
     
