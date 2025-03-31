@@ -1,4 +1,4 @@
-from acoustools.Mesh import load_scatterer, translate, get_centres_as_points
+from acoustools.Mesh import load_scatterer, translate, get_centres_as_points, get_centre_of_mass_as_points
 from acoustools.BEM import get_cache_or_compute_H, get_cache_or_compute_H_gradients, grad_H
 from acoustools.Utilities import TRANSDUCERS, propagate
 from acoustools.Solvers import wgs
@@ -6,11 +6,13 @@ from acoustools.Constants import wavelength
 
 import torch
 
-torch.set_printoptions(linewidth=100)
+torch.set_printoptions(linewidth=200)
 
 path = "../BEMMedia"
 paths = path+"/Sphere-lam2.stl"
 ball = load_scatterer(paths, dy=-0.06)
+print(c1:=get_centre_of_mass_as_points(ball))
+
 
 cache = False
 
@@ -29,12 +31,16 @@ h = wavelength/32
 
 ball_dx_left = ball.clone(deep=True)
 translate(ball_dx_left, dx=-1*h)
+print(c2:=get_centre_of_mass_as_points(ball_dx_left))
 H_dx_left = get_cache_or_compute_H(ball_dx_left,board, path=path,use_cache_H=cache)
 pressure_dx_left  = propagate(x,get_centres_as_points(ball_dx_left),board,A=H_dx_left)
 
 
 ball_dx_right = ball.clone(deep=True)
 translate(ball_dx_right, dx=h)
+print(c3:=get_centre_of_mass_as_points(ball_dx_right))
+print(c1[:,0].item(), c2[:,0].item(), c3[:,0].item())
+
 H_dx_right = get_cache_or_compute_H(ball_dx_right,board, path=path,use_cache_H=cache)
 pressure_dx_right  = propagate(x,get_centres_as_points(ball_dx_right),board,A=H_dx_right)
 
@@ -44,8 +50,9 @@ grad_H_x = (pressure_dx_right - pressure_dx_left) / (2*h + 0j)
 Px_fd = torch.abs(grad_H_x).squeeze()
 Px_an = torch.abs(Hx@x).squeeze()
 
-print(torch.stack([Px_fd, Px_an, Px_fd/Px_an]))
-# print(grad_H_x, Hx@x)
+
+
+print(torch.stack([Px_fd, Px_an, Px_fd/Px_an, Px_fd-Px_an ]))
 
 
 ball_dy_left = ball.clone(deep=True)
@@ -63,7 +70,9 @@ grad_H_y = (pressure_dy_right - pressure_dy_left) / (2*h + 0j)
 Py_fd = torch.abs(grad_H_y).squeeze()
 Py_an = torch.abs(Hy@x).squeeze()
 
-print(torch.stack([Py_fd, Py_an, Py_fd/Py_an]))
+
+
+print(torch.stack([Py_fd, Py_an, Py_fd/Py_an,Py_fd-Py_an]))
 
 
 
@@ -82,8 +91,18 @@ grad_H_z = (pressure_dz_right - pressure_dz_left) / (2*h + 0j)
 Pz_fd = torch.abs(grad_H_z).squeeze()
 Pz_an = torch.abs(Hz@x).squeeze()
 
-print(torch.stack([Pz_fd, Pz_an, Pz_fd/Pz_an]))
+
+
+print(torch.stack([Pz_fd, Pz_an, Pz_fd/Pz_an,Pz_fd-Pz_an]))
 
 
 
 
+# import matplotlib.pyplot as plt
+
+
+# plt.scatter(Px_fd.detach(), Px_an.detach())
+# plt.scatter(Py_fd.detach(), Py_an.detach())
+# plt.scatter(Pz_fd.detach(), Pz_an.detach())
+
+# plt.show()
