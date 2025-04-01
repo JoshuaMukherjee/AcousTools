@@ -119,9 +119,10 @@ if __name__ == "__main__":
 
         print()
 
-        stepsize_x = stepsize *50
-        stepsize_y = stepsize *50
-        stepsize_z = stepsize *30
+        scale = 1
+        stepsize_x = stepsize *scale
+        stepsize_y = stepsize *scale
+        stepsize_z = stepsize *scale
 
         mixed_points = return_mixed_points(points,stepsize_x=stepsize_x, stepsize_y=stepsize_y, stepsize_z=stepsize_z)
         mixed_pressure_points = propagate(activations, mixed_points)
