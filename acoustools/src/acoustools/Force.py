@@ -135,7 +135,7 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     '''
 
     if F is None:
-        F = F_fun(**F_function_args)
+        F = F_fun(points=points,**F_function_args)
     p = propagate(activations,points,board,A=F)
     pressure = torch.abs(p)**2
     
