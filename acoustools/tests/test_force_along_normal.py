@@ -1,4 +1,4 @@
-from acoustools.Mesh import load_scatterer, get_normals_as_points, get_centres_as_points, get_areas
+from acoustools.Mesh import load_scatterer, get_normals_as_points, get_centres_as_points, get_areas, scale_to_diameter, get_centre_of_mass_as_points
 from acoustools.Utilities import TRANSDUCERS
 from acoustools.Force import force_mesh
 from acoustools.Solvers import wgs
@@ -14,9 +14,12 @@ board = TRANSDUCERS
 
 sphere_pth =  path+"/Sphere-lam2.stl"
 sphere = load_scatterer(sphere_pth, dy=-0.06, dz=0.0) #Make mesh at 0,0,0
+com = get_centre_of_mass_as_points(sphere)
 
 centres = get_centres_as_points(sphere)
 areas = get_areas(sphere)
+
+radius = torch.mean(torch.sqrt((com-centres)**2))
 
 H = get_cache_or_compute_H(sphere, board, path=path)
 x = wgs(centres, A=H)
@@ -32,6 +35,9 @@ for i in range(10):
 
     points = centres + i/factor * normals
     norms = normals + i/factor * normals
+    cpy = sphere.copy()
+    scale_to_diameter(cpy, 2*radius  + 1/factor)
+    areas = get_areas(cpy)
 
     force = force_mesh(x, points, norms, areas,board, BEM_forward_model_grad, 
                     grad_function_args = {'scatterer':sphere,'H':H}, 

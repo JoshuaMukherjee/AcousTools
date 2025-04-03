@@ -43,6 +43,7 @@ t_as = []
 for p,x in points:
     start_a = time.time()
     Fx,Fy,Fz = compute_force(x,p, return_components=True)
+    print(Fz)
     end_a = time.time()
 
     Fx_as.append(Fx.cpu().detach().item())
