@@ -556,6 +556,11 @@ def gorkov_target(points:Tensor, objective:FunctionType = target_gorkov_BEM_mse_
     if board is None:
         board = TOP_BOARD
 
+    if type(U_targets) == float:
+        U_targets = torch.tensor([U_targets])
+    
+    if U_targets is None:
+        U_targets = torch.tensor([-1e-5])
 
     x = gradient_descent_solver(points, objective, 
                                 board, log=False, targets=U_targets, iters=iterations, 
