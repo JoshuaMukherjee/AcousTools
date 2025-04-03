@@ -13,7 +13,7 @@ from acoustools.Utilities import device, DTYPE, forward_model_batched, TOP_BOARD
 from acoustools.Mesh import get_normals_as_points, board_name, get_centres_as_points
 
 
-def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False) -> Tensor:
+def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False, distance_epsilon=5e-4) -> Tensor:
     '''
     Computes the derivative of greens function \n
     :param y: y in greens function - location of the source of sound
@@ -23,6 +23,7 @@ def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, r
     :param N: size of x
     :param M: size of y
     :param return_components: if true will return the subparts used to compute the derivative \n
+    :param distance_epsilon: Small value to add to the distances to avoid numerical error
     :return: returns the partial derivative of greeens fucntion wrt y
     '''
     norms= norms.real
@@ -42,6 +43,7 @@ def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, r
     del norms, vecs
     torch.cuda.empty_cache()
 
+    distance += distance_epsilon
     A = ((torch.exp(1j*Constants.k*distance))/(4*torch.pi*distance))
     B = (1j*Constants.k - 1/(distance))
     
