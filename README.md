@@ -5,7 +5,7 @@
 
 A Python based library for working with acoustic fields for levitation. Developed mostly using PyTorch, AcousTools uses PyTorch Tensors to represent points, acoustic fields and holograms to enable development of new algorithms, applications and acoustic systems. 
 
-See [Here]https://github.com/JoshuaMukherjee/AcousticExperiments/tree/main/AcousTools_Examples for examples of code using AcousTools.
+See [Here](https://github.com/JoshuaMukherjee/AcousticExperiments/tree/main/AcousTools_Examples) for examples of code using AcousTools.
 
 -----
 
