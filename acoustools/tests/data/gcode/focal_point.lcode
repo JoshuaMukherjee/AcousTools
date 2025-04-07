@@ -1,5 +1,0 @@
-C5:gspat;#set solver
-C8;#set topbaord
-C6:I20;#set iterations
-C13:0; #Set reflector
-L2:0.0,0.0,0.01;

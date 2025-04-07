@@ -1,4 +1,0 @@
-C6:I50:U-7.5e-6;#Set Gorkov
-C5:GORKOV_TARGET;#Set solver
-C13:0; #Set reflector
-L0:0.0,0.0,0.03;
