@@ -1,11 +1,11 @@
 '''
-Various methods to define paths and curves
-acoustools.Paths.Bezier
-`acoustools.Paths.Curves `
-`acoustools.Paths.Distances `
-`acoustools.Paths.Interpolate `
-`acoustools.Paths.Numerals `
-`acoustools.Paths.OptiSpline`
+Various methods to define paths and curves\n
+`acoustools.Paths.Bezier`\n
+`acoustools.Paths.Curves `\n
+`acoustools.Paths.Distances `\n
+`acoustools.Paths.Interpolate `\n
+`acoustools.Paths.Numerals `\n
+`acoustools.Paths.OptiSpline`\n
 '''
 
 from acoustools.Paths.Bezier import *
