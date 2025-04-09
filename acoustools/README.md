@@ -11,13 +11,13 @@ See [Here](https://github.com/JoshuaMukherjee/AcousticExperiments/tree/main/Acou
 
 ## Survey: In order to help us understand who is using AcousTools please fill in this [form](https://forms.gle/E3fCFpATdeNken7JA)
 
-
 -----
 
 **Table of Contents**
 
 - [Installation](#installation)
 - [License](#license)
+- [Docs](#documentation)
 
 ## Installation
 
@@ -34,7 +34,9 @@ where `<path-to-clone>` is the local location of the repository
 
 ## Documentation
 
-To view the documentation for AcousTools firstly install pdoc
+#### Documentation can be seen [Here](https://joshuamukherjee.github.io/AcousTools/src/acoustools.html)
+
+Or to view the documentation for AcousTools locally, firstly install pdoc:
 ```console
 pip install pdoc
 ```
@@ -42,6 +44,9 @@ Then run pdoc on AcousTools to create a locally hosted server containing the doc
 ```console
 python -m pdoc <path-to-clone>/acoustools/ --math
 ```
+
+See [Here](https://github.com/JoshuaMukherjee/AcousticExperiments/tree/main/AcousTools_Examples) for examples of code using AcousTools.
+
 
 ## AcousTools Basics
 
