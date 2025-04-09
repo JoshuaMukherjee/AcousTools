@@ -1,6 +1,6 @@
 '''
 Methods for optimsation objectives and constrains\n
-`acoustools.Optimise.Constraints`\n
-`acoustools.Optimise.Objectives`\n
-`acoustools.Optimise.Optispline_Objectives`\n
+`src.acoustools.Optimise.Constraints`\n
+`src.acoustools.Optimise.Objectives`\n
+`src.acoustools.Optimise.Optispline_Objectives`\n
 '''
