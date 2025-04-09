@@ -9,8 +9,8 @@ See [Here](https://github.com/JoshuaMukherjee/AcousticExperiments/tree/main/Acou
 
 -----
 
-## Survey
-In order to help us understand who is using AcousTools please fill in this [form](https://forms.gle/E3fCFpATdeNken7JA)
+## Survey: In order to help us understand who is using AcousTools please fill in this [form](https://forms.gle/E3fCFpATdeNken7JA)
+
 
 -----
 
