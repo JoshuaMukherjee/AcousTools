@@ -1,3 +1,18 @@
+'''
+Various Utilities for AcousTools
+
+`acoustools.Utilities.Boards` for setup of transducer arrays
+`acoustools.Utilities.Forward_models ` for forward models for propagators from holograms to pressure eg the piston model
+`acoustools.Utilities.Piston_model_gradients ` gradients of the piston model
+`acoustools.Utilities.Points ` setup points
+`acoustools.Utilities.Propagators ` functions to propagate holograms
+`acoustools.Utilities.Signatures ` Hologram signatures see (https://www.nature.com/articles/ncomms9661)
+`acoustools.Utilities.Targets ` Creates functions to generate random target pressures and gorkovs
+`acoustools.Utilities.Utilities` Various
+
+
+'''
+
 import torch, math, sys
 import acoustools.Constants as Constants
 

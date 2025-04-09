@@ -1,4 +1,6 @@
-
+'''
+Requires the leap motion python module - will not run without it
+'''
 try:
     import leap
 

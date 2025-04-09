@@ -1,6 +1,5 @@
-
-
 '''
+Lcode Specification \n
 Commands
 * `L0:<X> <Y> <Z>;` Create Focal Point at (X,Y,Z)
 * `L1:<X> <Y> <Z>;` Create Trap Point at (X,Y,Z)
