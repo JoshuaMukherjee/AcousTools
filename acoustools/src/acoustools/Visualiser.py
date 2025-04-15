@@ -25,7 +25,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
               res:tuple[int]=(200,200), cmaps:list[str]=[], add_lines_functions:list[FunctionType]|None=None, 
               add_line_args:list[dict]|None=None,vmin:int|list[int]|None=None,vmax:int|list[int]|None=None, 
               matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None, depth:int=2, link_ax:str|list|None='all',
-              cursor:bool=False, arangement:tuple|None = None, titles:list[str]|None=None ) -> None:
+              cursor:bool=False, arangement:tuple|None = None, titles:list[str]|None=None, call_abs=False, norm_axes=None ) -> None:
     '''
     Visualises any number of fields generated from activation to the plane ABC and arranges them in a (1,N) grid \n
     :param A: Position of the top left corner of the image
@@ -50,6 +50,8 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     :param cursor: If `True` will show cursor across plots
     :param arangement: Arangment of subplots 
     :param title: Titles for each subplot
+    :param call_abs: if True will call torch.abs on the image 
+    :param norm_axes: List of Axes to Normalise
 
     ```Python
     from acoustools.Utilities import create_points, add_lev_sig
@@ -188,8 +190,11 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
             clr_label = 'Pressure (Pa)'
         else:
             clr_label = clr_labels[i]
-                    
-
+        
+        if call_abs: im = torch.abs(im)
+        print(im)
+        if norm_axes is not None and i in norm_axes:
+            im = im / torch.max(im)
         img = plt.imshow(im.cpu().detach().numpy(),cmap=cmap,norm=norms[i])
         plt.yticks([])
         plt.xticks([])
@@ -204,10 +209,18 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
 
             ax.scatter(pts_pos_t[1],pts_pos_t[0],marker="x")
 
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.05)
+        
 
-        plt.colorbar(label=clr_label,cax=cax)
+        if im.shape[2] == 1:
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.05)
+            
+            plt.colorbar(label=clr_label,cax=cax)
+        else:
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="0%", pad=0.05)
+            cax.set_xticks([])
+            cax.set_yticks([])
 
 
         if add_lines_functions is not None:
@@ -354,14 +367,22 @@ def Visualise_single(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
     if len(activation.shape) < 3:
         activation = activation.unsqueeze(0)
     
+
+    
     positions = get_image_positions(A,B,C,res)
    
     
     # print(positions.shape)
     # print(colour_function_args)
     field_val = colour_function(activations=activation,points=positions,**colour_function_args)
-    # print(field_val.shape)
-    result = torch.reshape(field_val, res)
+    if len(field_val.shape) < 3:
+        field_val.unsqueeze_(2)
+    
+    results = []
+    for i in range(field_val.shape[2]):
+        result = torch.reshape(field_val[:,:,i], res)
+        results.append(result)
+    result = torch.stack(results,dim=2)
 
     if flip:
         result = torch.rot90(torch.fliplr(result))

@@ -120,7 +120,7 @@ def propagate_velocity_potential(activations: Tensor, points: Tensor,board: Tens
 
     return velocity_potential
 
-def propagate_pressure_grad(activations: Tensor, points: Tensor,board: Tensor|None=None, Fx=None, Fy=None, Fz=None):
+def propagate_pressure_grad(activations: Tensor, points: Tensor,board: Tensor|None=None, Fx=None, Fy=None, Fz=None, cat=True):
     '''
     Propagates a hologram to pressure gradient at points\n
     :param activations: Hologram to use
@@ -137,16 +137,19 @@ def propagate_pressure_grad(activations: Tensor, points: Tensor,board: Tensor|No
         if Fx is None: Fx = _Fx
         if Fy is None: Fy = _Fy
         if Fz is None: Fz = _Fz
-
+    
     Px = Fx@activations
     Py = Fy@activations
     Pz = Fz@activations
 
+    if cat: 
+        grad = torch.cat([Px, Py, Pz], dim=2)
+        return grad
     return Px, Py, Pz
 
 
 def propagate_velocity(activations: Tensor, points: Tensor,board: Tensor|None=None, Fx=None, Fy=None, Fz=None, 
-                                 density = c.p_0, angular_frequency = c.angular_frequency):
+                                 density = c.p_0, angular_frequency = c.angular_frequency, cat=True):
     '''
     Propagates a hologram to velocity at points\n
     :param activations: Hologram to use
@@ -158,13 +161,14 @@ def propagate_velocity(activations: Tensor, points: Tensor,board: Tensor|None=No
     :return: point velocity potential'
     '''
     
-    pressure_grads = propagate_pressure_grad(activations, points,board, Fx, Fy, Fz)
+    pressure_grads = propagate_pressure_grad(activations, points,board, Fx, Fy, Fz, cat=False)
     alpha = 1/(1j * density * angular_frequency)
     velocity = [alpha * i for i in pressure_grads]
+    if cat: velocity = torch.cat(velocity)
     return velocity
 
 def propagate_velocity_real(activations: Tensor, points: Tensor,board: Tensor|None=None, Fx=None, Fy=None, Fz=None, 
-                                 density = c.p_0, angular_frequency = c.angular_frequency):
+                                 density = c.p_0, angular_frequency = c.angular_frequency, cat=True):
     '''
     Propagates a hologram to velocity's real component at points\n
     :param activations: Hologram to use
@@ -175,8 +179,9 @@ def propagate_velocity_real(activations: Tensor, points: Tensor,board: Tensor|No
     :param Fz: The forward model to us for Fz, if None it is computed using `forward_model_grad`. Default:`None`
     :return: point velocity potential'
     '''
-    
-    return [i.real for i in propagate_velocity(activations, points,board, Fx, Fy, Fz, density, angular_frequency)]
+    vel = [i.real for i in propagate_velocity(activations, points,board, Fx, Fy, Fz, density, angular_frequency, cat=False)]
+    if cat: vel = torch.cat(vel, dim=2)
+    return vel
 
 def propagate_speed(activations: Tensor, points: Tensor,board: Tensor|None=None, Fx=None, Fy=None, Fz=None, 
                                  density = c.p_0, angular_frequency = c.angular_frequency):
