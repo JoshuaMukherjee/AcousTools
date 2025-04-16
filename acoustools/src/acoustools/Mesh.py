@@ -33,7 +33,8 @@ def scatterer_file_name(scatterer:Mesh) ->str:
     f_name = str(list(scatterer.coordinates))
     return f_name
 
-def load_scatterer(path:str, compute_areas:bool = True, compute_normals:bool=True, dx:float=0,dy:float=0,dz:float=0, rotx:float=0, roty:float=0, rotz:float=0, root_path:str="") -> Mesh:
+def load_scatterer(path:str, compute_areas:bool = True, compute_normals:bool=True, dx:float=0,
+                   dy:float=0,dz:float=0, rotx:float=0, roty:float=0, rotz:float=0, root_path:str="", force:bool=False) -> Mesh:
     '''
     Loads a scatterer as a `vedo` `Mesh` and applies translations as needed
     :param path: The name of the scatterer to load
@@ -48,7 +49,7 @@ def load_scatterer(path:str, compute_areas:bool = True, compute_normals:bool=Tru
     :param root_path: The folder containing the file, the scatterer to be loaded will be loaded from `root_path+path`
     :return: The `vedo` `Mesh` of the scatterer
     '''
-    scatterer = vedo.load(root_path+path)
+    scatterer = vedo.load(root_path+path, force=force)
     
     if scatterer is not None:
         if compute_areas: scatterer.compute_cell_size()
@@ -138,7 +139,7 @@ def merge_scatterers(*scatterers:Mesh, flag:bool=False) ->Mesh:
     return combined
 
 
-def scale_to_diameter(scatterer:Mesh , diameter: float) -> None:
+def scale_to_diameter(scatterer:Mesh , diameter: float, reset:bool=True, origin:bool=True) -> None:
     '''
     Scale a mesh to a given diameter in the x-axis and recomputes normals and areas \n
     Modifies scatterer in place so does not return anything.\n
@@ -148,7 +149,7 @@ def scale_to_diameter(scatterer:Mesh , diameter: float) -> None:
     '''
     x1,x2,y1,y2,z1,z2 = scatterer.bounds()
     diameter_sphere = x2 - x1
-    scatterer.scale(diameter/diameter_sphere,reset=True)
+    scatterer.scale(diameter/diameter_sphere,reset=reset, origin=origin)
     scatterer.compute_cell_size()
     scatterer.compute_normals()
     scatterer.filename = scatterer_file_name(scatterer)

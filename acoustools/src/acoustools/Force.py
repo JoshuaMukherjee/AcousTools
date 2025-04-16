@@ -9,6 +9,8 @@ from torch import Tensor
 from types import FunctionType
 from vedo import Mesh
 
+torch.set_printoptions(linewidth=400)
+
 def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:float= 0.000135156253,K1:float|None=None, 
                    K2:float|None=None,U_function:FunctionType=gorkov_fin_diff,U_fun_args:dict={}, board:Tensor|None=None) -> Tensor:
     '''
@@ -115,7 +117,8 @@ def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axi
 
 def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, board:Tensor, grad_function:FunctionType=forward_model_grad, 
                grad_function_args:dict={}, F_fun:FunctionType|None=forward_model_batched, F_function_args:dict={},
-               F:Tensor|None=None, Ax:Tensor|None=None, Ay:Tensor|None=None,Az:Tensor|None=None) -> Tensor:
+               F:Tensor|None=None, Ax:Tensor|None=None, Ay:Tensor|None=None,Az:Tensor|None=None,
+               use_momentum:bool=False) -> Tensor:
     '''
     Returns the force on a mesh using a discritised version of Eq. 1 in `Acoustical boundary hologram for macroscopic rigid-body levitation`\n
     :param activations: Transducer hologram
@@ -131,42 +134,47 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     :param Ax: The gradient of `F` wrt x, if `None` will be computed
     :param Ay: The gradient of `F` wrt y, if `None` will be computed
     :param Az: The gradient of `F` wrt z, if `None` will be computed
+    :param use_mpmentum: If true will add the term for momentum advection, for sound hard boundaries should be false
     :return: the force on each mesh element
     '''
 
     if F is None:
         F = F_fun(points=points,**F_function_args)
     p = propagate(activations,points,board,A=F)
-    pressure = torch.abs(p)**2
+    pressure_square = torch.abs(p)**2
     
     if Ax is None or Ay is None or Az is None:
         Ax, Ay, Az = grad_function(points=points, transducers=board, **grad_function_args)
     
 
 
-    px = (Ax@activations).squeeze_(2).unsqueeze_(0)
-    py = (Ay@activations).squeeze_(2).unsqueeze_(0)
-    pz = (Az@activations).squeeze_(2).unsqueeze_(0)
+    px = (Ax@activations).squeeze(2).unsqueeze(0)
+    py = (Ay@activations).squeeze(2).unsqueeze(0)
+    pz = (Az@activations).squeeze(2).unsqueeze(0)
 
-    px[px.isnan()] = 0
-    py[py.isnan()] = 0
-    pz[pz.isnan()] = 0
+    grad  = torch.cat((px,py,pz),dim=1)
+    # grad_norm = torch.norm(grad,2,dim=1)**2
+    grad_norm = torch.abs(px)**2 + torch.abs(py)**2 + torch.abs(pz)**2
 
-
-    grad = torch.cat((px,py,pz),dim=1).to(DTYPE)
-    grad_norm = torch.norm(grad,2,dim=1)**2
     
-    k1 = 1/ (2*c.p_0*(c.c_0**2))
+    k1 = 1/ (4*c.p_0*(c.c_0**2))
     k2 = 1/ (c.k**2)
 
-    pressure = torch.unsqueeze(pressure,1).expand(-1,3,-1)  
+    pressure_square = torch.unsqueeze(pressure_square,1).expand(-1,3,-1)  
    
-    
-    # force = -1/2*(k1 * (pressure * norms - k2*grad_norm*norms)) * areas # Old and maybe incorrect?
-    # force = -1/2 * k1 * (pressure + k2 * torch.abs(grad)**2) * norms * areas #Bks1. Page 299 for derivation
-    
-    force = -1/2 * k1 * (pressure + k2 * grad_norm) * norms * areas #Bk1. Page 299 for derivation, norm on pg 307
-    
+    force =  -1 * k1 * (pressure_square - k2 * grad_norm) * norms #Bk1. Page 299 for derivation, norm on pg 307
+
+    if use_momentum:
+        velocity_normal = 1/(c.angular_frequency * 1j * c.p_0) * torch.sum(grad * norms, dim=1, keepdim=True)
+        # velocity_normal = 1/(c.angular_frequency * -1j * c.p_0) * torch.sum(grad.conj().resolve_conj() * norms, dim=1, keepdim=True) #Conj version
+        
+        velocity_conj = 1/(c.angular_frequency * -1j * c.p_0) * grad.conj().resolve_conj()
+        
+        momentum = -1 * c.p_0 * 0.5 * (velocity_normal * velocity_conj).real 
+        force += momentum
+
+    force *= areas
+
     # compressability = -1*k1*k2*(grad.conj().resolve_conj() @ (grad.mH @ norms) )* areas #Bk2. Pg 9
     # force += compressability.real 
     

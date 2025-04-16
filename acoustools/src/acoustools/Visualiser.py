@@ -107,7 +107,6 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     else:
         for i,mat in enumerate(matricies):
             result = mat
-            print(result)
             results.append(result)
         
             if add_lines_functions is not None:
