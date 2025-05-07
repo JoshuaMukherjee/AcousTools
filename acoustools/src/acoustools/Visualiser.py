@@ -191,7 +191,6 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
             clr_label = clr_labels[i]
         
         if call_abs: im = torch.abs(im)
-        print(im)
         if norm_axes is not None and i in norm_axes:
             im = im / torch.max(im)
         img = plt.imshow(im.cpu().detach().numpy(),cmap=cmap,norm=norms[i])
