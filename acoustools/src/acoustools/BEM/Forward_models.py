@@ -12,8 +12,7 @@ import acoustools.Constants as Constants
 from acoustools.Utilities import device, DTYPE, forward_model_batched, TOP_BOARD
 from acoustools.Mesh import get_normals_as_points, board_name, get_centres_as_points
 
-
-def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False, distance_epsilon=5e-4) -> Tensor:
+def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False) -> Tensor:
     '''
     Computes the derivative of greens function \n
     :param y: y in greens function - location of the source of sound
@@ -23,7 +22,6 @@ def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, r
     :param N: size of x
     :param M: size of y
     :param return_components: if true will return the subparts used to compute the derivative \n
-    :param distance_epsilon: Small value to add to the distances to avoid numerical error
     :return: returns the partial derivative of greeens fucntion wrt y
     '''
     norms= norms.real
@@ -43,7 +41,6 @@ def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, r
     del norms, vecs
     torch.cuda.empty_cache()
 
-    distance += distance_epsilon
     A = ((torch.exp(1j*Constants.k*distance))/(4*torch.pi*distance))
     B = (1j*Constants.k - 1/(distance))
     
@@ -115,7 +112,7 @@ def compute_A(scatterer: Mesh) -> Tensor:
     M = m.shape[0]
     m = m.expand((M,M,3))
 
-    m_prime = m.clone() 
+    m_prime = m.clone()
     m_prime = m_prime.permute((1,0,2))
 
     # norms = torch.tensor(scatterer.cell_normals).to(device)
@@ -137,8 +134,7 @@ def compute_bs(scatterer: Mesh, board:Tensor) -> Tensor:
     :param board: Transducers to use 
     :return B: B tensor
     '''
-    # centres = torch.tensor(scatterer.cell_centers().points).to(device).T.unsqueeze_(0)
-    centres = get_centres_as_points(scatterer)
+    centres = torch.tensor(scatterer.cell_centers().points).to(device).T.unsqueeze_(0)
     bs = forward_model_batched(centres,board)
     return bs.to(DTYPE)
 
@@ -164,6 +160,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
          H = torch.linalg.solve(A,bs)
 
     return H
+
 
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
