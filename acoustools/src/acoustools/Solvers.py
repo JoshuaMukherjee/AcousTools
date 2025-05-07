@@ -354,7 +354,7 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
                             objective_params:dict={}, start:Tensor|None=None, iters:int=200, 
                             maximise:bool=False, targets:Tensor=None, constrains:FunctionType=constrain_phase_only, log:bool=False, return_loss:bool=False,
                             scheduler:torch.optim.lr_scheduler.LRScheduler=None, scheduler_args:dict=None, save_each_n:int = 0, save_set_n:list[int] = None,
-                            init_type:Literal['rand', 'ones','focal','trap']|Tensor='rand', H=None) -> Tensor:
+                            init_type:Literal['rand', 'ones','focal','trap']|Tensor='rand') -> Tensor:
     '''
     Solves phases using gradient descent\n
     :param points: Target point positions 
