@@ -119,3 +119,18 @@ def interpolate_arc(start:Tensor, end:Tensor|None=None, origin:Tensor=None, n:in
             points.append(p)
 
     return points
+
+
+def interpolate_circle(origin:Tensor, radius:float=1.0, plane='xy', n:int=100) -> list[Tensor]:
+    points = []
+    for i in range(n):
+        a = radius * math.sin((2*math.pi*i) / n)
+        b = radius * math.cos((2*math.pi*i) / n)
+        if plane == 'xy':
+            p = create_points(1,1,a,b,0)
+        elif plane == 'xz':
+            p = create_points(1,1,a,0,b)
+        elif plane == 'yz':
+            p = create_points(1,1,0,a,b)
+        points.append(p)
+    return points
