@@ -626,7 +626,7 @@ def ABC(size:int, plane:Literal['xz', 'yz', 'xy'] = 'xz', origin:Tensor|tuple=No
     :return: A,B,C 
     '''
     if origin is None:
-        origin = torch.tensor((0,0,0))
+        origin = torch.tensor((0,0,0), device=device)
     if type(origin) == tuple or type(origin) == list:
         origin = torch.tensor(origin)
     
@@ -634,19 +634,19 @@ def ABC(size:int, plane:Literal['xz', 'yz', 'xy'] = 'xz', origin:Tensor|tuple=No
 
     
     if plane == 'xz':
-        A = origin+torch.tensor((-1,0, 1)) * size
-        B = origin+torch.tensor((1,0, 1))* size
-        C = origin+torch.tensor((-1,0, -1))* size
+        A = origin+torch.tensor((-1,0, 1), device=device) * size
+        B = origin+torch.tensor((1,0, 1), device=device)* size
+        C = origin+torch.tensor((-1,0, -1), device=device)* size
     
     if plane == 'yz':
-        A = origin+torch.tensor((0,-1, 1)) * size
-        B = origin+torch.tensor((0,1, 1))* size
-        C = origin+torch.tensor((0,-1, -1))* size
+        A = origin+torch.tensor((0,-1, 1), device=device) * size
+        B = origin+torch.tensor((0,1, 1), device=device)* size
+        C = origin+torch.tensor((0,-1, -1), device=device)* size
     
     if plane == 'xy':
-        A = origin+torch.tensor((-1,1, 0)) * size
-        B = origin+torch.tensor((1, 1,0))* size
-        C = origin+torch.tensor((-1, -1,0))* size
+        A = origin+torch.tensor((-1,1, 0), device=device) * size
+        B = origin+torch.tensor((1, 1,0), device=device)* size
+        C = origin+torch.tensor((-1, -1,0), device=device)* size
     
     
 
