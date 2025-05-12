@@ -12,7 +12,7 @@ from vedo import Mesh
 torch.set_printoptions(linewidth=400)
 
 def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:float= 0.000135156253,K1:float|None=None, 
-                   K2:float|None=None,U_function:FunctionType=gorkov_fin_diff,U_fun_args:dict={}, board:Tensor|None=None) -> Tensor:
+                   K2:float|None=None,U_function:FunctionType=gorkov_fin_diff,U_fun_args:dict={}, board:Tensor|None=None, V=c.V) -> Tensor:
     '''
     Returns the force on a particle using finite differences to approximate the derivative of the gor'kov potential\n
     :param activations: Transducer hologram
@@ -24,6 +24,7 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
     :param U_function: The function used to compute the gor'kov potential
     :param U_fun_args: arguments for `U_function` 
     :param board: Transducers to use, if `None` uses `acoustools.Utilities.TRANSDUCERS`
+    :parm V: Particle volume
     :return: Force
     '''
     B = points.shape[0]
@@ -35,9 +36,10 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
 
     fin_diff_points = get_finite_diff_points_all_axis(points, axis, stepsize)
     
-    U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/10 ,K1=K1,K2=K2,**U_fun_args, board=board)
+    U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/10 ,K1=K1,K2=K2,**U_fun_args, board=board,V=V)
     U_grads = U_points[:,N:]
     split = torch.reshape(U_grads,(B,2,-1))
+
     
     F = -1* (split[:,0,:] - split[:,1,:]) / (2*stepsize)
     return F
@@ -73,10 +75,12 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     Pxz = (Fxz@activations)
     Pyz = (Fyz@activations)
 
+
     grad_p = torch.stack([Px,Py,Pz])
     grad_px = torch.stack([Pxx,Pxy,Pxz])
     grad_py = torch.stack([Pxy,Pyy,Pyz])
     grad_pz = torch.stack([Pxz,Pyz,Pzz])
+
 
     p_term = p*grad_p.conj() + p.conj()*grad_p
 
@@ -91,7 +95,7 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     force = (-1 * grad_U).squeeze().real
 
     if return_components:
-        return -1*force[0], -1*force[1], -1*force[2] #Force seems to act in wrong direction
+        return -1*force[0], -1*force[1], -1*force[2] 
     else:
         return -1*force 
 
@@ -152,6 +156,7 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     py = (Ay@activations).squeeze(2).unsqueeze(0)
     pz = (Az@activations).squeeze(2).unsqueeze(0)
 
+
     grad  = torch.cat((px,py,pz),dim=1)
     # grad_norm = torch.norm(grad,2,dim=1)**2
     grad_norm = torch.abs(px)**2 + torch.abs(py)**2 + torch.abs(pz)**2
@@ -160,17 +165,14 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     k1 = 1/ (4*c.p_0*(c.c_0**2))
     k2 = 1/ (c.k**2)
 
-    pressure_square = torch.unsqueeze(pressure_square,1).expand(-1,3,-1)  
-   
+ 
     force =  -1 * k1 * (pressure_square - k2 * grad_norm) * norms #Bk1. Page 299 for derivation, norm on pg 307
 
     if use_momentum:
-        velocity_normal = 1/(c.angular_frequency * 1j * c.p_0) * torch.sum(grad * norms, dim=1, keepdim=True)
-        # velocity_normal = 1/(c.angular_frequency * -1j * c.p_0) * torch.sum(grad.conj().resolve_conj() * norms, dim=1, keepdim=True) #Conj version
-        
-        velocity_conj = 1/(c.angular_frequency * -1j * c.p_0) * grad.conj().resolve_conj()
-        
-        momentum = -1 * c.p_0 * 0.5 * (velocity_normal * velocity_conj).real 
+
+        grad_normal = torch.sum(grad * norms, dim=1, keepdim=True)
+        grad_conj = grad.conj().resolve_conj()
+        momentum = -1 * 1/(2 * c.p_0 * c.angular_frequency**2) * (grad_normal * grad_conj).real
         force += momentum
 
     force *= areas

@@ -3,6 +3,7 @@ from torch import Tensor
 
 from acoustools.Utilities.Boards import TRANSDUCERS
 from acoustools.Utilities.Utilities import is_batched_points
+from acoustools.Utilities.Setup import device, DTYPE
 import acoustools.Constants as Constants
 
 
@@ -17,9 +18,9 @@ def forward_model(points:Tensor, transducers:Tensor|None = None) -> Tensor:
         transducers = TRANSDUCERS
 
     if is_batched_points(points):
-        return forward_model_batched(points, transducers)
+        return forward_model_batched(points, transducers).to(DTYPE)
     else:
-        return forward_model_unbatched(points, transducers)
+        return forward_model_unbatched(points, transducers).to(DTYPE)
 
 def forward_model_unbatched(points, transducers = TRANSDUCERS):
     '''
@@ -94,7 +95,7 @@ def forward_model_batched(points, transducers = TRANSDUCERS):
 
     trans_matrix=2*Constants.P_ref*torch.multiply(torch.divide(phase,distance),directivity)
 
-    return trans_matrix.permute((0,2,1))
+    return trans_matrix.permute((0,2,1)).to(DTYPE).to(device)
 
 def green_propagator(points:Tensor, board:Tensor, k:float=Constants.k) -> Tensor:
     '''

@@ -16,6 +16,7 @@ import acoustools.Constants as Constants
 
 def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|str=None,
                           board:Tensor|None=None,H:Tensor|None=None,E:Tensor|None=None, return_components:bool=False, dims='XYZ',
+                          V:float=Constants.V,
                           **params) -> Tensor:
     '''
     Returns Gor'kov potential computed analytically from the BEM model\n
@@ -27,6 +28,7 @@ def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|s
     :param E: Precomputed E - if None E will be computed
     :param return_components: 
     :param dims: Dimensions to consider gradient in
+    :param V: Volume of particles
     :return: Gor'kov potential at point U
     '''
     if board is None:
@@ -58,8 +60,8 @@ def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|s
     else:
         pz = torch.Tensor((0,)).to(device)
     
-    K1 = Constants.V / (4*Constants.p_0*Constants.c_0**2)
-    K2 = 3*Constants.V / (4*(2*Constants.f**2 * Constants.p_0))
+    K1 = V / (4*Constants.p_0*Constants.c_0**2)
+    K2 = 3*V / (4*(2*Constants.f**2 * Constants.p_0))
 
     a = K1 * torch.abs(p)**2 
     b = K2*(torch.abs(px)**2 + torch.abs(py)**2 + torch.abs(pz)**2)

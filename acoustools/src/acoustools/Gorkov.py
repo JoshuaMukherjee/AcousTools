@@ -62,7 +62,7 @@ def gorkov_autograd(activation:Tensor, points:Tensor, K1:float|None=None, K2:flo
 
 
 def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize:float = 0.000135156253,K1:float|None=None, K2:float|None=None,
-                    prop_function:FunctionType=propagate,prop_fun_args:dict={}, board:Tensor|None=None) -> Tensor:
+                    prop_function:FunctionType=propagate,prop_fun_args:dict={}, board:Tensor|None=None, V=c.V) -> Tensor:
     '''
     Computes the Gorkov potential using finite differences to compute derivatives \n
     :param activation: The transducer activations to use 
@@ -74,6 +74,7 @@ def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize
     :param prop_function: Function to use to compute pressure
     :param prop_fun_args: Arguments to pass to `prop_function`
     :param board: The transducer boards to use if `None` use `acoustools.Utilities.TRANSDUCERS`
+    :param V: Particle Volume
     :return: gorkov potential at each point
 
     ```Python
@@ -122,10 +123,10 @@ def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize
 
     if K1 is None:
         # K1 = 1/4 * c.V * (1/(c.c_0**2 * c.p_0) - 1/(c.c_p**2 * c.p_p))
-        K1 = c.V / (4*c.p_0*c.c_0**2) #Assuming f1=f2=1
+        K1 = V / (4*c.p_0*c.c_0**2) #Assuming f1=f2=1
     if K2 is None:
         # K2 = 3/4 * c.V * ((c.p_0-c.p_p) / (c.f**2 * c.p_0 * (c.p_0+2*c.p_p)) )
-        K2 = 3*c.V / (4*(2*c.f**2 * c.p_0)) #Assuming f1=f2=1
+        K2 = 3*V / (4*(2*c.f**2 * c.p_0)) #Assuming f1=f2=1
     
     # p_in =  torch.abs(pressure)
     p_in = torch.sqrt(torch.real(pressure) **2 + torch.imag(pressure)**2)
@@ -137,13 +138,14 @@ def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize
     
     return U
 
-def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ") -> Tensor:
+def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", V:float=c.V) -> Tensor:
     '''
     Computes the Gorkov potential using analytical derivative of the piston model \n
     :param activation: The transducer activations to use 
     :param points: The points to compute the potential at
     :param board: The transducer boards to use
     :param axis: The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis
+    :param V: particle Volume
     :return: gorkov potential at each point
     ```Python
     from acoustools.Utilities import create_points, add_lev_sig
@@ -185,9 +187,9 @@ def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None
     else:
         grad_z = 0
 
-
-    K1 = c.V / (4*c.p_0*c.c_0**2)
-    K2 = 3*c.V / (4*(2*c.f**2 * c.p_0))
+    
+    K1 = V / (4*c.p_0*c.c_0**2)
+    K2 = 3*V / (4*(2*c.f**2 * c.p_0))
     U = K1*p - K2*(grad_x+grad_y+grad_z)
 
     return U

@@ -46,12 +46,12 @@ def wgs_solver_batch(A, b, iterations):
     `iterations` number of iterations to run for \\
     returns (point pressure ,point phases, hologram)
     '''
-    AT = torch.conj(A).mT.to(device)
+    AT = torch.conj(A).mT.to(device).to(DTYPE)
     
     b = b.expand(A.shape[0],-1,-1)
-    b0 = b.to(device).expand(A.shape[0],-1,-1)
+    b0 = b.to(device).expand(A.shape[0],-1,-1).to(DTYPE)
     
-    x = torch.ones(A.shape[2],1).to(device) + 0j
+    x = torch.ones(A.shape[2],1).to(device).to(DTYPE) + 0j
     for kk in range(iterations):
         p = A@x
         p,b = constrain_field_weighted(p,b0,b)
