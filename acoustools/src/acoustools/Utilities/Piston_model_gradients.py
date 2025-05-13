@@ -25,7 +25,7 @@ def compute_gradients(points, transducers = TRANSDUCERS):
     diff = transducers - points
     distances = torch.sqrt(torch.sum(diff**2, 2))
     planar_distance= torch.sqrt(torch.sum((diff**2)[:,:,0:2,:],dim=2))
-    
+    planar_distance += 1e-8
 
     #Partial derivates of bessel function section wrt xyz
     sin_theta = torch.divide(planar_distance,distances) 
@@ -37,6 +37,7 @@ def compute_gradients(points, transducers = TRANSDUCERS):
     
     denom = torch.unsqueeze((planar_distance*distances**3),2)
     denom = denom.expand((-1,-1,2,-1))
+    # denom[denom == 0] = 1
     
     partialUpartiala[:,:,0:2,:] = -1 * (diff[:,:,0:2,:] * diff_z**2) / denom
     partialUpartiala[:,:,2,:] = (diff[:,:,2,:] * planar_distance) / distances**3
@@ -62,6 +63,7 @@ def compute_gradients(points, transducers = TRANSDUCERS):
     G = Constants.P_ref / dist_expand
     H = torch.exp(1j * Constants.k * dist_expand)
 
+
     return F,G,H, partialFpartialX, partialGpartialX, partialHpartialX, partialFpartialU, partialUpartiala
 
 def forward_model_grad(points:Tensor, transducers:Tensor|None = None) -> tuple[Tensor]:
@@ -86,6 +88,7 @@ def forward_model_grad(points:Tensor, transducers:Tensor|None = None) -> tuple[T
 
     F,G,H, partialFpartialX, partialGpartialX, partialHpartialX,_,_ = compute_gradients(points, transducers)
     derivative = G*(H*partialFpartialX + F*partialHpartialX) + F*H*partialGpartialX
+
 
     return derivative[:,:,0,:].permute((0,2,1)), derivative[:,:,1,:].permute((0,2,1)), derivative[:,:,2,:].permute((0,2,1))
 
@@ -125,6 +128,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     distances_expanded_cube = distances_expanded ** 3
     
     planar_distance= torch.sqrt(torch.sum(diff_square[:,:,0:2,:],dim=2))
+    planar_distance += 1e-8
     planar_distance_square = planar_distance**2
 
     sin_theta = planar_distance / distances
@@ -144,6 +148,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     kr = Constants.k * Constants.radius
     kr_sine = kr*sin_theta
     H = 1 - ((kr_sine)**2) / 8 + ((kr_sine)**4)/192 
+
 
     #(a = {x,y,z})
     #Faa = 2*Ga*Ha + Gaa * H + G * Haa
@@ -179,6 +184,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     sy = -1 * (dy * dz**2) / (planar_distance * distances_cube)
     sz = (dz * planar_distance) / distances_cube
     sa = torch.stack([sx,sy,sz],axis=2)
+    # sa[sa.isnan()] = 1
 
     Ha = 1/48 * kr**2 * sin_theta_expand * sa * (kr**2 * sin_theta_expand**2 - 12)
 
@@ -190,6 +196,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     syy = (dz**2 * (-1 * (dy**2 * distances_square) + (planar_distance_square * distances_square) - 3*dy**2 * planar_distance_square)) / (planar_distance**3 * distances_five)
     szz = ((-1 * planar_distance) * (planar_distance**2 - 2*dz**2)) / distances_five
     saa = torch.stack([sxx,syy,szz],axis=2)
+    # saa[saa.isnan()] = 0
 
     Haa = 1/48 * kr**2 * (3*sa**2 * (kr**2 * sin_theta_expand_square- 4) + sin_theta_expand*saa * (kr**2*sin_theta_expand_square - 12))
 
@@ -197,6 +204,8 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     H_expand = H.unsqueeze(2).expand((1,M,3,N))
     G_expand = G.unsqueeze(2).expand((1,M,3,N))
     Faa = 2*Ga*Ha + Gaa*H_expand + G_expand*Haa
+
+    
 
     return Faa[:,:,0,:].permute((0,2,1)), Faa[:,:,1,:].permute((0,2,1)), Faa[:,:,2,:].permute((0,2,1))
 
@@ -233,6 +242,7 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     distances_expanded_square = distances_expanded**2
     
     planar_distance= torch.sqrt(torch.sum(diff_square[:,:,0:2,:],dim=2))
+    planar_distance += 1e-8
     planar_distance_cube = planar_distance**3
 
     sin_theta = planar_distance / distances
@@ -278,7 +288,12 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     sx = -1 * (dx * dz**2) / (planar_distance * distances_cube)
     sy = -1 * (dy * dz**2) / (planar_distance * distances_cube)
     sz = (dz * planar_distance) / distances_cube
+
+    # sx[sx.isnan()] = 1
+    # sy[sy.isnan()] = 1
+    # sz[sx.isnan()] = 1
     sa = torch.stack([sx,sy,sz],axis=2)
+    
 
     Ha = 1/48 * kr**2 * sin_theta_expand * sa * (kr**2 * sin_theta_expand**2 - 12)
 
@@ -302,6 +317,9 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     Sxy = -1 * dx * dy * dz**2 * (4 * (dx**2 + dy**2) + dz**2) / (planar_distance_cube* distances_five)
     Sxz = dx * dz * (2 * dx**2 + 2 * dy**2 - dz**2) / (planar_distance * distances_five)
     Syz = dy * dz * (2 * dx**2 + 2 * dy**2 - dz**2) / (planar_distance * distances_five)
+    # Sxy[Sxy.isnan()] = 1
+    # Sxz[Sxz.isnan()] = 1
+    # Syz[Syz.isnan()] = 1
 
     Hxy = kr**2 / 48 * (3 * sx * sy * (kr**2 * sin_theta**2 - 4) + sin_theta * Sxy * (kr**2 * sin_theta**2  -12))
     Hxz = kr**2 / 48 * (3 * sx * sz * (kr**2 * sin_theta**2 - 4) + sin_theta * Sxz * (kr**2 * sin_theta**2  -12))
