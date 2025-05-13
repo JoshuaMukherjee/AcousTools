@@ -567,3 +567,15 @@ def gorkov_target(points:Tensor, objective:FunctionType = target_gorkov_BEM_mse_
                                 lr=lr, constrains=constraint, objective_params={'root':path,'reflector':reflector})
     
     return x
+
+
+def kd_solver(points:Tensor, board:Tensor|None = None,k=c.k):
+    B = points.shape[0]
+    M = board.shape[0]
+
+    b = board.unsqueeze(0).permute((0,2,1))
+    p = points.expand(B,3,M)
+
+    distance = torch.sqrt(torch.sum((p - b)**2,dim=1)).unsqueeze_(0).mT
+    distance = distance.to(device).to(DTYPE)
+    return torch.exp(1j * -1* distance*k)
