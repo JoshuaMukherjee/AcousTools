@@ -42,6 +42,7 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
 
     
     F = -1* (split[:,0,:] - split[:,1,:]) / (2*stepsize)
+    F = F.reshape(B,3,N)
     return F
 
 def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False) -> Tensor | tuple[Tensor, Tensor, Tensor]:
