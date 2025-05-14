@@ -174,13 +174,12 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
         grad_normal = torch.sum(grad * norms, dim=1, keepdim=True)
         grad_conj = grad.conj().resolve_conj()
         momentum = -1 * 1/(2 * c.p_0 * c.angular_frequency**2) * (grad_normal * grad_conj).real
-        force += momentum
+        force += momentum #Sign here?
 
     force *= areas
 
     # compressability = -1*k1*k2*(grad.conj().resolve_conj() @ (grad.mH @ norms) )* areas #Bk2. Pg 9
     # force += compressability.real 
-    
     force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
 
     # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))
