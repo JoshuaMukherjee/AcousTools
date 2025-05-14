@@ -8,7 +8,7 @@ from acoustools.Utilities.Boards import TRANSDUCERS
 from acoustools.Utilities.Setup import device
 
 def add_lev_sig(activation:Tensor, board:Tensor|None=None, 
-                mode:Literal['Focal', 'Trap', 'Vortex','Twin', 'Eye']='Trap', sig:Tensor|None=None, return_sig:bool=False) -> Tensor:
+                mode:Literal['Focal', 'Trap', 'Vortex','Twin', 'Eye']='Trap', sig:Tensor|None=None, return_sig:bool=False, board_size:int=256) -> Tensor:
     '''
     Adds signature to hologram for a board \n
     :param activation: Hologram input
@@ -20,6 +20,7 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
     * Twin: Add $\\pi$ to half of the board laterally to create a twin trap
     * Eye: Add a vortex trap combined with a central disk of the Trap method. Produces a eye like shape around the focus
     :param sig: signature to add to top board. If `None` then value is determined by value of `mode`
+    :param board_size: Transducers per board in total. Default 256 (16x16)
     :return: hologram with signature added
 
     ```Python
@@ -40,7 +41,7 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
     s = act.shape
     B = s[0]
 
-    act = torch.reshape(act,(B,-1, 256))
+    act = torch.reshape(act,(B,-1, board_size))
 
     # act[:,0,:] = torch.e**(1j*(sig + torch.angle(act[:,0,:].clone())))
     if sig is None:
@@ -51,16 +52,16 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
             sig = torch.zeros_like(act)
         if mode == 'Vortex':
             plane = board[:,0:2]
-            sig = torch.atan2(plane[:,0], plane[:,1]).unsqueeze(0).unsqueeze(2).reshape((B,-1, 256))
+            sig = torch.atan2(plane[:,0], plane[:,1]).unsqueeze(0).unsqueeze(2).reshape((B,-1, board_size))
         if mode == 'Twin':
             plane = board[:,0:2]
-            sig = torch.zeros_like(sig) + torch.pi * (plane[:,0] > 0).unsqueeze(0).unsqueeze(2).reshape((B,-1, 256))
+            sig = torch.zeros_like(sig) + torch.pi * (plane[:,0] > 0).unsqueeze(0).unsqueeze(2).reshape((B,-1, board_size))
         if mode == 'Eye':
             
-            b = board.reshape(-1,256,3)
+            b = board.reshape(-1,board_size,3)
 
             plane = board[:,0:2]
-            sig = torch.atan2(plane[:,0], plane[:,1]).unsqueeze(0).unsqueeze(2).reshape((B,-1, 256))
+            sig = torch.atan2(plane[:,0], plane[:,1]).unsqueeze(0).unsqueeze(2).reshape((B,-1, board_size))
             mask = torch.sqrt(b[:,:,0] ** 2 + b[:,:,1] ** 2) < 0.06
 
             
