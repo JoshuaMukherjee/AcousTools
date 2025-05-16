@@ -35,23 +35,29 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
         board = TRANSDUCERS
 
     fin_diff_points = get_finite_diff_points_all_axis(points, axis, stepsize)
+    # print(fin_diff_points)
     
     U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/10 ,K1=K1,K2=K2,**U_fun_args, board=board,V=V)
     U_grads = U_points[:,N:]
     split = torch.reshape(U_grads,(B,2,-1))
+    # print(split)
+    # print((split[:,0,:] - split[:,1,:]))
+
+    # print()
 
     
     F = -1* (split[:,0,:] - split[:,1,:]) / (2*stepsize)
     F = F.reshape(B,3,N)
     return F
 
-def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False, V=c.V) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
     Returns the force on a particle using the analytical derivative of the Gor'kov potential and the piston model\n
     :param activations: Transducer hologram
     :param points: Points to propagate to
     :param board: Transducers to use, if `None` uses `acoustools.Utilities.TRANSDUCERS`
     :param return_components: If true returns force as one tensor otherwise returns Fx, Fy, Fz
+    :parm V: Particle volume
     :return: force  
     '''
 
@@ -89,8 +95,8 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     py_term = Py*grad_py.conj() + Py.conj()*grad_py
     pz_term = Pz*grad_pz.conj() + Pz.conj()*grad_pz
 
-    K1 = c.V / (4*c.p_0*c.c_0**2)
-    K2 = 3*c.V / (4*(2*c.f**2 * c.p_0))
+    K1 = V / (4*c.p_0*c.c_0**2)
+    K2 = 3*V / (4*(2*c.f**2 * c.p_0))
 
     grad_U = K1 * p_term - K2 * (px_term + py_term + pz_term)
     force = (-1 * grad_U).squeeze().real
@@ -123,7 +129,7 @@ def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axi
 def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, board:Tensor, grad_function:FunctionType=forward_model_grad, 
                grad_function_args:dict={}, F_fun:FunctionType|None=forward_model_batched, F_function_args:dict={},
                F:Tensor|None=None, Ax:Tensor|None=None, Ay:Tensor|None=None,Az:Tensor|None=None,
-               use_momentum:bool=False) -> Tensor:
+               use_momentum:bool=False, return_components:bool=False) -> Tensor:
     '''
     Returns the force on a mesh using a discritised version of Eq. 1 in `Acoustical boundary hologram for macroscopic rigid-body levitation`\n
     :param activations: Transducer hologram
@@ -140,11 +146,12 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     :param Ay: The gradient of `F` wrt y, if `None` will be computed
     :param Az: The gradient of `F` wrt z, if `None` will be computed
     :param use_mpmentum: If true will add the term for momentum advection, for sound hard boundaries should be false
+    :param return_components: If True will return force, momentum_flux (force is still the total force)
     :return: the force on each mesh element
     '''
 
     if F is None:
-        F = F_fun(points=points,**F_function_args)
+        F = F_fun(points=points, transducers=board ,**F_function_args)
     p = propagate(activations,points,board,A=F)
     pressure_square = torch.abs(p)**2
     
@@ -157,33 +164,53 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     py = (Ay@activations).squeeze(2).unsqueeze(0)
     pz = (Az@activations).squeeze(2).unsqueeze(0)
 
-
     grad  = torch.cat((px,py,pz),dim=1)
+    velocity = grad /( 1j * c.p_0 * c.angular_frequency)
     # grad_norm = torch.norm(grad,2,dim=1)**2
-    grad_norm = torch.abs(px)**2 + torch.abs(py)**2 + torch.abs(pz)**2
+    # grad_norm = torch.abs(px)**2 + torch.abs(py)**2 + torch.abs(pz)**2
 
     
-    k1 = 1/ (4*c.p_0*(c.c_0**2))
-    k2 = 1/ (c.k**2)
+    # k1 = 1/ (4*c.p_0*(c.c_0**2))
+    # k2 = 1/ (c.k**2)
+    # f =  -1 * k1 * (pressure_square - k2 * grad_norm) * norms * areas
 
- 
-    force =  -1 * k1 * (pressure_square - k2 * grad_norm) * norms #Bk1. Page 299 for derivation, norm on pg 307
+
+    pressure_time_average = 1/2 * pressure_square
+    k0 = 1/(2 * c.p_0 * c.c_0**2)
+    velocity_time_average = 1/2 * torch.sum(velocity * velocity.conj().resolve_conj(), dim=1, keepdim=True)
+    # velocity_time_average = 1/2 * (velocity * velocity.conj().resolve_conj())
+    force = -1*( k0 * pressure_time_average - c.p_0 / 2 * velocity_time_average) * norms * areas
 
     if use_momentum:
 
-        grad_normal = torch.sum(grad * norms, dim=1, keepdim=True)
-        grad_conj = grad.conj().resolve_conj()
-        momentum = -1 * 1/(2 * c.p_0 * c.angular_frequency**2) * (grad_normal * grad_conj).real
-        force += momentum #Sign here?
+        # grad_normal = torch.sum(grad * norms, dim=1, keepdim=True)
+        # grad_conj = grad.conj().resolve_conj()
+        # momentum = -1 * 1/(2 * c.p_0 * c.angular_frequency**2) * (grad_normal * grad_conj).real
+        # momentum *= areas
 
-    force *= areas
+
+        
+        momentum = 0.5 * (torch.sum(velocity * norms, dim=1, keepdim=True) * velocity.conj().resolve_conj()).real
+        momentum *= -1 * c.p_0 * areas
+        # print(force, momentum)
+        # print(force.shape, momentum.shape)
+        # print(torch.sum(force,dim=2), torch.sum(momentum,dim=2))
+        # print(torch.sum(force,dim=2) + torch.sum(momentum,dim=2))
+        
+        force += momentum #Sign here?
+    else:
+        momentum = 0
+
+    # force *= areas
 
     # compressability = -1*k1*k2*(grad.conj().resolve_conj() @ (grad.mH @ norms) )* areas #Bk2. Pg 9
     # force += compressability.real 
     force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
 
     # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))
-
+    if return_components: 
+        return force, momentum
+    
     return force
 
 def torque_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, centre_of_mass:Tensor, board:Tensor,force:Tensor|None=None, 

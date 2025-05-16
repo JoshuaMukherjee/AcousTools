@@ -138,7 +138,7 @@ def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize
     
     return U
 
-def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", V:float=c.V) -> Tensor:
+def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", V:float=c.V, **params) -> Tensor:
     '''
     Computes the Gorkov potential using analytical derivative of the piston model \n
     :param activation: The transducer activations to use 
