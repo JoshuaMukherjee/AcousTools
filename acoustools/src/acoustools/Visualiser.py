@@ -614,7 +614,7 @@ def Visualise_line(A:Tensor,B:Tensor,x:Tensor, F:Tensor|None=None,points:Tensor|
         return pressure
        
 
-def ABC(size:int, plane:Literal['xz', 'yz', 'xy'] = 'xz', origin:Tensor|tuple=None) -> tuple[Tensor]:
+def ABC(size:float, plane:Literal['xz', 'yz', 'xy'] = 'xz', origin:Tensor|tuple=None) -> tuple[Tensor]:
     '''
     Get ABC values for visualisation
     * A top right corner

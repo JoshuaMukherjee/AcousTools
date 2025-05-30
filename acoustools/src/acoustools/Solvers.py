@@ -97,9 +97,9 @@ def wgs(points:Tensor,iter:int = 200, board:Tensor|None = None, A:Tensor|None = 
         batch=False
 
     if A is None:
-        A = forward_model(points, board)
+        A = forward_model(points, board).to(DTYPE)
     if b is None:
-        b = torch.ones(N,1).to(device)+0j
+        b = torch.ones(N,1).to(device).to(DTYPE)+0j
 
     if batch:
         img,pha,act = wgs_solver_batch(A,b,iter)

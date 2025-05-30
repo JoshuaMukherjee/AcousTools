@@ -186,7 +186,7 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
 
         try:
             if print_lines: print("Trying to load H at", f_name ,"...")
-            H = pickle.load(open(f_name,"rb")).to(device)
+            H = pickle.load(open(f_name,"rb")).to(device).to(DTYPE)
         except FileNotFoundError: 
             if print_lines: print("Not found, computing H...")
             H = compute_H(scatterer,board,use_LU=use_LU)

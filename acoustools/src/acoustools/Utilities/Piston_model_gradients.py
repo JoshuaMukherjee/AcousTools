@@ -1,4 +1,5 @@
 from acoustools.Utilities.Boards import TRANSDUCERS
+from acoustools.Utilities.Setup import device, DTYPE
 import acoustools.Constants as Constants
 
 import torch
@@ -88,6 +89,7 @@ def forward_model_grad(points:Tensor, transducers:Tensor|None = None) -> tuple[T
 
     F,G,H, partialFpartialX, partialGpartialX, partialHpartialX,_,_ = compute_gradients(points, transducers)
     derivative = G*(H*partialFpartialX + F*partialHpartialX) + F*H*partialGpartialX
+    derivative = derivative.to(device).to(DTYPE)
 
 
     return derivative[:,:,0,:].permute((0,2,1)), derivative[:,:,1,:].permute((0,2,1)), derivative[:,:,2,:].permute((0,2,1))
@@ -204,6 +206,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     H_expand = H.unsqueeze(2).expand((1,M,3,N))
     G_expand = G.unsqueeze(2).expand((1,M,3,N))
     Faa = 2*Ga*Ha + Gaa*H_expand + G_expand*Haa
+    Faa = Faa.to(device).to(DTYPE)
 
     
 
@@ -340,5 +343,9 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     Fxy = Gx * Hy + Gy * Hx + Gxy * H + G*Hxy
     Fxz = Gx * Hz + Gz * Hx + Gxz * H + G*Hxz
     Fyz = Gy * Hz + Gz * Hy + Gyz * H + G*Hyz
+
+    Fxy = Fxy.to(device).to(DTYPE)
+    Fxz = Fxz.to(device).to(DTYPE)
+    Fyz = Fyz.to(device).to(DTYPE)
 
     return Fxy.permute((0,2,1)), Fxz.permute((0,2,1)), Fyz.permute((0,2,1))
