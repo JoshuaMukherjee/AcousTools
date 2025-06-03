@@ -61,7 +61,7 @@ def BEM_compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,r
     K2 = 3*V / (4*(2*c.f**2 * c.p_0))
 
     grad_U = K1 * p_term - K2 * (px_term + py_term + pz_term)
-    force = (grad_U).squeeze().real
+    force = -1*(grad_U).squeeze().real
 
     if return_components:
         return force[0], force[1], force[2] 

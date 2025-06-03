@@ -35,7 +35,6 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
         board = TRANSDUCERS
 
     fin_diff_points = get_finite_diff_points_all_axis(points, axis, stepsize)
-    # print(fin_diff_points)
     
     U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/10 ,K1=K1,K2=K2,**U_fun_args, board=board,V=V)
     U_grads = U_points[:,N:]
@@ -83,28 +82,36 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     Pyz = (Fyz@activations)
 
 
-    grad_p = torch.stack([Px,Py,Pz])
-    grad_px = torch.stack([Pxx,Pxy,Pxz])
-    grad_py = torch.stack([Pxy,Pyy,Pyz])
-    grad_pz = torch.stack([Pxz,Pyz,Pzz])
+    grad_p = torch.stack([Px,Py,Pz], dim=2).squeeze(3)
+    # grad_px = torch.stack([Pxx,Pxy,Pxz])
+    # grad_py = torch.stack([Pxy,Pyy,Pyz])
+    # grad_pz = torch.stack([Pxz,Pyz,Pzz])
 
+    p_term_x= (p*Px.conj() + p.conj()*Px) 
+    p_term_y= (p*Py.conj() + p.conj()*Py) 
+    p_term_z= (p*Pz.conj() + p.conj()*Pz) 
 
-    p_term = p*grad_p.conj() + p.conj()*grad_p
-
-    px_term = Px*grad_px.conj() + Px.conj()*grad_px
-    py_term = Py*grad_py.conj() + Py.conj()*grad_py
-    pz_term = Pz*grad_pz.conj() + Pz.conj()*grad_pz
+    # px_term = Px*grad_px.conj() + Px.conj()*grad_px
+    # py_term = Py*grad_py.conj() + Py.conj()*grad_py
+    # pz_term = Pz*grad_pz.conj() + Pz.conj()*grad_pz
 
     K1 = V / (4*c.p_0*c.c_0**2)
     K2 = 3*V / (4*(2*c.f**2 * c.p_0))
 
-    grad_U = K1 * p_term - K2 * (px_term + py_term + pz_term)
-    force = (-1 * grad_U).squeeze().real
+    # grad_U = K1 * p_term - K2 * (px_term + py_term + pz_term)
+
+    grad_U_x = K1 * p_term_x - K2 * ((Pxx*Px.conj() + Px*Pxx.conj()) + (Pxy*Py.conj() + Py.conj()*Pxy) + (Pxz*Pz.conj() + Pxz.conj()*Pz))
+    grad_U_y = K1 * p_term_y - K2 * ((Pxy*Px.conj() + Px*Pxy.conj()) + (Pyy*Py.conj() + Py.conj()*Pyy) + (Pyz*Pz.conj() + Pyz.conj()*Pz))
+    grad_U_z = K1 * p_term_z - K2 * ((Pxz*Px.conj() + Px*Pxz.conj()) + (Pyz*Py.conj() + Py.conj()*Pyz) + (Pzz*Pz.conj() + Pxz.conj()*Pz))
+
+    grad_U = torch.stack([grad_U_x, grad_U_y, grad_U_z])
+
+    force = -(grad_U).squeeze().real
 
     if return_components:
-        return -1*force[0], -1*force[1], -1*force[2] 
+        return force[0], force[1], force[2] 
     else:
-        return -1*force 
+        return force 
 
     
 def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axis:int=2) -> Tensor:

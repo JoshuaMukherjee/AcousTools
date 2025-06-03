@@ -89,7 +89,7 @@ def forward_model_grad(points:Tensor, transducers:Tensor|None = None) -> tuple[T
 
     F,G,H, partialFpartialX, partialGpartialX, partialHpartialX,_,_ = compute_gradients(points, transducers)
     derivative = G*(H*partialFpartialX + F*partialHpartialX) + F*H*partialGpartialX
-    derivative = derivative.to(device).to(DTYPE)
+    derivative = -derivative.to(device).to(DTYPE) # minus here to match f.d -> not 100% sure why its needed
 
 
     return derivative[:,:,0,:].permute((0,2,1)), derivative[:,:,1,:].permute((0,2,1)), derivative[:,:,2,:].permute((0,2,1))
