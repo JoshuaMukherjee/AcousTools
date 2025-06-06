@@ -1,7 +1,7 @@
 from acoustools.Gorkov import gorkov_fin_diff, get_finite_diff_points_all_axis
 from acoustools.Utilities import forward_model_batched, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed, TRANSDUCERS, propagate, DTYPE
 import acoustools.Constants as c
-from acoustools.BEM import grad_H, grad_2_H, get_cache_or_compute_H, get_cache_or_compute_H_gradients
+# from acoustools.BEM import grad_H, grad_2_H, get_cache_or_compute_H, get_cache_or_compute_H_gradients
 from acoustools.Mesh import translate, merge_scatterers, get_centres_as_points, get_areas, get_normals_as_points
 
 import torch
@@ -56,7 +56,7 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     :param points: Points to propagate to
     :param board: Transducers to use, if `None` uses `acoustools.Utilities.TRANSDUCERS`
     :param return_components: If true returns force as one tensor otherwise returns Fx, Fy, Fz
-    :parm V: Particle volume
+    :param V: Particle volume
     :return: force  
     '''
 
@@ -82,7 +82,7 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     Pyz = (Fyz@activations)
 
 
-    grad_p = torch.stack([Px,Py,Pz], dim=2).squeeze(3)
+    # grad_p = torch.stack([Px,Py,Pz], dim=2).squeeze(3)
     # grad_px = torch.stack([Pxx,Pxy,Pxz])
     # grad_py = torch.stack([Pxy,Pyy,Pyz])
     # grad_pz = torch.stack([Pxz,Pyz,Pzz])
@@ -95,8 +95,10 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     # py_term = Py*grad_py.conj() + Py.conj()*grad_py
     # pz_term = Pz*grad_pz.conj() + Pz.conj()*grad_pz
 
-    K1 = V / (4*c.p_0*c.c_0**2)
-    K2 = 3*V / (4*(2*c.f**2 * c.p_0))
+    # K1 = V / (4*c.p_0*c.c_0**2)
+    # K2 = 3*V / (4*(2*c.f**2 * c.p_0))
+    K1 = 1/4*V*(1/(c.c_0**2*c.p_0) - 1/(c.c_p**2*c.p_p))
+    K2 = 3/4 * V * ((c.p_0 - c.p_p) / (c.angular_frequency**2 * c.p_0 * (c.p_0 * 2*c.p_p)))
 
     # grad_U = K1 * p_term - K2 * (px_term + py_term + pz_term)
 
@@ -165,14 +167,16 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     if Ax is None or Ay is None or Az is None:
         Ax, Ay, Az = grad_function(points=points, transducers=board, **grad_function_args)
     
-
-
     px = (Ax@activations).squeeze(2).unsqueeze(0)
     py = (Ay@activations).squeeze(2).unsqueeze(0)
     pz = (Az@activations).squeeze(2).unsqueeze(0)
 
     grad  = torch.cat((px,py,pz),dim=1)
     velocity = grad /( 1j * c.p_0 * c.angular_frequency)
+
+    # angls = torch.sum(norms * velocity.conj(), dim=1).real/torch.norm(velocity,2,dim=1)
+    # angls = torch.sum(norms * grad.conj(), dim=1).real/torch.norm(grad,2,dim=1)
+
     # grad_norm = torch.norm(grad,2,dim=1)**2
     # grad_norm = torch.abs(px)**2 + torch.abs(py)**2 + torch.abs(pz)**2
 
@@ -184,9 +188,10 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
 
     pressure_time_average = 1/2 * pressure_square
     k0 = 1/(2 * c.p_0 * c.c_0**2)
-    velocity_time_average = 1/2 * torch.sum(velocity * velocity.conj().resolve_conj(), dim=1, keepdim=True)
-    # velocity_time_average = 1/2 * (velocity * velocity.conj().resolve_conj())
-    force = -1*( k0 * pressure_time_average - c.p_0 / 2 * velocity_time_average) * norms * areas
+    # velocity_time_average = 1/2 * torch.sum(velocity * velocity.conj().resolve_conj(), dim=1, keepdim=True).real
+    
+    velocity_time_average = 1/2 * (velocity * velocity.conj().resolve_conj()).real #Gives Fx=Fy so more likely right?
+    force = -1*( k0 * pressure_time_average - (c.p_0 / 2) * velocity_time_average) * norms * areas
 
     if use_momentum:
 
@@ -210,8 +215,6 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
 
     # force *= areas
 
-    # compressability = -1*k1*k2*(grad.conj().resolve_conj() @ (grad.mH @ norms) )* areas #Bk2. Pg 9
-    # force += compressability.real 
     force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
 
     # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))
@@ -252,102 +255,3 @@ def torque_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, c
     return torch.real(torque)
 
 
-def force_mesh_derivative(activations, points, norms, areas, board, scatterer,Hx = None, Hy=None, Hz=None, Haa=None):
-    '''
-    @private
-    '''
-    print("Warning probably not correct...")
-    if Hx is None or Hy is None or Hz is None:
-        Hx, Hy, Hz, A, A_inv, Ax, Ay, Az = grad_H(points, scatterer, board, True)
-    else:
-        A, A_inv, Ax, Ay, Az = None, None, None, None, None
-
-    if Haa is None:
-        Haa = grad_2_H(points, scatterer, board, A, A_inv, Ax, Ay, Az)
-    
-    Ha = torch.stack([Hx,Hy,Hz],dim=1)
-
-    Pa = Ha@activations
-    Paa = Haa@activations
-
-    Pa = Pa.squeeze(3)
-    Paa = Paa.squeeze(3)
-
-    k1 = 1/ (2*c.p_0*(c.c_0**2))
-    k2 = 1/ (c.k**2)
-
-
-    Faa =areas * k1 * (Pa * norms - 2*k2*norms*Pa*Paa)
-
-    return Faa#
-
-def get_force_mesh_along_axis(start:Tensor,end:Tensor, activations:Tensor, scatterers:list[Mesh], board:Tensor, mask:Tensor|None=None, steps:int=200, 
-                              path:str="Media",print_lines:bool=False, use_cache:bool=True, 
-                              Hs:Tensor|None = None, Hxs:Tensor|None=None, Hys:Tensor|None=None, Hzs:Tensor|None=None) -> tuple[list[Tensor],list[Tensor],list[Tensor]]:
-    '''
-    Computes the force on a mesh at each point from `start` to `end` with number of samples = `steps`  \n
-    :param start: The starting position
-    :param end: The ending position
-    :param activations: Transducer hologram
-    :param scatterers: First element is the mesh to move, rest is considered static reflectors 
-    :param board: Transducers to use 
-    :param mask: The mask to apply to filter force for only the mesh to move
-    :param steps: Number of steps to take from start to end
-    :param path: path to folder containing BEMCache/ 
-    :param print_lines: if true prints messages detaling progress
-    :param use_cache: If true uses the cache system, otherwise computes H and does not save it
-    :param Hs: List of precomputed forward propagation matricies
-    :param Hxs: List of precomputed derivative of forward propagation matricies wrt x
-    :param Hys: List of precomputed derivative of forward propagation matricies wrt y
-    :param Hzs: List of precomputed derivative of forward propagation matricies wrt z
-    :return: list for each axis of the force at each position
-    '''
-    # if Ax is None or Ay is None or Az is None:
-    #     Ax, Ay, Az = grad_function(points=points, transducers=board, **grad_function_args)
-    direction = (end - start) / steps
-
-    translate(scatterers[0], start[0].item() - direction[0].item(), start[1].item() - direction[1].item(), start[2].item() - direction[2].item())
-    scatterer = merge_scatterers(*scatterers)
-
-    points = get_centres_as_points(scatterer)
-    if mask is None:
-        mask = torch.ones(points.shape[2]).to(bool)
-
-    Fxs = []
-    Fys = []
-    Fzs = []
-
-    for i in range(steps+1):
-        if print_lines:
-            print(i)
-        
-        
-        translate(scatterers[0], direction[0].item(), direction[1].item(), direction[2].item())
-        scatterer = merge_scatterers(*scatterers)
-
-        points = get_centres_as_points(scatterer)
-        areas = get_areas(scatterer)
-        norms = get_normals_as_points(scatterer)
-
-        if Hs is None:
-            H = get_cache_or_compute_H(scatterer, board, path=path, print_lines=print_lines, use_cache_H=use_cache)
-        else:
-            H = Hs[i]
-        
-        if Hxs is None or Hys is None or Hzs is None:
-            Hx, Hy, Hz = get_cache_or_compute_H_gradients(scatterer, board, path=path, print_lines=print_lines, use_cache_H_grad=use_cache)
-        else:
-            Hx = Hxs[i]
-            Hy = Hys[i]
-            Hz = Hzs[i]
-        
-
-        force = force_mesh(activations, points, norms, areas, board, F=H, Ax=Hx, Ay=Hy, Az=Hz)
-
-        force = torch.sum(force[:,:,mask],dim=2).squeeze()
-        Fxs.append(force[0])
-        Fys.append(force[1])
-        Fzs.append(force[2])
-        
-        # print(i, force[0].item(), force[1].item(),force[2].item())
-    return Fxs, Fys, Fzs

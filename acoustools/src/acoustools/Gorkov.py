@@ -56,6 +56,9 @@ def gorkov_autograd(activation:Tensor, points:Tensor, K1:float|None=None, K2:flo
         # K2 = 3/4 * c.V * ((c.p_0-c.p_p) / (c.f**2 * c.p_0 * (c.p_0+2*c.p_p)) )
         K2 = 3*c.V / (4*(2*c.f**2 * c.p_0)) #Assuming f1=f2=1
 
+    # K1 = 1/4*V*(1/(c.c_0**2*c.p_0) - 1/(c.c_p**2*c.p_p))
+    # K2 = 3/4 * V * ((c.p_0 - c.p_p) / (c.angular_frequency**2 * c.p_0 * (c.p_0 * 2*c.p_p)))
+
 
     gorkov = K1 * torch.abs(pressure) **2 - K2 * torch.sum((torch.abs(grad_pos)**2),1)
     return gorkov
@@ -134,6 +137,9 @@ def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize
         p_in.squeeze_(2)
     # p_in = torch.squeeze(p_in,2)
 
+    # K1 = 1/4*V*(1/(c.c_0**2*c.p_0) - 1/(c.c_p**2*c.p_p))
+    # K2 = 3/4 * V * ((c.p_0 - c.p_p) / (c.angular_frequency**2 * c.p_0 * (c.p_0 * 2*c.p_p)))
+
     U = K1 * p_in**2 - K2 *grad_term
     
     return U
@@ -190,6 +196,9 @@ def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None
     
     K1 = V / (4*c.p_0*c.c_0**2)
     K2 = 3*V / (4*(2*c.f**2 * c.p_0))
+
+    # K1 = 1/4*V*(1/(c.c_0**2*c.p_0) - 1/(c.c_p**2*c.p_p))
+    # K2 = 3/4 * V * ((c.p_0 - c.p_p) / (c.angular_frequency**2 * c.p_0 * (c.p_0 * 2*c.p_p)))
     U = K1*p - K2*(grad_x+grad_y+grad_z)
 
     return U

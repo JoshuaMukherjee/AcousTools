@@ -519,10 +519,10 @@ def iterative_backpropagation(points:Tensor,iterations:int = 200, board:Tensor|N
 
 
     if b is None:
-        b = torch.ones(N,1).to(device)+0j
+        b = torch.ones(N,1).to(device).to(DTYPE) +0j
     
     AT =  torch.conj(A).mT.to(device)
-    x = torch.ones(M,1).to(device) + 0j
+    x = torch.ones(M,1).to(device).to(DTYPE) 
     for kk in range(iterations):
         p = A@x
         p = constrain_field(p,b)

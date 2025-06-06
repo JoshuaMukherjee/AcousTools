@@ -201,7 +201,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
             
             if type(points) == list:
                 points  = torch.concatenate(points,axis=0)
-            pts_pos = get_point_pos(A[i],B[i],C[i],points,res)
+            pts_pos = get_point_pos(A[i],B[i],C[i],points.real,res)
             # print(pts_pos)
             pts_pos_t = torch.stack(pts_pos).T
 

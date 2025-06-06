@@ -127,9 +127,9 @@ def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor=Non
     Gx, Gy, Gz = get_G_partial(points, scatterer, transducers)
 
 
-    Ex = Fx + Gx@H
-    Ey = Fy + Gy@H
-    Ez = Fz + Gz@H
+    Ex = Fx - Gx@H #Minus coming out of the PM grad -> Not entoerly sure where that comes from but seems to fix it?
+    Ey = Fy - Gy@H
+    Ez = Fz - Gz@H
 
 
     if return_components:

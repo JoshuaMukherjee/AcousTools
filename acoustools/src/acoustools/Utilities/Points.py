@@ -1,7 +1,7 @@
 from torch import Tensor
 import torch
 
-from acoustools.Utilities.Setup import device
+from acoustools.Utilities.Setup import device, DTYPE
 
 def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float|None=None, min_pos:float=-0.06, max_pos:float = 0.06) -> Tensor:
     '''
@@ -57,4 +57,4 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
         points[:,2,:].uniform_(min_pos, max_pos)
 
 
-    return points
+    return points.to(DTYPE)
