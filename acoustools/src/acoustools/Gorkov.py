@@ -5,6 +5,23 @@ import acoustools.Constants as c
 from torch import Tensor
 from types import FunctionType
 
+def get_gorkov_constants(V=c.V, p_0 = c.p_0, p_p=c.p_p, c_0=c.c_0, c_p=c.c_p, f=c.f ):
+    '''
+    Returns K1 and K2 for use in Gorkov computations, Uses the form shown in `Holographic acoustic elements for manipulation of levitated objects` \n
+    :param: V: Particle Volume
+    :param p_0: Density of medium
+    :param p_p: Density of particle
+    :param c_0: Speed of sound in medium
+    :param c_p: speed of sound in particle
+    :param angular_frequency: The angular frequency
+    :returns K1, K2:
+
+    '''
+    K1 = 1/4*V*(1/(c_0**2*p_0) - 1/(c_p**2*p_p)) 
+    K2 = 3/4 * V * ((p_0 - p_p) / (f**2 * p_0 * (p_0 + 2*p_p))) 
+
+    return K1, K2
+
 def gorkov_autograd(activation:Tensor, points:Tensor, K1:float|None=None, K2:float|None=None, 
                     retain_graph:bool=False,board:Tensor|None=None,**params) -> Tensor:
     '''
@@ -49,12 +66,12 @@ def gorkov_autograd(activation:Tensor, points:Tensor, K1:float|None=None, K2:flo
     pressure.backward(torch.ones((B,N))+0j, inputs=var_points, retain_graph=retain_graph)
     grad_pos = var_points.grad
 
-    if K1 is None:
-        # K1 = 1/4 * c.V * (1/(c.c_0**2 * c.p_0) - 1/(c.c_p**2 * c.p_p))
-        K1 = c.V / (4*c.p_0*c.c_0**2) #Assuming f1=f2=1
-    if K2 is None:
-        # K2 = 3/4 * c.V * ((c.p_0-c.p_p) / (c.f**2 * c.p_0 * (c.p_0+2*c.p_p)) )
-        K2 = 3*c.V / (4*(2*c.f**2 * c.p_0)) #Assuming f1=f2=1
+    if K1 is None or K2 is None:
+        K1_, K2_ = get_gorkov_constants()
+        if K1 is None:
+            K1 = K1_
+        if K2 is None:
+            K2 = K2_
 
     # K1 = 1/4*V*(1/(c.c_0**2*c.p_0) - 1/(c.c_p**2*c.p_p))
     # K2 = 3/4 * V * ((c.p_0 - c.p_p) / (c.angular_frequency**2 * c.p_0 * (c.p_0 * 2*c.p_p)))
@@ -124,12 +141,12 @@ def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize
     grad_abs_square = torch.pow(torch.abs(grad),2)
     grad_term = torch.sum(grad_abs_square,dim=1)
 
-    if K1 is None:
-        # K1 = 1/4 * c.V * (1/(c.c_0**2 * c.p_0) - 1/(c.c_p**2 * c.p_p))
-        K1 = V / (4*c.p_0*c.c_0**2) #Assuming f1=f2=1
-    if K2 is None:
-        # K2 = 3/4 * c.V * ((c.p_0-c.p_p) / (c.f**2 * c.p_0 * (c.p_0+2*c.p_p)) )
-        K2 = 3*V / (4*(2*c.f**2 * c.p_0)) #Assuming f1=f2=1
+    if K1 is None or K2 is None:
+        K1_, K2_ = get_gorkov_constants()
+        if K1 is None:
+            K1 = K1_
+        if K2 is None:
+            K2 = K2_
     
     # p_in =  torch.abs(pressure)
     p_in = torch.sqrt(torch.real(pressure) **2 + torch.imag(pressure)**2)
@@ -194,8 +211,7 @@ def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None
         grad_z = 0
 
     
-    K1 = V / (4*c.p_0*c.c_0**2)
-    K2 = 3*V / (4*(2*c.f**2 * c.p_0))
+    K1, K2 = get_gorkov_constants(V=V)
 
     # K1 = 1/4*V*(1/(c.c_0**2*c.p_0) - 1/(c.c_p**2*c.p_p))
     # K2 = 3/4 * V * ((c.p_0 - c.p_p) / (c.angular_frequency**2 * c.p_0 * (c.p_0 * 2*c.p_p)))

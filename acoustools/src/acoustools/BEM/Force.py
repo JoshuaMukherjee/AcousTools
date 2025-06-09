@@ -3,6 +3,8 @@ from acoustools.BEM import BEM_forward_model_second_derivative_mixed, BEM_forwar
 from acoustools.Utilities import TRANSDUCERS
 from acoustools.Force import force_mesh
 from acoustools.Mesh import load_scatterer, get_centres_as_points, get_normals_as_points, get_areas, scale_to_diameter, centre_scatterer, translate, merge_scatterers, get_edge_data
+from acoustools.Gorkov import get_gorkov_constants
+
 
 import acoustools.Constants as c
 
@@ -60,9 +62,8 @@ def BEM_compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,r
     py_term = Py*grad_py.conj() + Py.conj()*grad_py
     pz_term = Pz*grad_pz.conj() + Pz.conj()*grad_pz
 
-    K1 = V / (4*c.p_0*c.c_0**2)
-    K2 = 3*V / (4*(2*c.f**2 * c.p_0))
-
+    K1, K2 = get_gorkov_constants(V=V)
+    
     grad_U = K1 * p_term - K2 * (px_term + py_term + pz_term)
     force = -1*(grad_U).squeeze().real
 
@@ -73,7 +74,7 @@ def BEM_compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,r
 
 
 def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
-                       return_components:bool=False, sum_elements = True,
+                       return_components:bool=False, sum_elements = True, return_momentum = False,
                        H:Tensor=None, diameter=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
                        surface:Mesh|None=None, use_cache_H:bool=True) -> Tensor | tuple[Tensor, Tensor, Tensor]:
@@ -92,14 +93,19 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
 
     E,F,G,H = compute_E(scatterer, points, board,path=path, H=H, return_components=True, use_cache_H=use_cache_H)
     
-    force = force_mesh(activations, points,norms,areas,board=board,F=E, use_momentum=True,
+    force, momentum = force_mesh(activations, points,norms,areas,board=board,F=E, use_momentum=True,
                     grad_function=BEM_forward_model_grad, grad_function_args={'scatterer':scatterer,
                                                                                 'H':H,
-                                                                                'path':path})
+                                                                                'path':path}, return_components=True)
     if sum_elements: force=torch.sum(force, dim=2)
 
     if return_components:
-        return (force[:,0]), (force[:,1]), (force[:,2])
+        if not return_momentum:
+            return (force[:,0]), (force[:,1]), (force[:,2])
+        else:
+            return (force[:,0]), (force[:,1]), (force[:,2]), momentum
+   
+    if return_momentum: return force, momentum
     return force
 
 

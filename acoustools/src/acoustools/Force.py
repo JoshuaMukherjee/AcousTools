@@ -1,4 +1,4 @@
-from acoustools.Gorkov import gorkov_fin_diff, get_finite_diff_points_all_axis
+from acoustools.Gorkov import gorkov_fin_diff, get_finite_diff_points_all_axis, get_gorkov_constants
 from acoustools.Utilities import forward_model_batched, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed, TRANSDUCERS, propagate, DTYPE
 import acoustools.Constants as c
 # from acoustools.BEM import grad_H, grad_2_H, get_cache_or_compute_H, get_cache_or_compute_H_gradients
@@ -97,8 +97,8 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
 
     # K1 = V / (4*c.p_0*c.c_0**2)
     # K2 = 3*V / (4*(2*c.f**2 * c.p_0))
-    K1 = 1/4*V*(1/(c.c_0**2*c.p_0) - 1/(c.c_p**2*c.p_p))
-    K2 = 3/4 * V * ((c.p_0 - c.p_p) / (c.angular_frequency**2 * c.p_0 * (c.p_0 * 2*c.p_p)))
+    K1, K2 = get_gorkov_constants(V=V)
+
 
     # grad_U = K1 * p_term - K2 * (px_term + py_term + pz_term)
 
@@ -188,9 +188,13 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
 
     pressure_time_average = 1/2 * pressure_square
     k0 = 1/(2 * c.p_0 * c.c_0**2)
-    # velocity_time_average = 1/2 * torch.sum(velocity * velocity.conj().resolve_conj(), dim=1, keepdim=True).real
+    velocity_time_average = 1/2 * torch.sum(velocity * velocity.conj().resolve_conj(), dim=1, keepdim=True).real
     
-    velocity_time_average = 1/2 * (velocity * velocity.conj().resolve_conj()).real #Gives Fx=Fy so more likely right?
+    # velocity_time_average = 1/2 * (velocity * velocity.conj().resolve_conj()).real #Gives Fx=Fy so more likely right?
+
+    # print( torch.sum(-k0 * pressure_time_average * norms * areas,dim=2))
+    # print( torch.sum(((c.p_0 / 2) * velocity_time_average) * norms * areas,dim=2))
+    # exit()
     force = -1*( k0 * pressure_time_average - (c.p_0 / 2) * velocity_time_average) * norms * areas
 
     if use_momentum:
@@ -216,6 +220,7 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     # force *= areas
 
     force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
+    #Need a 0.2 constant?
 
     # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))
     if return_components: 
