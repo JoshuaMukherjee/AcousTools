@@ -167,15 +167,15 @@ def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:T
     if A is None:
         A = forward_model(points,board)
     if B is None:
-        B = torch.conj(A).mT
+        B = torch.conj(A).mT.to(DTYPE)
     if R is None:
         R = A@B
 
     if b is None:
         if is_batched_points(points):
-            b = torch.ones(points.shape[2],1).to(device)+0j
+            b = torch.ones(points.shape[2],1).to(device).to(DTYPE)
         else:
-            b = torch.ones(points.shape[1],1).to(device)+0j
+            b = torch.ones(points.shape[1],1).to(device).to(DTYPE)
     
     
     if return_components:
