@@ -628,9 +628,9 @@ def ABC(size:float, plane:Literal['xz', 'yz', 'xy'] = 'xz', origin:Tensor|tuple=
     if origin is None:
         origin = torch.tensor((0,0,0), device=device)
     if type(origin) == tuple or type(origin) == list:
-        origin = torch.tensor(origin)
+        origin = torch.tensor(origin).real
     
-    origin = origin.squeeze() 
+    origin = origin.squeeze().real
 
     
     if plane == 'xz':

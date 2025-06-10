@@ -17,8 +17,11 @@ def get_gorkov_constants(V=c.V, p_0 = c.p_0, p_p=c.p_p, c_0=c.c_0, c_p=c.c_p, f=
     :returns K1, K2:
 
     '''
-    K1 = 1/4*V*(1/(c_0**2*p_0) - 1/(c_p**2*p_p)) 
-    K2 = 3/4 * V * ((p_0 - p_p) / (f**2 * p_0 * (p_0 + 2*p_p))) 
+    # K1 = 1/4*V*(1/(c_0**2*p_0) - 1/(c_p**2*p_p)) 
+    # K2 = 3/4 * V * ((p_0 - p_p) / (f**2 * p_0 * (p_0 + 2*p_p))) 
+
+    K1 = V / (4*p_0*c_0**2)
+    K2 = 3*V / (4*(2*f**2 * p_0))
 
     return K1, K2
 
