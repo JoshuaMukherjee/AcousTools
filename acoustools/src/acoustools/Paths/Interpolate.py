@@ -3,7 +3,7 @@ from torch import Tensor
 import itertools, math
 
 from acoustools.Paths.Distances import total_distance
-from acoustools.Utilities.Setup import device
+from acoustools.Utilities.Setup import device, DTYPE
 from acoustools.Utilities.Points import create_points
 
 def interpolate_path(path: list[Tensor], n:int, return_distance:bool = False) -> list[Tensor]:
@@ -84,7 +84,7 @@ def interpolate_arc(start:Tensor, end:Tensor|None=None, origin:Tensor=None, n:in
 
     start_vec = (start-origin)
 
-    up = up.to(device)
+    up = up.to(device).to(float)
 
     if end is not None:
         end_vec = (end-origin)
@@ -93,12 +93,12 @@ def interpolate_arc(start:Tensor, end:Tensor|None=None, origin:Tensor=None, n:in
     else:
         end = start.clone() + 1e-10
         end_vec = (end-origin)
-        angle = torch.tensor([3.14159 * 2])
+        angle = torch.tensor([3.14159 * 2]).to(device)
 
-    w = torch.cross(start_vec,end_vec,dim=1)
+    w = torch.cross(start_vec,end_vec,dim=1).to(float)
     clockwise = torch.dot(w.squeeze(),up.squeeze())<0
 
-    u = start_vec 
+    u = start_vec.to(float)
     u/= torch.linalg.vector_norm(start_vec.squeeze())
     if  (w == 0).all():
         w += torch.ones_like(w) * 1e-10
