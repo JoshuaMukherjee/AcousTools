@@ -47,12 +47,6 @@ class CubicBezier():
     def __str__(self):
         return f"Bezier: Start{self.start}, End{self.end}, Offset_1{self.offset_1}, Offset_2{self.offset_2}"
     
-    def get_OptiSpline_parameters(self,start=False):
-        params = [self.offset_1, self.offset_2]
-        if start:
-            params.append(self.start)
-            params.append(self.end)
-        return params
     
 
 class Spline():
