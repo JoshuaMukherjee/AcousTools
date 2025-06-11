@@ -5,7 +5,6 @@ Various methods to define paths and curves\n
 `src.acoustools.Paths.Distances `\n
 `src.acoustools.Paths.Interpolate `\n
 `src.acoustools.Paths.Numerals `\n
-`src.acoustools.Paths.OptiSpline`\n
 '''
 
 from acoustools.Paths.Bezier import *
