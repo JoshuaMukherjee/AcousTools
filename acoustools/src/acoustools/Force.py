@@ -174,45 +174,18 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     grad  = torch.cat((px,py,pz),dim=1)
     velocity = grad /( 1j * c.p_0 * c.angular_frequency)
 
-    # angls = torch.sum(norms * velocity.conj(), dim=1).real/torch.norm(velocity,2,dim=1)
-    # angls = torch.sum(norms * grad.conj(), dim=1).real/torch.norm(grad,2,dim=1)
-
-    # grad_norm = torch.norm(grad,2,dim=1)**2
-    # grad_norm = torch.abs(px)**2 + torch.abs(py)**2 + torch.abs(pz)**2
-
-    
-    # k1 = 1/ (4*c.p_0*(c.c_0**2))
-    # k2 = 1/ (c.k**2)
-    # f =  -1 * k1 * (pressure_square - k2 * grad_norm) * norms * areas
-
-
     pressure_time_average = 1/2 * pressure_square
     k0 = 1/(2 * c.p_0 * c.c_0**2)
     velocity_time_average = 1/2 * torch.sum(velocity * velocity.conj().resolve_conj(), dim=1, keepdim=True).real
-    
-    # velocity_time_average = 1/2 * (velocity * velocity.conj().resolve_conj()).real #Gives Fx=Fy so more likely right?
 
-    # print( torch.sum(-k0 * pressure_time_average * norms * areas,dim=2))
-    # print( torch.sum(((c.p_0 / 2) * velocity_time_average) * norms * areas,dim=2))
-    # exit()
     force = -1*( k0 * pressure_time_average - (c.p_0 / 2) * velocity_time_average) * norms * areas
 
     if use_momentum:
 
-        # grad_normal = torch.sum(grad * norms, dim=1, keepdim=True)
-        # grad_conj = grad.conj().resolve_conj()
-        # momentum = -1 * 1/(2 * c.p_0 * c.angular_frequency**2) * (grad_normal * grad_conj).real
-        # momentum *= areas
-
-
         
         momentum = 0.5 * (torch.sum(velocity * norms, dim=1, keepdim=True) * velocity.conj().resolve_conj()).real
         momentum *= -1 * c.p_0 * areas
-        # print(force, momentum)
-        # print(force.shape, momentum.shape)
-        # print(torch.sum(force,dim=2), torch.sum(momentum,dim=2))
-        # print(torch.sum(force,dim=2) + torch.sum(momentum,dim=2))
-        
+       
         force += momentum #Sign here?
     else:
         momentum = 0
