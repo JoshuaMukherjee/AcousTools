@@ -5,7 +5,7 @@ import acoustools.Constants as c
 from torch import Tensor
 from types import FunctionType
 
-def get_gorkov_constants(V=c.V, p_0 = c.p_0, p_p=c.p_p, c_0=c.c_0, c_p=c.c_p, f=c.f ):
+def get_gorkov_constants(V=c.V, p_0 = c.p_0, p_p=c.p_p, c_0=c.c_0, c_p=c.c_p, angular_frequency=c.angular_frequency ):
     '''
     Returns K1 and K2 for use in Gorkov computations, Uses the form shown in `Holographic acoustic elements for manipulation of levitated objects` \n
     :param: V: Particle Volume
@@ -19,7 +19,7 @@ def get_gorkov_constants(V=c.V, p_0 = c.p_0, p_p=c.p_p, c_0=c.c_0, c_p=c.c_p, f=
     '''
     #Derived Bk.3 Pg.91
     K1 = 1/4*V*(1/(c_0**2*p_0) - 1/(c_p**2*p_p)) 
-    K2 = 3/4 * V * ((p_p - p_0) / (f**2 * p_0 * (p_0 + 2*p_p))) 
+    K2 = 3/4 * V * ((p_p - p_0) / (angular_frequency**2 * p_0 * (p_0 + 2*p_p))) 
 
     # K1 = V / (4*p_0*c_0**2)
     # K2 = 3*V / (4*(2*f**2 * p_0))
@@ -198,29 +198,20 @@ def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None
     F = forward_model_batched(points,board)
     
     p = torch.abs(F@activations)**2
-    
-    if "X" in axis:
-        grad_x = torch.abs((Fx@activations)**2)
-    else:
-        grad_x = 0
-    
-    if "Y" in axis:
-        grad_y = torch.abs((Fy@activations)**2)
-    else:
-        grad_y = 0
-   
-    if "Z" in axis:
-        grad_z = torch.abs((Fz@activations)**2)
-    else:
-        grad_z = 0
 
-    
+    px = (Fx@activations) if 'X' in axis else 0
+    py = (Fy@activations) if 'Y' in axis else 0
+    pz = (Fz@activations) if 'Z' in axis else 0
+
+    grad  = torch.cat((px,py,pz),dim=2)
+
     K1, K2 = get_gorkov_constants(V=V)
-
+    g = (torch.sum(torch.abs(grad)**2, dim=2, keepdim=True))
+    
     # K1 = 1/4*V*(1/(c.c_0**2*c.p_0) - 1/(c.c_p**2*c.p_p))
     # K2 = 3/4 * V * ((c.p_0 - c.p_p) / (c.angular_frequency**2 * c.p_0 * (c.p_0 * 2*c.p_p)))
-    U = K1*p - K2*(grad_x+grad_y+grad_z)
-
+    
+    U = K1*p - K2*g
     return U
 
 def get_finite_diff_points(points:Tensor , axis:Tensor, stepsize:float = 0.000135156253) -> Tensor:
