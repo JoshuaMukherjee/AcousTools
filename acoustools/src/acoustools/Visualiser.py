@@ -375,7 +375,6 @@ def Visualise_single(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,
     field_val = colour_function(activations=activation,points=positions,**colour_function_args)
     if len(field_val.shape) < 3:
         field_val.unsqueeze_(2)
-    
     results = []
     for i in range(field_val.shape[2]):
         result = torch.reshape(field_val[:,:,i], res)

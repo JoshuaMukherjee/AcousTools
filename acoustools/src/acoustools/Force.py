@@ -44,9 +44,8 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
 
     # print()
 
-    
     F = -1* (split[:,0,:] - split[:,1,:]) / (2*stepsize)
-    F = F.reshape(B,3,N)
+    F = F.reshape(B,3,N).permute(0,2,1)
     return F
 
 def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False, V=c.V) -> Tensor | tuple[Tensor, Tensor, Tensor]:
@@ -108,10 +107,10 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
 
     grad_U = torch.stack([grad_U_x, grad_U_y, grad_U_z])
 
-    force = -(grad_U).squeeze().real
-
+    force = -(grad_U).real.squeeze(3).permute(1,2,0)
+    
     if return_components:
-        return force[0], force[1], force[2] 
+        return force[:,:,0], force[:,:,1], force[:,:,2] 
     else:
         return force 
 

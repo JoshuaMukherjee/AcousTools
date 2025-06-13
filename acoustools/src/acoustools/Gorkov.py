@@ -26,7 +26,7 @@ def get_gorkov_constants(V=c.V, p_0 = c.p_0, p_p=c.p_p, c_0=c.c_0, c_p=c.c_p, an
 
     return K1, K2
 
-def gorkov_autograd(activation:Tensor, points:Tensor, K1:float|None=None, K2:float|None=None, 
+def gorkov_autograd(activations:Tensor, points:Tensor, K1:float|None=None, K2:float|None=None, 
                     retain_graph:bool=False,board:Tensor|None=None,**params) -> Tensor:
     '''
     Computes the Gorkov potential using pytorch's autograd system\n
@@ -63,10 +63,10 @@ def gorkov_autograd(activation:Tensor, points:Tensor, K1:float|None=None, K2:flo
     B = points.shape[0]
     N = points.shape[2]
     
-    if len(activation.shape) < 3:
-        activation.unsqueeze_(0)    
+    if len(activations.shape) < 3:
+        activations.unsqueeze_(0)    
     
-    pressure = propagate(activation.to(DTYPE),var_points,board=board)
+    pressure = propagate(activations.to(DTYPE),var_points,board=board)
     pressure.backward(torch.ones((B,N))+0j, inputs=var_points, retain_graph=retain_graph)
     grad_pos = var_points.grad
 
