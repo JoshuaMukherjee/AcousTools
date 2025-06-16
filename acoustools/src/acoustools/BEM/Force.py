@@ -2,7 +2,7 @@
 from acoustools.BEM import BEM_forward_model_second_derivative_mixed, BEM_forward_model_second_derivative_unmixed, BEM_forward_model_grad, compute_E, get_cache_or_compute_H, get_cache_or_compute_H_gradients
 from acoustools.Utilities import TRANSDUCERS
 from acoustools.Force import force_mesh
-from acoustools.Mesh import load_scatterer, get_centres_as_points, get_normals_as_points, get_areas, scale_to_diameter, centre_scatterer, translate, merge_scatterers, get_edge_data
+from acoustools.Mesh import load_scatterer, get_centres_as_points, get_normals_as_points, get_areas, scale_to_diameter, centre_scatterer, translate, merge_scatterers, get_edge_data, get_centre_of_mass_as_points
 from acoustools.Gorkov import get_gorkov_constants
 
 
@@ -83,6 +83,8 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
         surface = load_scatterer(path+surface_path)
         scale_to_diameter(surface,diameter, reset=False, origin=True)
         centre_scatterer(surface)
+        object_com = get_centre_of_mass_as_points(scatterer)
+        translate(surface, dx = object_com[:,0].item(), dy=object_com[:,1].item(), dz = object_com[:,2].item())
         #Need to translate to object centre -> TODO 
 
 

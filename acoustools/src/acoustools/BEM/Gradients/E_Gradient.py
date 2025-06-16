@@ -152,7 +152,6 @@ def get_G_second_unmixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, 
 
     points.requires_grad_()
     grad_Gx, grad_Gy, grad_Gz, G,P,C,Ga,Pa,Ca = get_G_partial(points, scatterer, board, True)
-    Pa = Pa
     # exit()
 
     points  = points.unsqueeze(3)  # [B, 3, N, 1]
@@ -306,17 +305,17 @@ def get_G_second_mixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, re
 
 
     # print(areas.shape, exp_ikd.shape, day.shape, dax.shape, distances.shape, distances_cube.shape)
-    # Gxy = (areas * exp_ikd * (day * dax * (kd**2 + 2*ikd - 2) + distances * dxy * (1 - ikd))) / (-1 * 4*Constants.pi * distances_cube)
-    # Gxz = (areas * exp_ikd * (daz * dax * (kd**2 + 2*ikd - 2) + distances * dxz * (1 - ikd))) / (-1 * 4*Constants.pi * distances_cube)
-    # Gyz = (areas * exp_ikd * (day * daz * (kd**2 + 2*ikd - 2) + distances * dyz * (1 - ikd))) / (-1 * 4*Constants.pi * distances_cube)
+    Gxy = (-areas * exp_ikd * (day * dax * (kd**2 + 2*ikd - 2) + distances * dxy * (1 - ikd))) / (4*Constants.pi * distances_cube)
+    Gxz = (-areas * exp_ikd * (daz * dax * (kd**2 + 2*ikd - 2) + distances * dxz * (1 - ikd))) / (4*Constants.pi * distances_cube)
+    Gyz = (-areas * exp_ikd * (day * daz * (kd**2 + 2*ikd - 2) + distances * dyz * (1 - ikd))) / (4*Constants.pi * distances_cube)
 
     # Gab = (areas/(Constants.pi*4j)) * exp_ikd * ((-1*Constants.k)/distances_cube - (3j * Constants.k)/distances_four + 3/distances_five )
    
     # print(exp_ikd.shape, distances_six.shape, distances.shape, dx.shape,dy.shape,dz.shape)
-    Gab = (areas/(Constants.pi*4j)) * exp_ikd * (1/distances_six * (3-1j*Constants.k*distances))
-    Gxy = (dx * dy) * Gab
-    Gxz = (dx * dz) * Gab
-    Gyz = (dz * dy) * Gab
+    # Gab = (areas/(Constants.pi*4j)) * exp_ikd * (1/distances_six * (3-1j*Constants.k*distances))
+    # Gxy = (dx * dy) * Gab
+    # Gxz = (dx * dz) * Gab
+    # Gyz = (dz * dy) * Gab
 
 
     nx = normals[:,0,:]
@@ -340,9 +339,13 @@ def get_G_second_mixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, re
     # Cyz = (2*ny*dz - nz*dy) / distances_cube - (3*(ny*distances_square - nd*dy)* dz) / distances_five
     
    
-    Pxy = -3 * (dx * dy) / distances_five
-    Pxz = -3 * (dx * dz) / distances_five
-    Pyz = -3 * (dz * dy) / distances_five
+    # Pxy = -3 * (dx * dy) / distances_five
+    # Pxz = -3 * (dx * dz) / distances_five
+    # Pyz = -3 * (dz * dy) / distances_five
+
+    Pxy = (distances * dxy - 2 * day * dax) / distances_cube
+    Pxz = (distances * dxz - 2 * daz * dax) / distances_cube
+    Pyz = (distances * dyz - 2 * day * daz) / distances_cube
 
     
     G = G[:,0,:]
