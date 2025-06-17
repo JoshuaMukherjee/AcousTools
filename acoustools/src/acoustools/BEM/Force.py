@@ -2,7 +2,8 @@
 from acoustools.BEM import BEM_forward_model_second_derivative_mixed, BEM_forward_model_second_derivative_unmixed, BEM_forward_model_grad, compute_E, get_cache_or_compute_H, get_cache_or_compute_H_gradients
 from acoustools.Utilities import TRANSDUCERS
 from acoustools.Force import force_mesh
-from acoustools.Mesh import load_scatterer, get_centres_as_points, get_normals_as_points, get_areas, scale_to_diameter, centre_scatterer, translate, merge_scatterers, get_edge_data, get_centre_of_mass_as_points
+from acoustools.Mesh import load_scatterer, get_centres_as_points, get_normals_as_points, get_areas, scale_to_diameter,\
+    centre_scatterer, translate, merge_scatterers, get_edge_data, get_centre_of_mass_as_points, get_volume
 from acoustools.Gorkov import get_gorkov_constants
 
 
@@ -85,8 +86,7 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
         centre_scatterer(surface)
         object_com = get_centre_of_mass_as_points(scatterer)
         translate(surface, dx = object_com[:,0].item(), dy=object_com[:,1].item(), dz = object_com[:,2].item())
-        #Need to translate to object centre -> TODO 
-
+        
 
     points = get_centres_as_points(surface)
     norms = get_normals_as_points(surface)
@@ -99,6 +99,9 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
                     grad_function=BEM_forward_model_grad, grad_function_args={'scatterer':scatterer,
                                                                                 'H':H,
                                                                                 'path':path}, return_components=True)
+
+
+
     if sum_elements: force=torch.sum(force, dim=2)
 
     if return_components:
@@ -109,6 +112,63 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
    
     if return_momentum: return force, momentum
     return force
+
+def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
+                       sum_elements = True, H:Tensor=None, diameter=c.wavelength*2,
+                       path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
+                       surface:Mesh|None=None, use_cache_H:bool=True) -> Tensor:
+    
+    force = force_mesh_surface(activations, scatterer, board, H=H, diameter=diameter, path=path, 
+                               surface_path=surface_path, surface=surface, use_cache_H=use_cache_H, sum_elements=False) 
+
+    if surface is None:
+        surface = load_scatterer(path+surface_path)
+        scale_to_diameter(surface,diameter, reset=False, origin=True)
+        centre_scatterer(surface)
+        object_com = get_centre_of_mass_as_points(scatterer)
+        translate(surface, dx = object_com[:,0].item(), dy=object_com[:,1].item(), dz = object_com[:,2].item())
+
+    norms = get_normals_as_points(surface)
+    areas = get_areas(surface)
+
+    div = (torch.sum(norms * force, dim=1) * areas )
+
+    if sum_elements: div = torch.sum(div, dim=1)
+
+    v = get_volume(surface)
+
+    return div / v
+
+
+def force_mesh_surface_curl(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
+                       sum_elements = True, H:Tensor=None, diameter=c.wavelength*2,
+                       path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
+                       surface:Mesh|None=None, use_cache_H:bool=True, magnitude = False) -> Tensor:
+    
+    force = force_mesh_surface(activations, scatterer, board, H=H, diameter=diameter, path=path, 
+                               surface_path=surface_path, surface=surface, use_cache_H=use_cache_H, sum_elements=False) 
+
+    if surface is None:
+        surface = load_scatterer(path+surface_path)
+        scale_to_diameter(surface,diameter, reset=False, origin=True)
+        centre_scatterer(surface)
+        object_com = get_centre_of_mass_as_points(scatterer)
+        translate(surface, dx = object_com[:,0].item(), dy=object_com[:,1].item(), dz = object_com[:,2].item())
+        
+    norms = get_normals_as_points(surface)
+    areas = get_areas(surface)
+
+    curl = torch.cross(force, norms, dim=1) * areas 
+
+    if sum_elements: curl = torch.sum(curl, dim=2)
+
+    v = get_volume(surface)
+
+    curl = curl/v
+
+    if magnitude: return torch.norm(curl, dim=1)
+
+    return curl 
 
 
 def get_force_mesh_along_axis(start:Tensor,end:Tensor, activations:Tensor, scatterers:list[Mesh], board:Tensor, mask:Tensor|None=None, steps:int=200, 

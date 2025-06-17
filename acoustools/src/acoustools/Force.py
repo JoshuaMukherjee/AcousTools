@@ -191,8 +191,7 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
 
     # force *= areas
 
-    force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
-    #Need a 0.2 constant?
+    # force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
 
     # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))
     if return_components: 

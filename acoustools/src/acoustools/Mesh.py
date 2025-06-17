@@ -461,3 +461,9 @@ def cut_closed_scatterer(scatterer:Mesh,layer_z:float, normals=[(0,0,1)]):
     origins=[(0,0,layer_z)]
     closed_scatterer = scatterer.cut_closed_surface(origins=origins, normals=normals)
     return closed_scatterer
+
+def get_volume(scatterer:Mesh):
+    '''
+    Returns the volume of a mesh
+    '''
+    return scatterer.volume()
