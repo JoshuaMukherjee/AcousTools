@@ -78,7 +78,7 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
                        return_components:bool=False, sum_elements = True, return_momentum = False,
                        H:Tensor=None, diameter=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
-                       surface:Mesh|None=None, use_cache_H:bool=True) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+                       surface:Mesh|None=None, use_cache_H:bool=True, E=None, Ex=None, Ey=None, Ez=None) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     
     if surface is None:
         surface = load_scatterer(path+surface_path)
@@ -92,13 +92,14 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
     norms = get_normals_as_points(surface)
     areas = get_areas(surface)
     
-
-    E,F,G,H = compute_E(scatterer, points, board,path=path, H=H, return_components=True, use_cache_H=use_cache_H)
+    if E is None:
+        E,F,G,H = compute_E(scatterer, points, board,path=path, H=H, return_components=True, use_cache_H=use_cache_H)
     
     force, momentum = force_mesh(activations, points,norms,areas,board=board,F=E, use_momentum=True,
                     grad_function=BEM_forward_model_grad, grad_function_args={'scatterer':scatterer,
                                                                                 'H':H,
-                                                                                'path':path}, return_components=True)
+                                                                                'path':path}, return_components=True,
+                                                                                Ax = Ex, Ay=Ey, Az=Ez)
 
 
 
@@ -116,10 +117,8 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
 def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
                        sum_elements = True, H:Tensor=None, diameter=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
-                       surface:Mesh|None=None, use_cache_H:bool=True) -> Tensor:
-    
-    force = force_mesh_surface(activations, scatterer, board, H=H, diameter=diameter, path=path, 
-                               surface_path=surface_path, surface=surface, use_cache_H=use_cache_H, sum_elements=False) 
+                       surface:Mesh|None=None, use_cache_H:bool=True, force=None) -> Tensor:
+
 
     if surface is None:
         surface = load_scatterer(path+surface_path)
@@ -127,6 +126,10 @@ def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board
         centre_scatterer(surface)
         object_com = get_centre_of_mass_as_points(scatterer)
         translate(surface, dx = object_com[:,0].item(), dy=object_com[:,1].item(), dz = object_com[:,2].item())
+    
+    if force is None:
+        force = force_mesh_surface(activations, scatterer, board, H=H, diameter=diameter, path=path, 
+                               surface_path=surface_path, surface=surface, use_cache_H=use_cache_H, sum_elements=False) 
 
     norms = get_normals_as_points(surface)
     areas = get_areas(surface)
@@ -136,6 +139,7 @@ def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board
     if sum_elements: div = torch.sum(div, dim=1)
 
     v = get_volume(surface)
+    
 
     return div / v
 
