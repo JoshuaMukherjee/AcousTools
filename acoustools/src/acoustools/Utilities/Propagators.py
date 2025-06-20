@@ -205,3 +205,7 @@ def propagate_speed(activations: Tensor, points: Tensor,board: Tensor|None=None,
         speed += torch.square(spd)
     speed = torch.sqrt(speed)
     return speed
+
+def propagate_laplacian_helmholtz(activations: Tensor, points: Tensor,board: Tensor|None=None, A:Tensor|None=None, k=c.k) -> Tensor:
+    p = propagate(activations=activations, points=points, board=board,A=A)
+    return -1 * p * k
