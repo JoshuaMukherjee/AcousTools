@@ -78,7 +78,7 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
                        return_components:bool=False, sum_elements = True, return_momentum = False,
                        H:Tensor=None, diameter=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
-                       surface:Mesh|None=None, use_cache_H:bool=True, E=None, Ex=None, Ey=None, Ez=None) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+                       surface:Mesh|None=None, use_cache_H:bool=True, E=None, Ex=None, Ey=None, Ez=None, use_momentum=True) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     
     if surface is None:
         surface = load_scatterer(path+surface_path)
@@ -95,7 +95,7 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
     if E is None:
         E,F,G,H = compute_E(scatterer, points, board,path=path, H=H, return_components=True, use_cache_H=use_cache_H)
     
-    force, momentum = force_mesh(activations, points,norms,areas,board=board,F=E, use_momentum=True,
+    force, momentum = force_mesh(activations, points,norms,areas,board=board,F=E, use_momentum=use_momentum,
                     grad_function=BEM_forward_model_grad, grad_function_args={'scatterer':scatterer,
                                                                                 'H':H,
                                                                                 'path':path}, return_components=True,
@@ -117,7 +117,7 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
 def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
                        sum_elements = True, H:Tensor=None, diameter=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
-                       surface:Mesh|None=None, use_cache_H:bool=True, force=None) -> Tensor:
+                       surface:Mesh|None=None, use_cache_H:bool=True, force=None, norms=None) -> Tensor:
 
 
     if surface is None:
@@ -129,9 +129,9 @@ def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board
     
     if force is None:
         force = force_mesh_surface(activations, scatterer, board, H=H, diameter=diameter, path=path, 
-                               surface_path=surface_path, surface=surface, use_cache_H=use_cache_H, sum_elements=False) 
+                               surface_path=surface_path, surface=surface, use_cache_H=use_cache_H, sum_elements=False, use_momentum=True) 
 
-    norms = get_normals_as_points(surface)
+    if norms is None: norms = get_normals_as_points(surface)
     areas = get_areas(surface)
 
     div = (torch.sum(norms * force, dim=1) * areas )
@@ -139,7 +139,6 @@ def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board
     if sum_elements: div = torch.sum(div, dim=1)
 
     v = get_volume(surface)
-    
 
     return div / v
 
@@ -147,9 +146,9 @@ def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board
 def force_mesh_surface_curl(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
                        sum_elements = True, H:Tensor=None, diameter=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
-                       surface:Mesh|None=None, use_cache_H:bool=True, magnitude = False) -> Tensor:
+                       surface:Mesh|None=None, use_cache_H:bool=True, magnitude = False, force=None) -> Tensor:
     
-    force = force_mesh_surface(activations, scatterer, board, H=H, diameter=diameter, path=path, 
+    if force is None: force = force_mesh_surface(activations, scatterer, board, H=H, diameter=diameter, path=path, 
                                surface_path=surface_path, surface=surface, use_cache_H=use_cache_H, sum_elements=False) 
 
     if surface is None:
@@ -159,7 +158,7 @@ def force_mesh_surface_curl(activations:Tensor, scatterer:Mesh=None, board:Tenso
         object_com = get_centre_of_mass_as_points(scatterer)
         translate(surface, dx = object_com[:,0].item(), dy=object_com[:,1].item(), dz = object_com[:,2].item())
         
-    norms = get_normals_as_points(surface)
+    norms = get_normals_as_points(surface).real
     areas = get_areas(surface)
 
     curl = torch.cross(force, norms, dim=1) * areas 

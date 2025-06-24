@@ -392,6 +392,8 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
     ```
     ''' 
 
+    print(lr)
+
     if board is None:
         board = TRANSDUCERS
 
@@ -441,7 +443,7 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
         loss = objective(param, points, board, targets, **objective_params)
 
         if log:
-            print(epoch, loss.data)
+            print(epoch, loss.data.item())
 
         if maximise:
             loss *= -1

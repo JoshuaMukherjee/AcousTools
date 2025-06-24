@@ -11,3 +11,4 @@ device:Literal['cuda','cpu'] = 'cuda' if torch.cuda.is_available() else 'cpu'
 '''Constant storing device to use, `cuda` if cuda is available else cpu. \n
 Use -cpu when running python to force cpu use'''
 device = device if '-cpu' not in sys.argv else 'cpu'
+device = device if '-mps' not in sys.argv else 'mps'

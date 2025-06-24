@@ -300,7 +300,6 @@ def translate(scatterer:Mesh, dx:float=0,dy:float=0,dz:float=0) -> None:
     :param dy: Translation in the y direction
     :param dz: Translation in the z direction
     '''
-
     scatterer.shift(np.array([dx,dy,dz]))
     scatterer.filename = scatterer_file_name(scatterer)
 
