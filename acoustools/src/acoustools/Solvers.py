@@ -196,8 +196,7 @@ def naive_solver_batched(points,board=TRANSDUCERS, activation=None, A=None):
     returns (point activations, hologram)
     '''
     if activation is None:
-        activation = torch.ones(points.shape[2],1) +0j
-        activation = activation.to(device)
+        activation = torch.ones(points.shape[2],1, device=device, dtype=DTYPE) +0j
     
     if A is None:
         A = forward_model_batched(points,board)

@@ -69,3 +69,9 @@ def sine_amplitude_square(phases: Tensor, **params)-> Tensor:
     sin_amp = torch.sin(amplitudes)**2
     angles = torch.angle(phases)
     return sin_amp * torch.exp(1j*angles)
+
+def sine_amplitude_pi_square(phases: Tensor, **params)-> Tensor:
+    amplitudes = torch.abs(phases)
+    sin_amp = torch.sin(amplitudes * torch.pi/2)**2
+    angles = torch.angle(phases)
+    return sin_amp * torch.exp(1j*angles)
