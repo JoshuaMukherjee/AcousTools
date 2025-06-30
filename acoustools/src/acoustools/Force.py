@@ -133,6 +133,7 @@ def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axi
 
     return force
 
+
 def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, board:Tensor, grad_function:FunctionType=forward_model_grad, 
                grad_function_args:dict={}, F_fun:FunctionType|None=forward_model_batched, F_function_args:dict={},
                F:Tensor|None=None, Ax:Tensor|None=None, Ay:Tensor|None=None,Az:Tensor|None=None,
