@@ -391,7 +391,6 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
     ```
     ''' 
 
-    print(lr)
 
     if board is None:
         board = TRANSDUCERS
