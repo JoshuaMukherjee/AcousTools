@@ -1,6 +1,6 @@
 
 from acoustools.BEM import BEM_forward_model_second_derivative_mixed, BEM_forward_model_second_derivative_unmixed, BEM_forward_model_grad, compute_E, get_cache_or_compute_H, get_cache_or_compute_H_gradients
-from acoustools.Utilities import TRANSDUCERS
+from acoustools.Utilities import TRANSDUCERS, propagate
 from acoustools.Force import force_mesh
 from acoustools.Mesh import load_scatterer, get_centres_as_points, get_normals_as_points, get_areas, scale_to_diameter,\
     centre_scatterer, translate, merge_scatterers, get_edge_data, get_centre_of_mass_as_points, get_volume
@@ -72,6 +72,63 @@ def BEM_compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,r
         return force[0], force[1], force[2] 
     else:
         return force 
+
+def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
+                       return_components:bool=False, sum_elements = True, use_pressure:bool=False,
+                       H:Tensor=None, diameter=c.wavelength*2,
+                       path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
+                       surface:Mesh|None=None, use_cache_H:bool=True, E=None, Ex=None, Ey=None, Ez=None) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+
+    object_com = get_centre_of_mass_as_points(scatterer)
+
+    if surface is None:
+        surface = load_scatterer(path+surface_path)
+        scale_to_diameter(surface,diameter, reset=False, origin=True)
+        centre_scatterer(surface)
+        translate(surface, dx = object_com[:,0].item(), dy=object_com[:,1].item(), dz = object_com[:,2].item())
+    
+
+
+    points = get_centres_as_points(surface)
+    norms = get_normals_as_points(surface)
+    areas = get_areas(surface)
+    surface_com = get_centre_of_mass_as_points(surface)
+    r = points - surface_com
+    # print('dot',torch.sum(r * norms, dim=1) / torch.norm(r,2, dim=1)) 
+    
+    if use_pressure:
+        if E is None:
+            E = compute_E(scatterer, points, board, use_cache_H=use_cache_H, path=path, H=H)
+        p = propagate(activations,points,board,A=E)
+        pressure_square = torch.abs(p)**2
+        pressure_time_average = 1/2 * pressure_square
+
+        r_cross_n = torch.cross(r,norms, dim=1)
+        pressure_term = pressure_time_average * r_cross_n * areas
+        if sum_elements: pressure_term = torch.sum(pressure_term, dim=2)
+    else:
+        pressure_term = 0
+
+    if Ex is None or Ey is None or Ez is None:
+        Ax, Ay, Az = BEM_forward_model_grad(points, scatterer, board, use_cache_H=use_cache_H, H=H, path=path)
+    
+    px = (Ax@activations).squeeze(2).unsqueeze(0)
+    py = (Ay@activations).squeeze(2).unsqueeze(0)
+    pz = (Az@activations).squeeze(2).unsqueeze(0)
+
+    grad  = torch.cat((px,py,pz),dim=1)
+    velocity = grad /( 1j * c.p_0 * c.angular_frequency)
+    # return torch.sum(velocity,dim=2)
+    # r_cross_outer_conj = torch.cross(r, outer_conj)
+
+    # time_average_outer_v = 1/2 * torch.einsum('bin,bjn -> bijn', r_cross_v, velocity.conj().resolve_conj()) #Takes two (B,3,N) vectors and computes the outer product on them - i think...
+    vconj_dot_n = torch.sum(velocity.conj() * norms, dim=1, keepdim=True)
+    time_average_velocity = 1/2 *(torch.cross((vconj_dot_n * r), velocity, dim=1)).real * areas
+    if sum_elements: time_average_velocity = torch.sum(time_average_velocity, dim=2)
+    torque = - pressure_term - c.p_0 * time_average_velocity
+
+    return torque
+
 
 
 def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
