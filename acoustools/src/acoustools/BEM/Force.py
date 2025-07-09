@@ -110,11 +110,11 @@ def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|No
         pressure_term = 0
 
     if Ex is None or Ey is None or Ez is None:
-        Ax, Ay, Az = BEM_forward_model_grad(points, scatterer, board, use_cache_H=use_cache_H, H=H, path=path)
+        Ex, Ey, Ez = BEM_forward_model_grad(points, scatterer, board, use_cache_H=use_cache_H, H=H, path=path)
     
-    px = (Ax@activations).squeeze(2).unsqueeze(0)
-    py = (Ay@activations).squeeze(2).unsqueeze(0)
-    pz = (Az@activations).squeeze(2).unsqueeze(0)
+    px = (Ex@activations).squeeze(2).unsqueeze(0)
+    py = (Ey@activations).squeeze(2).unsqueeze(0)
+    pz = (Ez@activations).squeeze(2).unsqueeze(0)
 
     grad  = torch.cat((px,py,pz),dim=1)
     velocity = grad /( 1j * c.p_0 * c.angular_frequency)
