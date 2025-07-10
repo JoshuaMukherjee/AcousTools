@@ -141,13 +141,12 @@ def target_gorkov_mse_objective(transducer_phases: Tensor, points:Tensor, board:
     :param board: Transducer board
     :param target: target gor'kov value
     '''
-    if "no_sig" not in objective_params:
-        t2 = add_lev_sig(transducer_phases)
-    else:
-        t2 = transducer_phases
-   
+    # if "no_sig" not in objective_params:
+    #     t2 = add_lev_sig(transducer_phases)
+    # else:
+    #     t2 = transducer_phases
     axis = objective_params["axis"] if "axis" in objective_params else "XYZ"
-    U = gorkov_analytical(t2, points, board, axis)
+    U = gorkov_analytical(transducer_phases, points, board, axis)
     l = torch.mean((U-targets)**2,dim=1).squeeze_(1)
     
     return l
