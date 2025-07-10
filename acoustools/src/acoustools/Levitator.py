@@ -7,7 +7,6 @@ from acoustools.Utilities import get_convert_indexes, batch_list
 from torch import Tensor
 from typing import Literal
 
-import line_profiler
 
 class LevitatorController():
     '''
