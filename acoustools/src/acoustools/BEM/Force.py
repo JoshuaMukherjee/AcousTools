@@ -73,11 +73,28 @@ def BEM_compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,r
     else:
         return force 
 
-def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
-                       return_components:bool=False, sum_elements = True, use_pressure:bool=False,
+def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None, sum_elements = True, use_pressure:bool=False,
                        H:Tensor=None, diameter=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
                        surface:Mesh|None=None, use_cache_H:bool=True, E=None, Ex=None, Ey=None, Ez=None) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+    '''
+    Computes the force on a scattering obejct by computing thr force on a far field surface\\
+    :param activations: Hologram
+    :param scatterer: Object to compute force on
+    :param board: Transducers
+    :param sum_elements: if True will call sum across mesh elements
+    :param H: H matrix to use for BEM, if None will be computed
+    :param diameter: diameter of surfac to use
+    :param path: path to BEMCache
+    :param surface_path: Name of stl to use for surface such that path + surface path is the full address
+    :param surface: Surface to use, if None will be laoded from surface_path
+    :param use_cache_H: If true use BEM cache system
+    :param E: E matrix to use for BEM, if None will be computed
+    :param Ex: Grad E wrt x matrix to use for BEM, if None will be computed
+    :param Ey: Grad E wrt y matrix to use for BEM, if None will be computed
+    :param Ey: Grad E wrt z matrix to use for BEM, if None will be computed
+    :returns torque:
+    '''
 
     object_com = get_centre_of_mass_as_points(scatterer)
 
@@ -136,6 +153,27 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
                        H:Tensor=None, diameter=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
                        surface:Mesh|None=None, use_cache_H:bool=True, E=None, Ex=None, Ey=None, Ez=None, use_momentum=True) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+    '''
+    Computes the torque on a scattering obejct by computing thr force on a far field surface\\
+    :param activations: Hologram
+    :param scatterer: Object to compute force on
+    :param board: Transducers
+    :param return_components: if True will return Fx,Fy,Fz else returns force
+    :param sum_elements: if True will call sum across mesh elements
+    :param return_momentum: if True will return total force and the momentum flux term
+    :param H: H matrix to use for BEM, if None will be computed
+    :param diameter: diameter of surfac to use
+    :param path: path to BEMCache
+    :param surface_path: Name of stl to use for surface such that path + surface path is the full address
+    :param surface: Surface to use, if None will be laoded from surface_path
+    :param use_cache_H: If true use BEM cache system
+    :param E: E matrix to use for BEM, if None will be computed
+    :param Ex: Grad E wrt x matrix to use for BEM, if None will be computed
+    :param Ey: Grad E wrt y matrix to use for BEM, if None will be computed
+    :param Ey: Grad E wrt z matrix to use for BEM, if None will be computed
+    :use_momentum: If true will use momentum flux terms
+    :returns force:
+    '''
     
     if surface is None:
         surface = load_scatterer(path+surface_path)
@@ -175,6 +213,22 @@ def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board
                        sum_elements = True, H:Tensor=None, diameter=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
                        surface:Mesh|None=None, use_cache_H:bool=True, force=None, norms=None) -> Tensor:
+    '''
+    Computes the divergance force (the dot product of the force and normals on the surface) on a scattering obejct by computing thr force on a far field surface\\
+    :param activations: Hologram
+    :param scatterer: Object to compute force on
+    :param board: Transducers
+    :param sum_elements: if True will call sum across mesh elements
+    :param H: H matrix to use for BEM, if None will be computed
+    :param diameter: diameter of surfac to use
+    :param path: path to BEMCache
+    :param surface_path: Name of stl to use for surface such that path + surface path is the full address
+    :param surface: Surface to use, if None will be laoded from surface_path
+    :param use_cache_H: If true use BEM cache system
+    :param force: Precomputed force, if non is computed using `force_mesh_surface`
+    :param norms: Precomputed norms, if non is found from surface
+    :returns divergance of force:
+    '''
 
 
     if surface is None:
@@ -204,6 +258,22 @@ def force_mesh_surface_curl(activations:Tensor, scatterer:Mesh=None, board:Tenso
                        sum_elements = True, H:Tensor=None, diameter=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
                        surface:Mesh|None=None, use_cache_H:bool=True, magnitude = False, force=None) -> Tensor:
+    '''
+    Computes the curl force (the cross product of the force and normals on the surface) on a scattering obejct by computing thr force on a far field surface\\
+    :param activations: Hologram
+    :param scatterer: Object to compute force on
+    :param board: Transducers
+    :param sum_elements: if True will call sum across mesh elements
+    :param H: H matrix to use for BEM, if None will be computed
+    :param diameter: diameter of surfac to use
+    :param path: path to BEMCache
+    :param surface_path: Name of stl to use for surface such that path + surface path is the full address
+    :param surface: Surface to use, if None will be laoded from surface_path
+    :param use_cache_H: If true use BEM cache system
+    :param force: Precomputed force, if non is computed using `force_mesh_surface`
+    :param magnitude: If true will call `torch.norm` on the curl vectors
+    :returns curl of force:
+    '''
     
     if force is None: force = force_mesh_surface(activations, scatterer, board, H=H, diameter=diameter, path=path, 
                                surface_path=surface_path, surface=surface, use_cache_H=use_cache_H, sum_elements=False) 
