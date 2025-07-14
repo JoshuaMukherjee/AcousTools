@@ -570,6 +570,13 @@ def gorkov_target(points:Tensor, objective:FunctionType = target_gorkov_BEM_mse_
 
 
 def kd_solver(points:Tensor, board:Tensor|None = None,k=c.k):
+    '''
+    Solver for one point by setting phases to be equal at target point \\
+    see `A volumetric display for visual, tactile and audio presentation using acoustic trapping`\\
+    :param points: point to use - must be only one point
+    :param board: Transducers, if None will use two 16x16 arrays
+    :param k: wavenumber 
+    '''
     B = points.shape[0]
     M = board.shape[0]
 
@@ -579,3 +586,40 @@ def kd_solver(points:Tensor, board:Tensor|None = None,k=c.k):
     distance = torch.sqrt(torch.sum((p - b)**2,dim=1)).unsqueeze_(0).mT
     distance = distance.to(device).to(DTYPE)
     return torch.exp(1j * -1* distance*k)
+
+
+def translate_hologram(x:Tensor,board:Tensor|None=None, dx:float=0, dy:float=0, dz:float=0, k:float=c.k):
+
+    '''
+    Translates an existing hologram by (dx,dy,dz)\\
+    :param x: Hologram
+    :param board: Transducers, if None will use two 16x16 arrays
+    :param dx: x translation
+    :param dy: y translation
+    :param dz: z translation
+    :param k: wavenumber 
+    '''
+    
+    if board is None:
+        board = TRANSDUCERS
+
+    p2 =  create_points(1,1,dx,dy,dz)
+
+    B = p2.shape[0]
+    M = board.shape[0]
+
+    b = board.unsqueeze(0).permute((0,2,1))
+    p2 = p2.expand(B,3,M)
+
+    distance_p2 = torch.sqrt(torch.sum((p2 - b)**2,dim=1)).unsqueeze_(0).mT.to(device).to(DTYPE)
+    distance_p = torch.sqrt(torch.sum((b)**2,dim=1)).unsqueeze_(0).mT.to(device).to(DTYPE)
+
+    distance = distance_p-distance_p2
+
+    kd = (k*distance)
+
+    phase = torch.angle(x)
+    phase_2 = phase + kd
+    x2 = torch.exp(1j * phase_2)
+
+    return x2
