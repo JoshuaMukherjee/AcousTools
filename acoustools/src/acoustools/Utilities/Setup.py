@@ -1,7 +1,10 @@
 import torch, sys
 from typing import Literal 
 
-DTYPE = torch.complex128 if '-c64' not in sys.argv else torch.complex64
+DTYPE = torch.complex64
+DTYPE = torch.complex32 if '-c32' not in sys.argv else DTYPE
+DTYPE = torch.complex64 if '-c64' not in sys.argv else DTYPE
+DTYPE = torch.complex128 if '-c128' not in sys.argv else DTYPE
 '''
 Data type to use for matricies - use `.to(DTYPE)` to convert
 '''
