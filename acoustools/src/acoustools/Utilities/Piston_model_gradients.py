@@ -26,7 +26,7 @@ def compute_gradients(points, transducers = TRANSDUCERS):
     diff = transducers - points
     distances = torch.sqrt(torch.sum(diff**2, 2))
     planar_distance= torch.sqrt(torch.sum((diff**2)[:,:,0:2,:],dim=2))
-    planar_distance += 1e-8
+    planar_distance = planar_distance +  1e-8
 
     #Partial derivates of bessel function section wrt xyz
     sin_theta = torch.divide(planar_distance,distances) 
