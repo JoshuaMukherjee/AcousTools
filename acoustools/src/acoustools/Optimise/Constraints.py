@@ -81,3 +81,10 @@ def sine_amplitude_pi(phases: Tensor, **params)-> Tensor:
     sin_amp = torch.sin(amplitudes * torch.pi/2)
     angles = torch.angle(phases)
     return sin_amp * torch.exp(1j*angles)
+
+def tanh_amplitude(phases:Tensor, **params):
+    amplitudes = torch.abs(phases)
+    amp = torch.tanh(0.1*amplitudes)
+    angles = torch.angle(phases)
+    return amp * torch.exp(1j*angles)
+    
