@@ -5,6 +5,63 @@ import acoustools.Constants as c
 from torch import Tensor
 from types import FunctionType
 
+
+def gorkov(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", V:float=c.V, **params) -> Tensor:
+    '''
+    Use to compute the gorkov potential at a point. Alias for `src.acoustools.Gorkov.gorkov_analytical`
+    '''
+    return gorkov_analytical(activations, points, board, axis, V, **params)
+
+def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", V:float=c.V, **params) -> Tensor:
+    '''
+    Computes the Gorkov potential using analytical derivative of the piston model \n
+    :param activation: The transducer activations to use 
+    :param points: The points to compute the potential at
+    :param board: The transducer boards to use
+    :param axis: The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis
+    :param V: particle Volume
+    :return: gorkov potential at each point
+    ```Python
+    from acoustools.Utilities import create_points, add_lev_sig
+    from acoustools.Solvers import wgs
+    from acoustools.Gorkov import gorkov_analytical
+
+    N=1
+    B=1
+    points = create_points(N,B)
+    x = wgs(points)
+    x = add_lev_sig(x)
+    
+    U_a = gorkov_analytical(x,points)
+
+    print("Analytical",U_a.data.squeeze())
+    ```
+    '''
+
+    if board is None:
+        board = TRANSDUCERS
+
+    Fx, Fy, Fz = forward_model_grad(points, transducers=board)
+    F = forward_model_batched(points,board)
+    
+    p = torch.abs(F@activations)**2
+
+    px = (Fx@activations) if 'X' in axis else 0
+    py = (Fy@activations) if 'Y' in axis else 0
+    pz = (Fz@activations) if 'Z' in axis else 0
+
+    grad  = torch.cat((px,py,pz),dim=2)
+
+    K1, K2 = get_gorkov_constants(V=V)
+    g = (torch.sum(torch.abs(grad)**2, dim=2, keepdim=True))
+    
+    # K1 = 1/4*V*(1/(c.c_0**2*c.p_0) - 1/(c.c_p**2*c.p_p))
+    # K2 = 3/4 * V * ((c.p_0 - c.p_p) / (c.angular_frequency**2 * c.p_0 * (c.p_0 * 2*c.p_p)))
+    
+    U = K1*p - K2*g
+    return U
+
+
 def get_gorkov_constants(V=c.V, p_0 = c.p_0, p_p=c.p_p, c_0=c.c_0, c_p=c.c_p, angular_frequency=c.angular_frequency ):
     '''
     Returns K1 and K2 for use in Gorkov computations, Uses the form shown in `Holographic acoustic elements for manipulation of levitated objects` \n
@@ -165,54 +222,6 @@ def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize
     
     return U
 
-def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", V:float=c.V, **params) -> Tensor:
-    '''
-    Computes the Gorkov potential using analytical derivative of the piston model \n
-    :param activation: The transducer activations to use 
-    :param points: The points to compute the potential at
-    :param board: The transducer boards to use
-    :param axis: The axes to add points in as a string containing 'X', 'Y' and/or 'Z' eg 'XYZ' will use all three axis but 'YZ' will only add points in the YZ axis
-    :param V: particle Volume
-    :return: gorkov potential at each point
-    ```Python
-    from acoustools.Utilities import create_points, add_lev_sig
-    from acoustools.Solvers import wgs
-    from acoustools.Gorkov import gorkov_analytical
-
-    N=1
-    B=1
-    points = create_points(N,B)
-    x = wgs(points)
-    x = add_lev_sig(x)
-    
-    U_a = gorkov_analytical(x,points)
-
-    print("Analytical",U_a.data.squeeze())
-    ```
-    '''
-
-    if board is None:
-        board = TRANSDUCERS
-
-    Fx, Fy, Fz = forward_model_grad(points, transducers=board)
-    F = forward_model_batched(points,board)
-    
-    p = torch.abs(F@activations)**2
-
-    px = (Fx@activations) if 'X' in axis else 0
-    py = (Fy@activations) if 'Y' in axis else 0
-    pz = (Fz@activations) if 'Z' in axis else 0
-
-    grad  = torch.cat((px,py,pz),dim=2)
-
-    K1, K2 = get_gorkov_constants(V=V)
-    g = (torch.sum(torch.abs(grad)**2, dim=2, keepdim=True))
-    
-    # K1 = 1/4*V*(1/(c.c_0**2*c.p_0) - 1/(c.c_p**2*c.p_p))
-    # K2 = 3/4 * V * ((c.p_0 - c.p_p) / (c.angular_frequency**2 * c.p_0 * (c.p_0 * 2*c.p_p)))
-    
-    U = K1*p - K2*g
-    return U
 
 def get_finite_diff_points(points:Tensor , axis:Tensor, stepsize:float = 0.000135156253) -> Tensor:
     '''
