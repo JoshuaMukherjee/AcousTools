@@ -14,7 +14,7 @@ import torch
 
 from vedo import Mesh
 
-def BEM_compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False, V=c.V, scatterer:Mesh=None, 
+def BEM_compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False, V:float=c.V, scatterer:Mesh=None, 
                   H:Tensor=None, path:str="Media") -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
     Returns the force on a particle using the analytical derivative of the Gor'kov potential and BEM\n
@@ -76,7 +76,8 @@ def BEM_compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,r
 def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None, sum_elements = True, use_pressure:bool=False,
                        H:Tensor=None, diameter=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
-                       surface:Mesh|None=None, use_cache_H:bool=True, E=None, Ex=None, Ey=None, Ez=None) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+                       surface:Mesh|None=None, use_cache_H:bool=True, 
+                       E:Tensor|None=None, Ex:Tensor|None=None, Ey:Tensor|None=None, Ez:Tensor|None=None, ) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
     Computes the force on a scattering obejct by computing thr force on a far field surface\\
     :param activations: Hologram
@@ -149,10 +150,12 @@ def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|No
 
 
 def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
-                       return_components:bool=False, sum_elements = True, return_momentum = False,
-                       H:Tensor=None, diameter=c.wavelength*2,
+                       return_components:bool=False, sum_elements:bool = True, return_momentum:bool = False,
+                       H:Tensor=None, diameter:float=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
-                       surface:Mesh|None=None, use_cache_H:bool=True, E=None, Ex=None, Ey=None, Ez=None, use_momentum=True) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+                       surface:Mesh|None=None, use_cache_H:bool=True, 
+                       E:Tensor|None=None, Ex:Tensor|None=None, Ey:Tensor|None=None, Ez:Tensor|None=None, 
+                       use_momentum:float=True) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
     Computes the torque on a scattering obejct by computing thr force on a far field surface\\
     :param activations: Hologram
@@ -210,9 +213,9 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
     return force
 
 def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
-                       sum_elements = True, H:Tensor=None, diameter=c.wavelength*2,
+                       sum_elements:bool = True, H:Tensor=None, diameter:float=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
-                       surface:Mesh|None=None, use_cache_H:bool=True, force=None, norms=None) -> Tensor:
+                       surface:Mesh|None=None, use_cache_H:bool=True, force:Tensor|None=None, norms:Tensor|None=None) -> Tensor:
     '''
     Computes the divergance force (the dot product of the force and normals on the surface) on a scattering obejct by computing thr force on a far field surface\\
     :param activations: Hologram
@@ -255,9 +258,9 @@ def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board
 
 
 def force_mesh_surface_curl(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
-                       sum_elements = True, H:Tensor=None, diameter=c.wavelength*2,
+                       sum_elements:bool = True, H:Tensor=None, diameter:float=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
-                       surface:Mesh|None=None, use_cache_H:bool=True, magnitude = False, force=None) -> Tensor:
+                       surface:Mesh|None=None, use_cache_H:bool=True, magnitude:Tensor|None = False, force:Tensor|None=None) -> Tensor:
     '''
     Computes the curl force (the cross product of the force and normals on the surface) on a scattering obejct by computing thr force on a far field surface\\
     :param activations: Hologram
