@@ -235,7 +235,7 @@ def get_centre_of_mass_as_points(*scatterers:Mesh, permute_to_points:bool=True) 
     '''
     centres_list = []
     for scatterer in scatterers:
-        centre_of_mass =  torch.tensor(scatterer.center_of_mass()).to(device)
+        centre_of_mass =  torch.tensor(scatterer.center_of_mass()).to(DTYPE).to(device)
 
         if permute_to_points:
             centre_of_mass = torch.unsqueeze(centre_of_mass,1)
@@ -254,7 +254,7 @@ def get_centres_as_points(*scatterers:Mesh, permute_to_points:bool=True, add_nor
     '''
     centre_list = []
     for scatterer in scatterers:
-        centres =  torch.tensor(scatterer.cell_centers().points).to(device)
+        centres =  torch.tensor(scatterer.cell_centers().points).to(DTYPE).to(device)
 
         if permute_to_points:
             centres = torch.permute(centres,(1,0)).unsqueeze_(0)
@@ -263,7 +263,7 @@ def get_centres_as_points(*scatterers:Mesh, permute_to_points:bool=True, add_nor
             norms= get_normals_as_points(scatterer)
             centres += norms.real * normal_scale
         
-        centre_list.append(centres.to(DTYPE))
+        centre_list.append(centres)
     centres = torch.cat(centre_list,dim=0)
     return centres
 

@@ -107,7 +107,7 @@ def compute_A(scatterer: Mesh) -> Tensor:
 
     areas = torch.Tensor(scatterer.celldata["Area"]).to(device)
 
-    centres = torch.tensor(scatterer.cell_centers().points).to(device)
+    centres = torch.tensor(scatterer.cell_centers().points).to(DTYPE).to(device)
     m = centres
     M = m.shape[0]
     m = m.expand((M,M,3))
@@ -134,9 +134,9 @@ def compute_bs(scatterer: Mesh, board:Tensor) -> Tensor:
     :param board: Transducers to use 
     :return B: B tensor
     '''
-    centres = torch.tensor(scatterer.cell_centers().points).to(device).T.unsqueeze_(0)
+    centres = torch.tensor(scatterer.cell_centers().points).to(DTYPE).to(device).T.unsqueeze_(0)
     bs = forward_model_batched(centres,board)
-    return bs.to(DTYPE)
+    return bs
 
  
 def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False) -> Tensor:
