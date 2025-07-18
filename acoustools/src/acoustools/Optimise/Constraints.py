@@ -87,4 +87,11 @@ def tanh_amplitude(phases:Tensor, **params):
     amp = torch.tanh(0.1*amplitudes)
     angles = torch.angle(phases)
     return amp * torch.exp(1j*angles)
-    
+
+def norm_only_bottom(phases:Tensor, **params):
+    assert phases.shape[1] == 512
+    top = phases[:,0:256] / torch.max(torch.abs(phases[:,0:256]))
+    bottom = phases[:,256:] / torch.abs(phases[:,256:] ) 
+    phases = torch.cat([top,bottom], dim=1)
+
+    return phases
