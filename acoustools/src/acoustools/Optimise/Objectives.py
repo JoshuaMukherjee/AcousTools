@@ -35,7 +35,7 @@ def propagate_abs_sum_objective_BEM(transducer_phases: Tensor, points:Tensor, bo
 
 
 
-def gorkov_analytical_sum_objective(transducer_phases: Tensor, points:Tensor, board:Tensor, targets:Tensor, **objective_params) -> Tensor:
+def gorkov_analytical_sum_objective(transducer_phases: Tensor, points:Tensor, board:Tensor, targets:Tensor = None, **objective_params) -> Tensor:
     '''
     Sum of the Gor'kov potential of points
     :param transducer_phases: Hologram
@@ -44,7 +44,7 @@ def gorkov_analytical_sum_objective(transducer_phases: Tensor, points:Tensor, bo
     :param target: <Unused>
     :param axis: axis to compute gor'kov potential in
     '''
-    transducer_phases = add_lev_sig(transducer_phases)
+    # transducer_phases = add_lev_sig(transducer_phases)
     
     axis = objective_params["axis"] if "axis" in objective_params else "XYZ"
     U = gorkov_analytical(transducer_phases, points, board, axis)

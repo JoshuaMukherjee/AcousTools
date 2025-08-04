@@ -397,8 +397,8 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
 
     losses = []
     results = {}
-    B = points.shape[0]
-    N = points.shape[2]
+    B = points.shape[0] if points is not None else 1
+    N = points.shape[2] if points is not None else 1
     M = board.shape[0]
     if start is None:
         # start = torch.ones((B,M,1)).to(device) +0j
