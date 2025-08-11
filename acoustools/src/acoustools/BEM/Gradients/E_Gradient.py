@@ -104,7 +104,7 @@ import acoustools.Constants as Constants
 
 def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor=None, use_cache_H:bool=True, 
                            print_lines:bool=False, H:Tensor|None=None, return_components:bool=False,
-                           path:str="Media") -> tuple[Tensor, Tensor, Tensor] | tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
+                           path:str="Media", p_ref=Constants.P_ref) -> tuple[Tensor, Tensor, Tensor] | tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     '''
     Computes the gradient of the forward propagation for BEM\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -121,9 +121,9 @@ def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor=Non
 
     B = points.shape[0]
     if H is None:
-        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines)
+        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref)
     
-    Fx, Fy, Fz  = forward_model_grad(points, transducers)
+    Fx, Fy, Fz  = forward_model_grad(points, transducers,p_ref=p_ref)
     Gx, Gy, Gz = get_G_partial(points, scatterer, transducers)
 
 
@@ -424,105 +424,6 @@ def BEM_forward_model_second_derivative_mixed(points:Tensor, scatterer:Mesh, tra
     return Exy, Exz, Eyz
 
 
-
-
-
-# def get_G_second_mixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False) -> tuple[Tensor, Tensor, Tensor]:
-
-#     #Bk.3 Pg.81
-    
-#     areas = get_areas(scatterer)
-#     centres = get_centres_as_points(scatterer)
-#     normals = get_normals_as_points(scatterer).unsqueeze(2)
-
-#     N = points.shape[2]
-#     M = centres.shape[2]
-
-#     points = points.unsqueeze(3).expand(-1,-1,-1,M)
-#     centres = centres.unsqueeze(2).expand(-1,-1,N,-1)
-
-#     diff = points - centres    
-#     diff_square = diff**2
-#     distances = torch.sqrt(torch.sum(diff_square, 1))
-#     distances_square = distances ** 2
-#     distances_cube = distances ** 3
-#     distances_four = distances ** 4
-#     distances_five = distances ** 5
-
-    
-#     distances_expanded = distances.unsqueeze(1).expand((1,3,N,M)) 
-
-#     kd = Constants.k * distances
-#     exp_ikd = torch.exp(1j*kd)
-
-
-#     dx = diff[:,0,:,:]
-#     dy = diff[:,1,:,:]
-#     dz = diff[:,2,:,:]
-
-#     dxy = -dx*dy / distances_cube
-#     dxz = -dx*dz / distances_cube
-#     dyz = -dy*dz / distances_cube
-
-#     da = diff / distances_expanded
-#     dax = da[:,0,:,:]
-#     day = da[:,1,:,:]
-#     daz = da[:,2,:,:]
- 
-#     F = (areas * 1j * Constants.k * exp_ikd) / ( 4 * Constants.pi * distances)
-#     P = (-1 * areas * exp_ikd) / ( 4 * Constants.pi * distances_square)
-
-#     Fa = (-1 * Constants.k * areas * da * exp_ikd * (kd + 1j)) / (Constants.pi * 4 * distances_square)
-#     Pa = (areas * da * exp_ikd * (2 - 1j*kd)) / (Constants.pi * 4 * distances_cube)
-
-
-#     Fxy = (Constants.k * areas * exp_ikd)/(4 * Constants.pi * distances_cube) * (day * dax * (-1j * kd**2 + 2*kd + 2j) - distances*dxy * (kd + 1j))
-#     Fxz = (Constants.k * areas * exp_ikd)/(4 * Constants.pi * distances_cube) * (daz * dax * (-1j * kd**2 + 2*kd + 2j) - distances*dxz * (kd + 1j))
-#     Fyz = (Constants.k * areas * exp_ikd)/(4 * Constants.pi * distances_cube) * (day * daz * (-1j * kd**2 + 2*kd + 2j) - distances*dyz * (kd + 1j))
-
-#     Pxy = (areas * exp_ikd)/(4 * Constants.pi * distances_four) * (day * dax * (kd**2 + 4j*kd -6) -distances*dxy * (2-1j*kd))
-#     Pxz = (areas * exp_ikd)/(4 * Constants.pi * distances_four) * (daz * dax * (kd**2 + 4j*kd -6) -distances*dxz * (2-1j*kd))
-#     Pyz = (areas * exp_ikd)/(4 * Constants.pi * distances_four) * (day * daz * (kd**2 + 4j*kd -6) -distances*dyz * (2-1j*kd))
-
-
-#     nx = normals[:,0,:]
-#     ny = normals[:,1,:]
-#     nz = normals[:,2,:]
-
-#     nd = nx * dx + ny * dy + nz * dz
-
-#     C = (diff * normals).sum(dim=1) / distances
-
-#     Cxy = (-ny*dx*distances_square - nx*dy*distances_square - 3 * dy*dx * nd) / distances_five
-#     Cxz = (-nz*dx*distances_square - nx*dz*distances_square - 3 * dz*dx * nd) / distances_five
-#     Cyz = (-ny*dz*distances_square - ny*dz*distances_square - 3 * dz*dy * nd) / distances_five
-
-
-#     Cx = (nx*(dx**2 +dy**2 + dz**2) - dx * (ny*dy + nz*dz)) / distances_cube
-#     Cy = (ny*(dx**2 +dy**2 + dz**2) - dy * (nx*dx + nz*dz)) / distances_cube
-#     Cz = (nz*(dx**2 +dy**2 + dz**2) - dz * (nx*dx + ny*dy)) / distances_cube
-
-#     Fx = Fa[:,0,:]
-#     Fy = Fa[:,1,:]
-#     Fz = Fa[:,2,:]
-
-#     Px = Pa[:,0,:]
-#     Py = Pa[:,1,:]
-#     Pz = Pa[:,2,:]
-
-#     print(Fx.shape, Fxy.shape)
-#     print(Px.shape, Pxy.shape )
-#     print(Cx.shape, Cxy.shape, C.shape)
-
-
-#     grad_2_G_mixed_xy = Cy * (Fx + Px) + Cx * (Fy + Py) + C * (Fxy + Pxy) + Cxy * (F+P)
-#     grad_2_G_mixed_xz = Cz * (Fx + Px) + Cx * (Fz + Pz) + C * (Fxz + Pxz) + Cxz * (F+P)
-#     grad_2_G_mixed_yz = Cy * (Fz + Pz) + Cz * (Fy + Py) + C * (Fyz + Pyz) + Cyz * (F+P)
-
-
-
-#     return grad_2_G_mixed_xy, grad_2_G_mixed_xz, grad_2_G_mixed_yz
-
 def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False) -> tuple[Tensor, Tensor, Tensor]:
     '''
     Computes gradient of the G matrix in BEM \n
@@ -594,7 +495,6 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     C = (nx*dx + ny*dy + nz*dz) / distances
 
 
-    distances_cubed = distances**3
     distance_square = distances**2
 
 

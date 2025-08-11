@@ -127,7 +127,7 @@ def compute_A(scatterer: Mesh) -> Tensor:
     return A.to(DTYPE)
 
  
-def compute_bs(scatterer: Mesh, board:Tensor) -> Tensor:
+def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref) -> Tensor:
     '''
     Computes B for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -135,11 +135,11 @@ def compute_bs(scatterer: Mesh, board:Tensor) -> Tensor:
     :return B: B tensor
     '''
     centres = torch.tensor(scatterer.cell_centers().points).to(DTYPE).to(device).T.unsqueeze_(0)
-    bs = forward_model_batched(centres,board)
+    bs = forward_model_batched(centres,board, p_ref=p_ref)
     return bs
 
  
-def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False) -> Tensor:
+def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref) -> Tensor:
     '''
     Computes H for the BEM model \n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -149,7 +149,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     '''
     
     A = compute_A(scatterer)
-    bs = compute_bs(scatterer,board)
+    bs = compute_bs(scatterer,board,p_ref=p_ref)
     if use_LU:
         LU, pivots = torch.linalg.lu_factor(A)
         H = torch.linalg.lu_solve(LU, pivots, bs)
@@ -164,7 +164,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
-                           print_lines:bool=False, cache_name:str|None=None,use_LU:bool=True) -> Tensor:
+                           print_lines:bool=False, cache_name:str|None=None,use_LU:bool=True, p_ref = Constants.P_ref) -> Tensor:
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -179,7 +179,7 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
     if use_cache_H:
         
         if cache_name is None:
-            cache_name = scatterer.filename+"--"+ board_name(board)
+            cache_name = scatterer.filename+"--"+ board_name(board) + '--' + str(p_ref)
             cache_name = hashlib.md5(cache_name.encode()).hexdigest()
         f_name = path+"/BEMCache/"  +  cache_name + ".bin"
         # print(f_name)
@@ -195,12 +195,12 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             f.close()
     else:
         if print_lines: print("Computing H...")
-        H = compute_H(scatterer,board)
+        H = compute_H(scatterer,board, p_ref=p_ref)
 
     return H
 
 def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
-               H:Tensor|None=None,path:str="Media", return_components:bool=False) -> Tensor:
+               H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref) -> Tensor:
     '''
     Computes E in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -246,13 +246,13 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     if print_lines: print("H...")
     
     if H is None:
-        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines).to(DTYPE)
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref).to(DTYPE)
         
     if print_lines: print("G...")
     G = compute_G(points, scatterer).to(DTYPE)
     
     if print_lines: print("F...")
-    F = forward_model_batched(points,board).to(DTYPE)
+    F = forward_model_batched(points,board,p_ref=p_ref).to(DTYPE)
     
     if print_lines: print("E...")
 

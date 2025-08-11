@@ -60,7 +60,7 @@ def wgs_solver_batch(A, b, iterations):
     y =  torch.abs(A@x) 
     return y, p, x
 
-def wgs(points:Tensor,iter:int = 200, board:Tensor|None = None, A:Tensor|None = None, b:Tensor|None=None, return_components:bool=False) -> Tensor:
+def wgs(points:Tensor,iter:int = 200, board:Tensor|None = None, A:Tensor|None = None, b:Tensor|None=None, return_components:bool=False, p_ref=c.P_ref) -> Tensor:
     '''
     Weighted-GS algorithm\n
     :param points: Points to use
@@ -97,7 +97,7 @@ def wgs(points:Tensor,iter:int = 200, board:Tensor|None = None, A:Tensor|None = 
         batch=False
 
     if A is None:
-        A = forward_model(points, board).to(DTYPE)
+        A = forward_model(points, board, p_ref=p_ref).to(DTYPE)
     if b is None:
         b = torch.ones(N,1).to(device).to(DTYPE)+0j
 
@@ -147,7 +147,7 @@ def gspat_solver(R,forward, backward, target, iterations,return_components=False
 
 
 def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:Tensor|None=None, 
-          R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False) -> Tensor:
+          R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False,p_ref = c.P_ref) -> Tensor:
     '''
     GSPAT Solver\n
     :param points: Target point positions
@@ -165,7 +165,7 @@ def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:T
         board = TRANSDUCERS
 
     if A is None:
-        A = forward_model(points,board)
+        A = forward_model(points,board,p_ref=p_ref)
     if B is None:
         B = torch.conj(A).mT.to(DTYPE)
     if R is None:
@@ -182,11 +182,11 @@ def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:T
         phase_hologram,pres = gspat_solver(R,A,B,b, iterations,return_components)
         return phase_hologram,pres
     
-    phase_hologram = gspat_solver(R,A,B,b, iterations,return_components)
+    phase_hologram = gspat_solver(R,A,B,b, iterations,return_components,p_ref=p_ref)
     return phase_hologram
 
 
-def naive_solver_batched(points,board=TRANSDUCERS, activation=None, A=None):
+def naive_solver_batched(points,board=TRANSDUCERS, activation=None, A=None,p_ref = c.P_ref):
     '''
     @private
     Batched naive (backpropagation) algorithm for phase retrieval\\
@@ -199,7 +199,7 @@ def naive_solver_batched(points,board=TRANSDUCERS, activation=None, A=None):
         activation = torch.ones(points.shape[2],1, device=device, dtype=DTYPE) +0j
     
     if A is None:
-        A = forward_model_batched(points,board)
+        A = forward_model_batched(points,board,p_ref=p_ref)
     back = torch.conj(A).mT
     trans = back@activation
     trans_phase=  constrain_amplitude(trans)
@@ -208,7 +208,7 @@ def naive_solver_batched(points,board=TRANSDUCERS, activation=None, A=None):
 
     return out, trans_phase
 
-def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None,A=None):
+def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None,A=None,p_ref = c.P_ref):
     '''
     @private
     Unbatched naive (backpropagation) algorithm for phase retrieval\\
@@ -221,7 +221,7 @@ def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None,A=None):
         activation = torch.ones(points.shape[1]) +0j
         activation = activation.to(device)
     if A is None:
-        A = forward_model(points,board)
+        A = forward_model(points,board,p_ref=p_ref)
     back = torch.conj(A).T
     trans = back@activation
     trans_phase=  constrain_amplitude(trans)
@@ -230,7 +230,7 @@ def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None,A=None):
 
     return out, trans_phase
 
-def naive(points:Tensor, board:Tensor|None = None, return_components:bool=False, activation:Tensor|None=None, A=None) -> Tensor:
+def naive(points:Tensor, board:Tensor|None = None, return_components:bool=False, activation:Tensor|None=None, A=None, p_ref = c.P_ref) -> Tensor:
     '''
     Naive solver\n
     :param points: Target point positions
@@ -243,9 +243,9 @@ def naive(points:Tensor, board:Tensor|None = None, return_components:bool=False,
     if board is None:
         board = TRANSDUCERS
     if is_batched_points(points):
-        out,act = naive_solver_batched(points,board=board, activation=activation, A=A)
+        out,act = naive_solver_batched(points,board=board, activation=activation, A=A, p_ref=p_ref)
     else:
-        out,act = naive_solver_unbatched(points,board=board, activation=activation, A=A)
+        out,act = naive_solver_unbatched(points,board=board, activation=activation, A=A, p_ref=p_ref)
     if return_components:
         return act, out
     return act

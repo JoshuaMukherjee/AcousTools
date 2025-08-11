@@ -7,10 +7,10 @@ from vedo import Mesh
 from acoustools.Utilities import TOP_BOARD
 from acoustools.BEM.Forward_models import compute_E
 from acoustools.BEM.Gradients import BEM_forward_model_grad
-
+import acoustools.Constants as Constants
 
 def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
-                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False) ->Tensor:
+                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False, p_ref=Constants.P_ref) ->Tensor:
     '''
     Propagates transducer phases to points using BEM\n
     :param activations: Transducer hologram
@@ -30,13 +30,13 @@ def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,boar
     if E is None:
         if type(scatterer) == str:
             scatterer = load_scatterer(scatterer)
-        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines)
+        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines,p_ref=p_ref)
     
     out = E@activations
     return out
 
 def propagate_BEM_pressure(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:
-                           Tensor|None=None,E:Tensor|None=None, path:str="Media",use_cache_H:bool=True, print_lines:bool=False) -> Tensor:
+                           Tensor|None=None,E:Tensor|None=None, path:str="Media",use_cache_H:bool=True, print_lines:bool=False,p_ref=Constants.P_ref) -> Tensor:
     '''
     Propagates transducer phases to points using BEM and returns absolute value of complex pressure\n
     Equivalent to `torch.abs(propagate_BEM(activations,points,scatterer,board,H,E,path))` \n
@@ -56,12 +56,12 @@ def propagate_BEM_pressure(activations:Tensor,points:Tensor,scatterer:Mesh|None=
     if board is None:
         board = TOP_BOARD
 
-    point_activations = propagate_BEM(activations,points,scatterer,board,H,E,path,use_cache_H=use_cache_H,print_lines=print_lines)
+    point_activations = propagate_BEM(activations,points,scatterer,board,H,E,path,use_cache_H=use_cache_H,print_lines=print_lines,p_ref=p_ref)
     pressures =  torch.abs(point_activations)
     return pressures
 
 def propagate_BEM_pressure_grad(activations: Tensor, points: Tensor,board: Tensor|None=None, scatterer:Mesh = None, 
-                                path:str='Media', Fx=None, Fy=None, Fz=None, cat=True):
+                                path:str='Media', Fx=None, Fy=None, Fz=None, cat=True,p_ref=Constants.P_ref):
     '''
     Propagates a hologram to pressure gradient at points\n
     :param activations: Hologram to use
@@ -74,7 +74,7 @@ def propagate_BEM_pressure_grad(activations: Tensor, points: Tensor,board: Tenso
     '''
     
     if Fx is None or Fy is None or Fz is None:
-        _Fx,_Fy,_Fz = BEM_forward_model_grad(points, scatterer ,board)
+        _Fx,_Fy,_Fz = BEM_forward_model_grad(points, scatterer ,board, p_ref=p_ref)
         if Fx is None: Fx = _Fx
         if Fy is None: Fy = _Fy
         if Fz is None: Fz = _Fz
@@ -89,7 +89,7 @@ def propagate_BEM_pressure_grad(activations: Tensor, points: Tensor,board: Tenso
     return Px, Py, Pz
 
 def propagate_BEM_phase(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
-                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False) ->Tensor:
+                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False,p_ref=Constants.P_ref) ->Tensor:
     '''
     Propagates transducer phases to phases at points using BEM\n
     :param activations: Transducer hologram
@@ -109,7 +109,7 @@ def propagate_BEM_phase(activations:Tensor,points:Tensor,scatterer:Mesh|None=Non
     if E is None:
         if type(scatterer) == str:
             scatterer = load_scatterer(scatterer)
-        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines)
+        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines, p_ref=p_ref)
     
     out = E@activations
     return torch.angle(out)

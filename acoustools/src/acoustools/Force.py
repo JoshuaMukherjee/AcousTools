@@ -48,7 +48,7 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
     F = F.reshape(B,3,N).permute(0,2,1)
     return F
 
-def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False, V=c.V) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False, V=c.V, p_ref=c.P_ref) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
     Returns the force on a particle using the analytical derivative of the Gor'kov potential and the piston model\n
     :param activations: Transducer hologram
@@ -64,10 +64,10 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     if board is None:
         board = TRANSDUCERS
     
-    F = forward_model_batched(points,transducers=board)
-    Fx, Fy, Fz = forward_model_grad(points,transducers=board)
-    Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board)
-    Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=board)
+    F = forward_model_batched(points,transducers=board,p_ref=p_ref)
+    Fx, Fy, Fz = forward_model_grad(points,transducers=board,p_ref=p_ref)
+    Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board,p_ref=p_ref)
+    Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=board,p_ref=p_ref)
 
     p   = (F@activations)
     Px  = (Fx@activations)
@@ -137,7 +137,7 @@ def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axi
 def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, board:Tensor, grad_function:FunctionType=forward_model_grad, 
                grad_function_args:dict={}, F_fun:FunctionType|None=forward_model_batched, F_function_args:dict={},
                F:Tensor|None=None, Ax:Tensor|None=None, Ay:Tensor|None=None,Az:Tensor|None=None,
-               use_momentum:bool=False, return_components:bool=False) -> Tensor:
+               use_momentum:bool=False, return_components:bool=False, p_ref=c.P_ref) -> Tensor:
     '''
     Returns the force on a mesh using a discritised version of Eq. 1 in `Acoustical boundary hologram for macroscopic rigid-body levitation`\n
     :param activations: Transducer hologram
@@ -159,12 +159,12 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     '''
 
     if F is None:
-        F = F_fun(points=points, transducers=board ,**F_function_args)
-    p = propagate(activations,points,board,A=F)
+        F = F_fun(points=points, transducers=board, p_ref=p_ref ,**F_function_args)
+    p = propagate(activations,points,board,A=F, p_ref=p_ref)
     pressure_square = torch.abs(p)**2
     
     if Ax is None or Ay is None or Az is None:
-        Ax, Ay, Az = grad_function(points=points, transducers=board, **grad_function_args)
+        Ax, Ay, Az = grad_function(points=points, transducers=board, p_ref=p_ref, **grad_function_args)
     
     px = (Ax@activations).squeeze(2).unsqueeze(0)
     py = (Ay@activations).squeeze(2).unsqueeze(0)

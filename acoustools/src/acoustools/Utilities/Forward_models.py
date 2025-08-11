@@ -7,7 +7,7 @@ from acoustools.Utilities.Setup import device, DTYPE
 import acoustools.Constants as Constants
 
 
-def forward_model(points:Tensor, transducers:Tensor|None = None) -> Tensor:
+def forward_model(points:Tensor, transducers:Tensor|None = None, p_ref = Constants.P_ref) -> Tensor:
     '''
     Create the piston model forward propagation matrix for points and transducers\\
     :param points: Point position to compute propagation to \\
@@ -18,11 +18,11 @@ def forward_model(points:Tensor, transducers:Tensor|None = None) -> Tensor:
         transducers = TRANSDUCERS
 
     if is_batched_points(points):
-        return forward_model_batched(points, transducers).to(DTYPE)
+        return forward_model_batched(points, transducers, p_ref=p_ref).to(DTYPE)
     else:
-        return forward_model_unbatched(points, transducers).to(DTYPE)
+        return forward_model_unbatched(points, transducers, p_ref=p_ref).to(DTYPE)
 
-def forward_model_unbatched(points, transducers = TRANSDUCERS):
+def forward_model_unbatched(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref):
     '''
     @private
     Compute the piston model for acoustic wave propagation NOTE: Unbatched, use `forward_model_batched` for batched computation \\
@@ -58,10 +58,10 @@ def forward_model_unbatched(points, transducers = TRANSDUCERS):
     p = 1j*Constants.k*distance
     phase = torch.exp(p)
     
-    trans_matrix=2*Constants.P_ref*torch.multiply(torch.divide(phase,distance),directivity)
+    trans_matrix=2*p_ref*torch.multiply(torch.divide(phase,distance),directivity)
     return trans_matrix
 
-def forward_model_batched(points, transducers = TRANSDUCERS):
+def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref):
 
     '''
     @private
@@ -93,7 +93,7 @@ def forward_model_batched(points, transducers = TRANSDUCERS):
     p = 1j*Constants.k*distance
     phase = torch.exp(p)
 
-    trans_matrix=2*Constants.P_ref*torch.multiply(torch.divide(phase,distance),directivity)
+    trans_matrix=2*p_ref*torch.multiply(torch.divide(phase,distance),directivity)
 
     return trans_matrix.permute((0,2,1)).to(DTYPE).to(device)
 
