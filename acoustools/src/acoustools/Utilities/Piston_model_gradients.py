@@ -18,7 +18,7 @@ def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref
     N = points.shape[2]
     M = transducers.shape[0]
 
-    if type(p_ref) == float:
+    if type(p_ref) == float or type(p_ref) == int:
         p_ref = torch.ones(1,M,1, device=device, dtype=DTYPE) * p_ref
 
     transducers = torch.unsqueeze(transducers,2)
