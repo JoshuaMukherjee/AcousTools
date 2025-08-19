@@ -209,3 +209,33 @@ def propagate_speed(activations: Tensor, points: Tensor,board: Tensor|None=None,
 def propagate_laplacian_helmholtz(activations: Tensor, points: Tensor,board: Tensor|None=None, A:Tensor|None=None, k=c.k,p_ref=c.P_ref) -> Tensor:
     p = propagate(activations=activations, points=points, board=board,A=A,p_ref=p_ref)
     return -1 * p * k
+
+
+def propagate_signed_pressure_abs(activations: Tensor, points: Tensor,board:Tensor|None=None, A:Tensor|None=None, A_function:FunctionType=None, A_function_args:dict={}, p_ref=c.P_ref) -> Tensor:
+    '''
+    Propagates a hologram to target points and returns pressure times sign of phase \n
+    :param activations: Hologram to use
+    :param points: Points to propagate to
+    :param board: The Transducer array, default two 16x16 arrays
+    :param A: The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`
+    :return: point pressure
+
+    ```Python
+    from acoustools.Solvers import iterative_backpropagation
+    from acoustools.Utilities import create_points, propagate_abs
+
+    p = create_points(2,1)
+    x = iterative_backpropagation(p)
+    
+    p = p.squeeze(0)
+    x = iterative_backpropagation(p)
+    print(propagate_abs(x,p))
+    ```
+    '''
+    if board is None:
+        board = TRANSDUCERS
+    if A_function is not None:
+        A = A_function(points, board, **A_function_args)
+
+    out = propagate(activations, points,board,A=A,p_ref=p_ref)
+    return torch.abs(out) * torch.sign(torch.angle(out))
