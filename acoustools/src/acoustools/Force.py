@@ -162,7 +162,9 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
         F = F_fun(points=points, transducers=board, p_ref=p_ref ,**F_function_args)
     p = propagate(activations,points,board,A=F, p_ref=p_ref)
     pressure_square = torch.abs(p)**2
-    
+    pressure_time_average = 1/2 * pressure_square
+
+    # return pressure_time_average.expand((1,3,-1)), None 
     if Ax is None or Ay is None or Az is None:
         Ax, Ay, Az = grad_function(points=points, transducers=board, p_ref=p_ref, **grad_function_args)
     
@@ -170,25 +172,26 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     py = (Ay@activations).squeeze(2).unsqueeze(0)
     pz = (Az@activations).squeeze(2).unsqueeze(0)
 
-    grad  = torch.cat((px,py,pz),dim=1)
+    grad  = torch.cat((px,py,pz),dim=1) 
     velocity = grad /( 1j * c.p_0 * c.angular_frequency)
 
-    pressure_time_average = 1/2 * pressure_square
+    
     k0 = 1/(2 * c.p_0 * c.c_0**2)
     velocity_time_average = 1/2 * torch.sum(velocity * velocity.conj().resolve_conj(), dim=1, keepdim=True).real
 
+    # + velocity_time_average / velocity_time_average.max()
+    # pressure_square / pressure_square.max()
+
+
+
     force = -1*( k0 * pressure_time_average - (c.p_0 / 2) * velocity_time_average) * norms * areas
-
-    if use_momentum:
-
-        
+    if use_momentum:        
         momentum = 0.5 * (torch.sum(velocity * norms, dim=1, keepdim=True) * velocity.conj().resolve_conj()).real
         momentum *= -1 * c.p_0 * areas
        
-        force += momentum #Sign here?
+        force += momentum 
     else:
         momentum = 0
-
     # force *= areas
 
     # force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
