@@ -176,27 +176,25 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     velocity = grad /( 1j * c.p_0 * c.angular_frequency)
 
     
-    k0 = 1/(2 * c.p_0 * c.c_0**2)
-    velocity_time_average = 1/2 * torch.sum(velocity * velocity.conj().resolve_conj(), dim=1, keepdim=True).real
+    k0 = 1/( c.p_0 * c.c_0**2)
+    velocity_time_average = 1/2 * torch.sum(velocity * velocity.conj().resolve_conj(), dim=1, keepdim=True).real 
 
     # + velocity_time_average / velocity_time_average.max()
     # pressure_square / pressure_square.max()
 
+    force = ( 0.5 * k0 * pressure_time_average - (c.p_0 / 2) * velocity_time_average) * norms
 
-
-    force = -1*( k0 * pressure_time_average - (c.p_0 / 2) * velocity_time_average) * norms * areas
     if use_momentum:        
-        momentum = 0.5 * (torch.sum(velocity * norms, dim=1, keepdim=True) * velocity.conj().resolve_conj()).real
-        momentum *= -1 * c.p_0 * areas
-       
+        momentum = c.p_0/2 * (torch.sum(velocity * norms, dim=1, keepdim=True) * velocity.conj().resolve_conj()).real + 0j
+        
         force += momentum 
     else:
         momentum = 0
-    # force *= areas
-
+    
+    force *= -areas # *0.7
     # force = torch.real(force) #Im(F) == 0 but needs to be complex till now for dtype compatability
-
     # print(torch.sgn(torch.sgn(force) * torch.log(torch.abs(force))) == torch.sgn(force))
+
     if return_components: 
         return force, momentum
     

@@ -142,6 +142,8 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     sin_theta_expand = sin_theta.unsqueeze(2).expand((B,M,3,N))
     sin_theta_expand_square = sin_theta_expand**2
 
+    p_ref_expand = p_ref.unsqueeze(2).expand((B,-1,3,N))
+
     dx = diff[:,:,0,:]
     dy = diff[:,:,1,:]
     dz = diff[:,:,2,:]
@@ -168,7 +170,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     da = -1 * diff / distances_expanded
     kd = Constants.k * distances_expanded
     phase = torch.exp(1j*kd)
-    Ga = p_ref * ( (1j*da*phase * (kd + 1j))/ (distances_expanded_square))
+    Ga = p_ref_expand.expand((B,-1,3,N)) * ( (1j*da*phase * (kd + 1j))/ (distances_expanded_square))
 
     #Gaa = Pref * [ -1/d^3 * e^{ikd} * (da^2 * (k^2*d^2 + 2ik*d - 2) + d*daa * (1-ikd))]
     #daa = distance_bs / d^3
@@ -180,7 +182,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     distance_bs = torch.stack([distance_yz,distance_xz,distance_xy], dim =2)
     daa = distance_bs / distances_expanded_cube
 
-    Gaa = p_ref * (-1/distances_expanded_cube * torch.exp(1j*kd) * (da**2 * (kd**2 + 2*1j*kd - 2) + distances_expanded *daa * (1-1j * kd)))
+    Gaa =  p_ref_expand * (-1/distances_expanded_cube * torch.exp(1j*kd) * (da**2 * (kd**2 + 2*1j*kd - 2) + distances_expanded *daa * (1-1j * kd)))
 
     #Ha = (kr)^2/48 * s * sa * ((kr)^2 * s^2 - 12)
     #s = planar_distance / distance = sin_theta
@@ -260,6 +262,8 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     dy = diff[:,:,1,:]
     dz = diff[:,:,2,:]
 
+    p_ref_expand = p_ref.unsqueeze(2).expand((B,-1,3,N))
+
     # F = G * H 
     # G  = Pref * e^(ikd) / d
     # H = 1 - (kr sin(theta))^2 / 8 + (kr sin(theta))^4 / 192
@@ -286,7 +290,7 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     kd_exp = Constants.k * distances_expanded
     kd = Constants.k * distances
     phase = torch.exp(1j*kd_exp)
-    Ga = p_ref * ( (1j*da*phase * (kd_exp + 1j))/ (distances_expanded_square))
+    Ga = p_ref_expand * ( (1j*da*phase * (kd_exp + 1j))/ (distances_expanded_square))
 
     #Ha = (kr)^2/48 * s * sa * ((kr)^2 * s^2 - 12)
     #s = planar_distance / distance = sin_theta
