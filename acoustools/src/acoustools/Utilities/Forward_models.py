@@ -39,6 +39,8 @@ def forward_model_unbatched(points, transducers = TRANSDUCERS, p_ref = Constants
     Written by Giorgos Christopoulos, 2022
     '''
 
+    if norms is None:
+        norms = (torch.zeros_like(transducers) + torch.tensor([0,0,1], device=device)) * torch.sign(transducers[:,2].real).unsqueeze(1).to(DTYPE)
     
     m=points.size()[1]
     n=transducers.size()[0]
@@ -85,6 +87,9 @@ def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P
     B = points.shape[0]
     N = points.shape[2]
     M = transducers.shape[0]
+
+    if norms is None:
+        norms = (torch.zeros_like(transducers) + torch.tensor([0,0,1], device=device)) * torch.sign(transducers[:,2].real).unsqueeze(1).to(DTYPE)
     
     # p = torch.permute(points,(0,2,1))
     transducers = torch.unsqueeze(transducers,2)

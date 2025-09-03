@@ -252,6 +252,9 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     if board is None:
         board = TOP_BOARD
 
+    if norms is None:
+        norms = (torch.zeros_like(board) + torch.tensor([0,0,1], device=device)) * torch.sign(board[:,2].real).unsqueeze(1).to(DTYPE)
+
     if print_lines: print("H...")
     
     if H is None:
