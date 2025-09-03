@@ -111,6 +111,10 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
 
     if transducers is None:
         transducers= TRANSDUCERS
+    
+    if type(p_ref) == float or type(p_ref) == int:
+        M = transducers.shape[0]
+        p_ref = torch.ones(1,M,1, device=device, dtype=DTYPE) * p_ref
 
     B = points.shape[0]
     N = points.shape[2]
@@ -228,6 +232,10 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     '''
 
     #Bk.2 Pg.317
+
+    if type(p_ref) == float or type(p_ref) == int:
+        M = transducers.shape[0]
+        p_ref = torch.ones(1,M,1, device=device, dtype=DTYPE) * p_ref
 
     if transducers is None:
         transducers= TRANSDUCERS

@@ -7,7 +7,7 @@ from acoustools.Utilities.Setup import device, DTYPE
 import acoustools.Constants as Constants
 
 
-def forward_model(points:Tensor, transducers:Tensor|None = None, p_ref = Constants.P_ref) -> Tensor:
+def forward_model(points:Tensor, transducers:Tensor|None = None, p_ref = Constants.P_ref, norms:Tensor=None) -> Tensor:
     '''
     Create the piston model forward propagation matrix for points and transducers\\
     :param points: Point position to compute propagation to \\
@@ -16,13 +16,16 @@ def forward_model(points:Tensor, transducers:Tensor|None = None, p_ref = Constan
     '''
     if transducers is None:
         transducers = TRANSDUCERS
+    
+    if norms is None:
+        norms = (torch.zeros_like(transducers) + torch.tensor([0,0,1], device=device)) * torch.sign(transducers[:,2].real).unsqueeze(1).to(DTYPE)
 
     if is_batched_points(points):
-        return forward_model_batched(points, transducers, p_ref=p_ref).to(DTYPE)
+        return forward_model_batched(points, transducers, p_ref=p_ref,norms=norms).to(DTYPE)
     else:
-        return forward_model_unbatched(points, transducers, p_ref=p_ref).to(DTYPE)
+        return forward_model_unbatched(points, transducers, p_ref=p_ref,norms=norms).to(DTYPE)
 
-def forward_model_unbatched(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref):
+def forward_model_unbatched(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref,norms:Tensor|None=None):
     '''
     @private
     Compute the piston model for acoustic wave propagation NOTE: Unbatched, use `forward_model_batched` for batched computation \\
@@ -31,6 +34,7 @@ def forward_model_unbatched(points, transducers = TRANSDUCERS, p_ref = Constants
     Returns forward propagation matrix \\
     Written by Giorgos Christopoulos, 2022
     '''
+
     
     m=points.size()[1]
     n=transducers.size()[0]
@@ -51,7 +55,9 @@ def forward_model_unbatched(points, transducers = TRANSDUCERS, p_ref = Constants
     distance=torch.sqrt(dx+dy+dz)
     planar_distance=torch.sqrt(dx+dy)
 
-    bessel_arg=Constants.k*Constants.radius*torch.divide(planar_distance,distance) #planar_dist / dist = sin(theta)
+    sine_angle = torch.divide(planar_distance,distance)
+
+    bessel_arg=Constants.k*Constants.radius*sine_angle #planar_dist / dist = sin(theta)
 
     directivity=1/2-torch.pow(bessel_arg,2)/16+torch.pow(bessel_arg,4)/384
     
@@ -61,7 +67,7 @@ def forward_model_unbatched(points, transducers = TRANSDUCERS, p_ref = Constants
     trans_matrix=2*p_ref*torch.multiply(torch.divide(phase,distance),directivity)
     return trans_matrix
 
-def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref):
+def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref,norms:Tensor|None=None):
 
     '''
     @private
@@ -82,12 +88,17 @@ def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P
 
     # distance_axis = (transducers - points) **2
     # distance_axis_sub = transducers - points
-    distance_axis_sub = torch.sub(transducers, points)
+    distance_axis_sub = torch.sub(points,transducers) + 0j
     distance_axis = distance_axis_sub * distance_axis_sub
     distance = torch.sqrt(torch.sum(distance_axis,dim=2))
     planar_distance= torch.sqrt(torch.sum(distance_axis[:,:,0:2,:],dim=2))
     
-    bessel_arg=Constants.k*Constants.radius*torch.divide(planar_distance,distance)
+    # sine_angle = torch.divide(planar_distance,distance)
+    norms = norms.unsqueeze(0).unsqueeze(3).expand(B, M, 3, N)
+    sine_angle = torch.norm(torch.cross(distance_axis_sub, norms, dim=2),2, dim=2) / distance
+
+
+    bessel_arg=Constants.k*Constants.radius*sine_angle
     directivity=1/2-torch.pow(bessel_arg,2)/16+torch.pow(bessel_arg,4)/384
     
     p = 1j*Constants.k*distance
