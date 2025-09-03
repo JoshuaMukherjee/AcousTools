@@ -12,6 +12,8 @@ def forward_model(points:Tensor, transducers:Tensor|None = None, p_ref = Constan
     Create the piston model forward propagation matrix for points and transducers\\
     :param points: Point position to compute propagation to \\
     :param transducers: The Transducer array, default two 16x16 arrays \\
+    :param p_ref: The value to use for p_ref\\
+    :param norms: Tensor of normals for transduers\\ 
     Returns forward propagation matrix \\
     '''
     if transducers is None:
@@ -31,6 +33,8 @@ def forward_model_unbatched(points, transducers = TRANSDUCERS, p_ref = Constants
     Compute the piston model for acoustic wave propagation NOTE: Unbatched, use `forward_model_batched` for batched computation \\
     `points` Point position to compute propagation to \\
     `transducers` The Transducer array, default two 16x16 arrays \\
+    :param p_ref: The value to use for p_ref\\
+    :param norms: Tensor of normals for transduers\\ 
     Returns forward propagation matrix \\
     Written by Giorgos Christopoulos, 2022
     '''
@@ -74,6 +78,8 @@ def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P
     computed batched piston model for acoustic wave propagation
     `points` Point position to compute propagation to \\
     `transducers` The Transducer array, default two 16x16 arrays \\
+    :param p_ref: The value to use for p_ref\\
+    :param norms: Tensor of normals for transduers\\ 
     Returns forward propagation matrix \\
     '''
     B = points.shape[0]

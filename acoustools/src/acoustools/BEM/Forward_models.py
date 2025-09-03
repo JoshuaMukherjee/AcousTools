@@ -127,29 +127,34 @@ def compute_A(scatterer: Mesh) -> Tensor:
     return A.to(DTYPE)
 
  
-def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref) -> Tensor:
+def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tensor|None=None) -> Tensor:
     '''
     Computes B for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
     :param board: Transducers to use 
+    :param p_ref: The value to use for p_ref
+    :param norms: Tensor of normals for transduers
     :return B: B tensor
     '''
     centres = torch.tensor(scatterer.cell_centers().points).to(DTYPE).to(device).T.unsqueeze_(0)
-    bs = forward_model_batched(centres,board, p_ref=p_ref)
+    bs = forward_model_batched(centres,board, p_ref=p_ref,norms=norms)
     return bs
 
  
-def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref) -> Tensor:
+def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None) -> Tensor:
     '''
     Computes H for the BEM model \n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
     :param board: Transducers to use 
     :param use_LU: if True computes H with LU decomposition, otherwise solves using standard linear inversion
+    :param use_OLS: if True computes H with OLS, otherwise solves using standard linear inversion
+    :param p_ref: The value to use for p_ref
+    :param norms: Tensor of normals for transduers
     :return H: H
     '''
     
     A = compute_A(scatterer)
-    bs = compute_bs(scatterer,board,p_ref=p_ref)
+    bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms)
     if use_LU:
         LU, pivots = torch.linalg.lu_factor(A)
         H = torch.linalg.lu_solve(LU, pivots, bs)
@@ -164,7 +169,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
-                           print_lines:bool=False, cache_name:str|None=None,use_LU:bool=True, p_ref = Constants.P_ref) -> Tensor:
+                           print_lines:bool=False, cache_name:str|None=None,use_LU:bool=True, p_ref = Constants.P_ref, norms:Tensor|None=None) -> Tensor:
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -173,6 +178,8 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
     :param path: path to folder containing `BEMCache/ `
     :param print_lines: if true prints messages detaling progress
     :param use_LU: If true use LU decomopsition to solve for H
+    :param p_ref: The value to use for p_ref
+    :param norms: Tensor of normals for transduers
     :return H: H tensor
     '''
     
@@ -189,18 +196,18 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             H = pickle.load(open(f_name,"rb")).to(device).to(DTYPE)
         except FileNotFoundError: 
             if print_lines: print("Not found, computing H...")
-            H = compute_H(scatterer,board,use_LU=use_LU)
+            H = compute_H(scatterer,board,use_LU=use_LU,norms=norms)
             f = open(f_name,"wb")
             pickle.dump(H,f)
             f.close()
     else:
         if print_lines: print("Computing H...")
-        H = compute_H(scatterer,board, p_ref=p_ref)
+        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms)
 
     return H
 
 def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
-               H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref) -> Tensor:
+               H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None) -> Tensor:
     '''
     Computes E in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -210,6 +217,8 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     :param H: Precomputed H - if None H will be compute
     :param path: path to folder containing `BEMCache/`
     :param return_components: if true will return the subparts used to compute, F,G,H
+    :param p_ref: The value to use for p_ref
+    :param norms: Tensor of normals for transduers
     :return E: Propagation matrix for BEM E
 
     ```Python
@@ -246,13 +255,13 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     if print_lines: print("H...")
     
     if H is None:
-        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref).to(DTYPE)
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,norms=norms).to(DTYPE)
         
     if print_lines: print("G...")
     G = compute_G(points, scatterer).to(DTYPE)
     
     if print_lines: print("F...")
-    F = forward_model_batched(points,board,p_ref=p_ref).to(DTYPE)
+    F = forward_model_batched(points,board,p_ref=p_ref,norms=norms).to(DTYPE)
     
     if print_lines: print("E...")
 
