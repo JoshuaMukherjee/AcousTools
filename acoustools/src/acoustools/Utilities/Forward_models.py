@@ -61,7 +61,10 @@ def forward_model_unbatched(points, transducers = TRANSDUCERS, p_ref = Constants
     distance=torch.sqrt(dx+dy+dz)
     planar_distance=torch.sqrt(dx+dy)
 
-    sine_angle = torch.divide(planar_distance,distance)
+    distance_axis_sub = torch.sub(points,transducers) + 0j
+    norms = norms.unsqueeze(3).expand( m, 3, n)
+    sine_angle = torch.norm(torch.cross(distance_axis_sub, norms, dim=1),2, dim=1) / distance
+
 
     bessel_arg=Constants.k*Constants.radius*sine_angle #planar_dist / dist = sin(theta)
 
@@ -107,6 +110,8 @@ def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P
     # sine_angle = torch.divide(planar_distance,distance)
     norms = norms.unsqueeze(0).unsqueeze(3).expand(B, M, 3, N)
     sine_angle = torch.norm(torch.cross(distance_axis_sub, norms, dim=2),2, dim=2) / distance
+
+
 
 
     bessel_arg=Constants.k*Constants.radius*sine_angle
