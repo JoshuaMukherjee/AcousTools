@@ -3,7 +3,7 @@ import torch
 from torch import Tensor
 
 from vedo import Mesh
-
+from typing import Literal
 import hashlib
 import pickle
 
@@ -169,7 +169,8 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
-                           print_lines:bool=False, cache_name:str|None=None,use_LU:bool=True, p_ref = Constants.P_ref, norms:Tensor|None=None) -> Tensor:
+                           print_lines:bool=False, cache_name:str|None=None, p_ref = Constants.P_ref, 
+                           norms:Tensor|None=None, method=Literal['OLS','LU', 'INV']) -> Tensor:
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -177,11 +178,20 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
     :param use_cache_H_grad: If true uses the cache system, otherwise computes H and does not save it
     :param path: path to folder containing `BEMCache/ `
     :param print_lines: if true prints messages detaling progress
-    :param use_LU: If true use LU decomopsition to solve for H
+    :param method: Method to use to compute H: One of OLS (Least Squares), LU. (LU decomposition). If INV (or anything else) will use `torch.linalg.solve`
     :param p_ref: The value to use for p_ref
     :param norms: Tensor of normals for transduers
     :return H: H tensor
     '''
+
+    use_OLS=False
+    use_LU = False
+    
+    if method == "OLS":
+        use_OLS = True
+    elif method == "LU":
+        use_LU = True
+    
     
     if use_cache_H:
         
@@ -196,18 +206,18 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             H = pickle.load(open(f_name,"rb")).to(device).to(DTYPE)
         except FileNotFoundError: 
             if print_lines: print("Not found, computing H...")
-            H = compute_H(scatterer,board,use_LU=use_LU,norms=norms)
+            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms)
             f = open(f_name,"wb")
             pickle.dump(H,f)
             f.close()
     else:
         if print_lines: print("Computing H...")
-        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms)
+        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS)
 
     return H
 
 def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
-               H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None) -> Tensor:
+               H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None, H_method=None) -> Tensor:
     '''
     Computes E in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -252,13 +262,13 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     if board is None:
         board = TOP_BOARD
 
-    if norms is None:
+    if norms is None: #Transducer Norms
         norms = (torch.zeros_like(board) + torch.tensor([0,0,1], device=device)) * torch.sign(board[:,2].real).unsqueeze(1).to(DTYPE)
 
     if print_lines: print("H...")
     
     if H is None:
-        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,norms=norms).to(DTYPE)
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,norms=norms, method=H_method).to(DTYPE)
         
     if print_lines: print("G...")
     G = compute_G(points, scatterer).to(DTYPE)
