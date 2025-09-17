@@ -154,6 +154,11 @@ def scale_to_diameter(scatterer:Mesh , diameter: float, reset:bool=True, origin:
     scatterer.compute_normals()
     scatterer.filename = scatterer_file_name(scatterer)
     
+def get_diameter(scatterer:Mesh):
+    x1,x2,y1,y2,z1,z2 = scatterer.bounds()
+    diameter_sphere = torch.norm(torch.Tensor([x2,]) - torch.Tensor([x1,]), p=2)
+    return diameter_sphere
+
 
 def get_plane(scatterer: Mesh, origin:tuple[int]=(0,0,0), normal:tuple[int]=(1,0,0)) -> Mesh:
     '''
@@ -472,3 +477,23 @@ def get_volume(scatterer:Mesh):
     Returns the volume of a mesh
     '''
     return scatterer.volume()
+
+def insert_parasite(scatterer:Mesh, parasite_path:str = '/Sphere-lam1.stl', root_path:str="../BEMMedia", parasite_size:float=Constants.wavelength/4, parasite_offset:Tensor=None) -> Mesh:
+    
+    parasite = load_scatterer(parasite_path, root_path=root_path)
+    centre_scatterer(parasite)
+    if parasite_offset is None:
+        parasite_offset = get_centre_of_mass_as_points(scatterer)
+
+    dx = parasite_offset[:,0].item()
+    dy = parasite_offset[:,1].item()
+    dz = parasite_offset[:,2].item()
+
+    translate(parasite, dx=dx, dy=dy, dz=dz)
+
+    scale_to_diameter(parasite, parasite_size)
+
+    infected_scatterer = merge_scatterers(scatterer, parasite)
+
+    return infected_scatterer
+    
