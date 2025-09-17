@@ -486,7 +486,7 @@ def insert_parasite(scatterer:Mesh, parasite_path:str = '/Sphere-lam1.stl', root
     :param parasite_path: The path to the mesh to load and use as parasite
     :param root_path: The folder to load the file from
     :param parasite_size: The diameter to scale the parasite to
-    :param parasite_offset: Tensor of offsets for the parasite from the COM of the scatterer
+    :param parasite_offset: Tensor of offsets for the parasite from the (0,0,0) point
     :returns: Scatterer with parasite inserted
     '''
     parasite = load_scatterer(parasite_path, root_path=root_path)
