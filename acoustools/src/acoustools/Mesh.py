@@ -479,7 +479,16 @@ def get_volume(scatterer:Mesh):
     return scatterer.volume()
 
 def insert_parasite(scatterer:Mesh, parasite_path:str = '/Sphere-lam1.stl', root_path:str="../BEMMedia", parasite_size:float=Constants.wavelength/4, parasite_offset:Tensor=None) -> Mesh:
-    
+    '''
+    Inserts a parasitic body into an existing scatterer. Used to supress the resonance from BEM \n
+    See https://doi.org/10.1109/8.310000 \n
+    :param scatterer: The scatterer to insert parasite into
+    :param parasite_path: The path to the mesh to load and use as parasite
+    :param root_path: The folder to load the file from
+    :param parasite_size: The diameter to scale the parasite to
+    :param parasite_offset: Tensor of offsets for the parasite from the COM of the scatterer
+    :returns: Scatterer with parasite inserted
+    '''
     parasite = load_scatterer(parasite_path, root_path=root_path)
     centre_scatterer(parasite)
     if parasite_offset is None:
