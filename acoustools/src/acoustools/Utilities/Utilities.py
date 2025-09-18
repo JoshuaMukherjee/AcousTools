@@ -97,3 +97,27 @@ def batch_list(iterable:Iterable, batch:int=32):
         else:
             yield iterable[i:]
         i += batch
+
+def get_rows_in(a_centres, b_centres, expand = True):
+    '''
+    Takes two tensors and returns a mask for `a_centres` where a value of true means that row exists in `b_centres` \\
+    Asssumes in form 1x3xN -> returns mask over dim 1\\
+    `a_centres` Tensor of points to check for inclusion in `b_centres` \\
+    `b_centres` Tensor of points which may or maynot contain some number of points in `a_centres`\\
+    `expand` if True returns mask as `1x3xN` if False returns mask as `1xN`. Default: True\\
+    Returns mask for all rows in `a_centres` which are in `b_centres`
+    '''
+
+    M = a_centres.shape[2] #Number of total elements
+    R = b_centres.shape[2] #Number of elements in b
+
+    a_reshape = torch.unsqueeze(a_centres,3).expand(-1, -1, -1, R)
+    b_reshape = torch.unsqueeze(b_centres,2).expand(-1, -1, M, -1)
+
+    mask = b_reshape == a_reshape
+    mask = mask.all(dim=1).any(dim=2)
+
+    if expand:
+        return mask.unsqueeze(1).expand(-1,3,-1)
+    else:
+        return mask
