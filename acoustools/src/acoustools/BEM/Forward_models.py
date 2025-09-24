@@ -65,6 +65,14 @@ def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, r
     return partial_greens 
 
 def greens(y:Tensor,x:Tensor, k:float=Constants.k, distance=None):
+    '''
+    Computes greens function for a source at y and a point at x\n
+    :param y: source location
+    :param x: point location
+    :param k: wavenumber
+    :param distance: precomputed distances from y->x
+    :returns greens function:
+    '''
     if distance is None:
         vecs = y.real-x.real
         distance = torch.sqrt(torch.sum((vecs)**2,dim=3)) 
@@ -72,11 +80,14 @@ def greens(y:Tensor,x:Tensor, k:float=Constants.k, distance=None):
 
     return green
 
-def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=0) -> Tensor:
+def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor=1, betas:float|Tensor = 0) -> Tensor:
     '''
     Computes G in the BEM model\n
     :param points: The points to propagate to
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param k: wavenumber
+    :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
+    :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
     :return G: `torch.Tensor` of G
     '''
     torch.cuda.empty_cache()
@@ -114,7 +125,7 @@ def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, betas:float|
     
     G = areas * partial_greens
 
-    if ((type(alphas) in [int, float]) and alphas != 0) or (type(alphas) is Tensor and (alphas != 0).any()):
+    if ((type(alphas) in [int, float]) and alphas != 1) or (type(alphas) is Tensor and (alphas != 1).any()):
         #Does this need to be in A too?
         if type(alphas) is Tensor:
             alphas = alphas.unsqueeze(2)
@@ -133,6 +144,9 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, betas = 0) -> Tensor:
     '''
     Computes A for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param k: wavenumber
+    :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
+
     :return A: A tensor
     '''
 
@@ -185,6 +199,9 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     :param use_OLS: if True computes H with OLS, otherwise solves using standard linear inversion
     :param p_ref: The value to use for p_ref
     :param norms: Tensor of normals for transduers
+    :param k: wavenumber
+    :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
+
     :return H: H
     '''
     
@@ -216,6 +233,8 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
     :param method: Method to use to compute H: One of OLS (Least Squares), LU. (LU decomposition). If INV (or anything else) will use `torch.linalg.solve`
     :param p_ref: The value to use for p_ref
     :param norms: Tensor of normals for transduers
+    :param k: wavenumber
+    :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
     :return H: H tensor
     '''
 
@@ -252,7 +271,7 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
     return H
 
 def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
-               H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None, H_method=None, k:float=Constants.k, betas = 0, alphas:float|Tensor=0) -> Tensor:
+               H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None, H_method=None, k:float=Constants.k, betas = 0, alphas:float|Tensor=1) -> Tensor:
     '''
     Computes E in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -264,6 +283,10 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     :param return_components: if true will return the subparts used to compute, F,G,H
     :param p_ref: The value to use for p_ref
     :param norms: Tensor of normals for transduers
+    :param k: wavenumber
+    :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
+    :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
+
     :return E: Propagation matrix for BEM E
 
     ```Python

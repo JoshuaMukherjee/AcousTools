@@ -10,7 +10,7 @@ from acoustools.BEM.Gradients import BEM_forward_model_grad
 import acoustools.Constants as Constants
 
 def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
-                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False, p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=0) ->Tensor:
+                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False, p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=1) ->Tensor:
     '''
     Propagates transducer phases to points using BEM\n
     :param activations: Transducer hologram
@@ -22,6 +22,10 @@ def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,boar
     :param path: path to folder containing `BEMCache/ `
     :param use_cache_H: If True uses the cache system to load and save the H matrix. Default `True`
     :param print_lines: if true prints messages detaling progress
+    :param k: wavenumber
+    :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
+    :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
+
     :return pressure: complex pressure at points
     '''
     if board is None:
@@ -36,7 +40,7 @@ def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,boar
     return out
 
 def propagate_BEM_pressure(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:
-                           Tensor|None=None,E:Tensor|None=None, path:str="Media",use_cache_H:bool=True, print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=0) -> Tensor:
+                           Tensor|None=None,E:Tensor|None=None, path:str="Media",use_cache_H:bool=True, print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=1) -> Tensor:
     '''
     Propagates transducer phases to points using BEM and returns absolute value of complex pressure\n
     Equivalent to `torch.abs(propagate_BEM(activations,points,scatterer,board,H,E,path))` \n
@@ -47,6 +51,10 @@ def propagate_BEM_pressure(activations:Tensor,points:Tensor,scatterer:Mesh|None=
     :param H: Precomputed H - if None H will be computed
     :param E: Precomputed E - if None E will be computed 
     :param path: path to folder containing `BEMCache/ `
+    :param k: wavenumber
+    :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
+    :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
+
     
     :param use_cache_H: If True uses the cache system to load and save the H matrix. Default `True`
     :param print_lines: if true prints messages detaling progress
@@ -89,7 +97,7 @@ def propagate_BEM_pressure_grad(activations: Tensor, points: Tensor,board: Tenso
     return Px, Py, Pz
 
 def propagate_BEM_phase(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
-                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=0) ->Tensor:
+                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=1) ->Tensor:
     '''
     Propagates transducer phases to phases at points using BEM\n
     :param activations: Transducer hologram
@@ -101,6 +109,10 @@ def propagate_BEM_phase(activations:Tensor,points:Tensor,scatterer:Mesh|None=Non
     :param path: path to folder containing `BEMCache/ `
     :param use_cache_H: If True uses the cache system to load and save the H matrix. Default `True`
     :param print_lines: if true prints messages detaling progress
+    :param k: wavenumber
+    :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
+    :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
+
     :return pressure: complex pressure at points
     '''
     if board is None:
