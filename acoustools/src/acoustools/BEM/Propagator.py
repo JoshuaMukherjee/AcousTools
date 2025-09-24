@@ -10,7 +10,7 @@ from acoustools.BEM.Gradients import BEM_forward_model_grad
 import acoustools.Constants as Constants
 
 def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
-                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False, p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=1) ->Tensor:
+                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False, p_ref=Constants.P_ref,k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1) ->Tensor:
     '''
     Propagates transducer phases to points using BEM\n
     :param activations: Transducer hologram

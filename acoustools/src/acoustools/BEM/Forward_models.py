@@ -140,7 +140,7 @@ def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float
     return G
 
  
-def compute_A(scatterer: Mesh, k:float=Constants.k, betas = 0) -> Tensor:
+def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0) -> Tensor:
     '''
     Computes A for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -190,7 +190,7 @@ def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tenso
     return bs
 
  
-def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas = 0) -> Tensor:
+def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0) -> Tensor:
     '''
     Computes H for the BEM model \n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -222,7 +222,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
                            print_lines:bool=False, cache_name:str|None=None, p_ref = Constants.P_ref, 
-                           norms:Tensor|None=None, method=Literal['OLS','LU', 'INV'], k:float=Constants.k, betas = 0) -> Tensor:
+                           norms:Tensor|None=None, method=Literal['OLS','LU', 'INV'], k:float=Constants.k, betas:float|Tensor = 0) -> Tensor:
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -271,7 +271,8 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
     return H
 
 def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
-               H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None, H_method=None, k:float=Constants.k, betas = 0, alphas:float|Tensor=1) -> Tensor:
+               H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None, H_method=None, 
+               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1) -> Tensor:
     '''
     Computes E in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
