@@ -12,7 +12,9 @@ import acoustools.Constants as Constants
 from acoustools.Utilities import device, DTYPE, forward_model_batched, TOP_BOARD
 from acoustools.Mesh import get_normals_as_points, board_name, get_centres_as_points
 
-def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False) -> Tensor:
+
+
+def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False, a=None, c=None) -> Tensor:
     '''
     Computes the derivative of greens function \n
     :param y: y in greens function - location of the source of sound
@@ -38,27 +40,33 @@ def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, r
     # print(vec_norms == distance)
     angles = (torch.sum(norms*vecs,3) / (distance))
 
-    del norms, vecs
+    # del norms, vecs
     torch.cuda.empty_cache()
 
     A = -1 * greens(y,x,distance=distance)
-    B = (1j*Constants.k - 1/(distance))
+    ik_d = (1j*Constants.k - 1/(distance))
     
     del distance
     # torch.cuda.empty_cache()
 
-    partial_greens = A*B*angles
+    partial_greens = A*ik_d*angles
     
-    if not return_components:
-        del A,B,angles
+    # if not return_components:
+    #     del A,B,angles
     torch.cuda.empty_cache()
 
     
+    
+
+    if a is not None:
+        a = a.permute(0,2,1)
+        a = a.unsqueeze(2)
+        a = a.expand(B,N,M,3).clone()
+        partial_greens += c*compute_green_derivative(y, a, norms, B, N, M) 
+    
     partial_greens[partial_greens.isnan()] = 1
-
-
     if return_components:
-        return partial_greens, A,B,angles
+        return partial_greens, A,ik_d,angles
     
 
     
@@ -80,13 +88,13 @@ def greens(y:Tensor,x:Tensor, k:float=Constants.k, distance=None):
 
     return green
 
-def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor=1, betas:float|Tensor = 0) -> Tensor:
+def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor=1, betas:float|Tensor = 0, a=None, c=None) -> Tensor:
     '''
     Computes G in the BEM model\n
     :param points: The points to propagate to
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
     :param k: wavenumber
-    :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
+    :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements. If Tensor, should have shape [B,M] where M is the mesh size, B is the batch size and will normally be 1
     :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
     :return G: `torch.Tensor` of G
     '''
@@ -114,10 +122,7 @@ def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float
     norms = get_normals_as_points(scatterer,permute_to_points=False).real.expand((B,N,-1,-1))
 
     # centres_p = get_centres_as_points(scatterer)
-    
-    
-    partial_greens = compute_green_derivative(centres,p,norms, B,N,M)
-    
+    partial_greens = compute_green_derivative(centres,p,norms, B,N,M, a=a, c=c )
     
     if ((type(betas) in [int, float]) and betas != 0) or (type(betas) is Tensor and (betas != 0).any()):  #Either β non 0 and type(β) is number or β is Tensor and any elemenets non 0
         green = greens(centres, p, k=k) * 1j * k * betas
@@ -125,22 +130,24 @@ def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float
     
     G = areas * partial_greens
 
+
     if ((type(alphas) in [int, float]) and alphas != 1) or (type(alphas) is Tensor and (alphas != 1).any()):
         #Does this need to be in A too?
         if type(alphas) is Tensor:
-            alphas = alphas.unsqueeze(2)
+            alphas = alphas.unsqueeze(1)
             alphas = alphas.expand(B, N, M)
         vecs = p - centres
-        distance = torch.norm(vecs, p=2, dim=3)
-        angle = torch.sum(vecs * norms, dim=3) / distance
+        angle = torch.sum(vecs * norms, dim=3) #Technically not the cosine of the angle - would need to /distance but as we only care about the sign then it doesnt matter
         angle = angle.real
-        print(G.shape, angle.shape)
-        G[angle>0] = G[angle>0] * alphas
+        if type(alphas) is Tensor:
+            G[angle>0] = G[angle>0] * alphas[angle>0]
+        else:
+            G[angle>0] = G[angle>0] * alphas
     
     return G
 
  
-def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0) -> Tensor:
+def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None) -> Tensor:
     '''
     Computes A for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -163,8 +170,8 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0) -> T
     # norms = torch.tensor(scatterer.cell_normals).to(device)
     norms = get_normals_as_points(scatterer,permute_to_points=False)
 
-    partial_greens = compute_green_derivative(m.unsqueeze_(0),m_prime.unsqueeze_(0),norms,1,M,M)
-    if betas != 0:  
+    partial_greens = compute_green_derivative(m.unsqueeze_(0),m_prime.unsqueeze_(0),norms,1,M,M,  a=a, c=c )
+    if ((type(betas) in [int, float]) and betas != 0) or (type(betas) is Tensor and (betas != 0).any()):
         green = greens(m, m_prime, k=k) * 1j * k * betas
         partial_greens += green
 
@@ -176,7 +183,7 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0) -> T
     return A.to(DTYPE)
 
  
-def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tensor|None=None) -> Tensor:
+def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tensor|None=None, a=None, c=None) -> Tensor:
     '''
     Computes B for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -186,11 +193,13 @@ def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tenso
     :return B: B tensor
     '''
     centres = torch.tensor(scatterer.cell_centers().points).to(DTYPE).to(device).T.unsqueeze_(0)
-    bs = forward_model_batched(centres,board, p_ref=p_ref,norms=norms)
+    bs = forward_model_batched(centres,board, p_ref=p_ref,norms=norms) 
+    if a is not None:
+        bs += c * forward_model_batched(a,board, p_ref=p_ref,norms=norms)
     return bs
 
  
-def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0) -> Tensor:
+def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None) -> Tensor:
     '''
     Computes H for the BEM model \n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -205,8 +214,8 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     :return H: H
     '''
     
-    A = compute_A(scatterer, k=k, betas=betas)
-    bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms)
+    A = compute_A(scatterer, k=k, betas=betas, a=a, c=c)
+    bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c)
     if use_LU:
         LU, pivots = torch.linalg.lu_factor(A)
         H = torch.linalg.lu_solve(LU, pivots, bs)
@@ -222,7 +231,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
                            print_lines:bool=False, cache_name:str|None=None, p_ref = Constants.P_ref, 
-                           norms:Tensor|None=None, method=Literal['OLS','LU', 'INV'], k:float=Constants.k, betas:float|Tensor = 0) -> Tensor:
+                           norms:Tensor|None=None, method=Literal['OLS','LU', 'INV'], k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None) -> Tensor:
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -260,19 +269,19 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             H = pickle.load(open(f_name,"rb")).to(device).to(DTYPE)
         except FileNotFoundError: 
             if print_lines: print("Not found, computing H...")
-            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, betas=betas)
+            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, betas=betas, a=a, c=c)
             f = open(f_name,"wb")
             pickle.dump(H,f)
             f.close()
     else:
         if print_lines: print("Computing H...")
-        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS, k=k, betas=betas)
+        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS, k=k, betas=betas, a=a, c=c)
 
     return H
 
 def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
                H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None, H_method=None, 
-               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1) -> Tensor:
+               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a=None, c=None) -> Tensor:
     '''
     Computes E in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -327,13 +336,15 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     if print_lines: print("H...")
     
     if H is None:
-        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,norms=norms, method=H_method, k=k, betas=betas).to(DTYPE)
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,norms=norms, method=H_method, k=k, betas=betas, a=a, c=c).to(DTYPE)
         
     if print_lines: print("G...")
     G = compute_G(points, scatterer, k=k, betas=betas,alphas=alphas).to(DTYPE)
     
     if print_lines: print("F...")
-    F = forward_model_batched(points,board,p_ref=p_ref,norms=norms).to(DTYPE)
+    F = forward_model_batched(points,board,p_ref=p_ref,norms=norms).to(DTYPE)  
+    # if a is not None:
+    #     F += c * forward_model_batched(a,board, p_ref=p_ref,norms=norms)
     
     if print_lines: print("E...")
 

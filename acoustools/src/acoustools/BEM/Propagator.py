@@ -10,7 +10,7 @@ from acoustools.BEM.Gradients import BEM_forward_model_grad
 import acoustools.Constants as Constants
 
 def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
-                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False, p_ref=Constants.P_ref,k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1) ->Tensor:
+                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False, p_ref=Constants.P_ref,k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a=None,c=None) ->Tensor:
     '''
     Propagates transducer phases to points using BEM\n
     :param activations: Transducer hologram
@@ -34,13 +34,13 @@ def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,boar
     if E is None:
         if type(scatterer) == str:
             scatterer = load_scatterer(scatterer)
-        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines,p_ref=p_ref, k=k, betas=betas, alphas=alphas)
+        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines,p_ref=p_ref, k=k, betas=betas, alphas=alphas, a=a, c=c)
     
     out = E@activations
     return out
 
 def propagate_BEM_pressure(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:
-                           Tensor|None=None,E:Tensor|None=None, path:str="Media",use_cache_H:bool=True, print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=1) -> Tensor:
+                           Tensor|None=None,E:Tensor|None=None, path:str="Media",use_cache_H:bool=True, print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=1, a=None,c=None) -> Tensor:
     '''
     Propagates transducer phases to points using BEM and returns absolute value of complex pressure\n
     Equivalent to `torch.abs(propagate_BEM(activations,points,scatterer,board,H,E,path))` \n
@@ -64,7 +64,7 @@ def propagate_BEM_pressure(activations:Tensor,points:Tensor,scatterer:Mesh|None=
     if board is None:
         board = TOP_BOARD
 
-    point_activations = propagate_BEM(activations,points,scatterer,board,H,E,path,use_cache_H=use_cache_H,print_lines=print_lines,p_ref=p_ref, k=k, betas=betas, alphas=alphas)
+    point_activations = propagate_BEM(activations,points,scatterer,board,H,E,path,use_cache_H=use_cache_H,print_lines=print_lines,p_ref=p_ref, k=k, betas=betas, alphas=alphas, a=a, c=c)
     pressures =  torch.abs(point_activations)
     return pressures
 
@@ -97,7 +97,7 @@ def propagate_BEM_pressure_grad(activations: Tensor, points: Tensor,board: Tenso
     return Px, Py, Pz
 
 def propagate_BEM_phase(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
-                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=1) ->Tensor:
+                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=1, a=None,c=None) ->Tensor:
     '''
     Propagates transducer phases to phases at points using BEM\n
     :param activations: Transducer hologram
@@ -121,7 +121,7 @@ def propagate_BEM_phase(activations:Tensor,points:Tensor,scatterer:Mesh|None=Non
     if E is None:
         if type(scatterer) == str:
             scatterer = load_scatterer(scatterer)
-        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines, p_ref=p_ref, k=k, betas=betas, alphas=alphas)
+        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines, p_ref=p_ref, k=k, betas=betas, alphas=alphas, a=a, c=c)
     
     out = E@activations
     return torch.angle(out)
