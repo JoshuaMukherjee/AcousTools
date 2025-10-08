@@ -272,6 +272,22 @@ def get_centres_as_points(*scatterers:Mesh, permute_to_points:bool=True, add_nor
     centres = torch.cat(centre_list,dim=0)
     return centres
 
+def get_verticies_as_points(*scatterers:Mesh):
+    '''
+    Gets the verticies of a mesh as a Tensor of AcousTools (B,3,N) points \n
+    :param Mesh: Mesh to use
+    :returns verticies: verticies as points
+    '''
+   
+    vert_list = []
+    for scatterer in scatterers:
+        vert =  torch.tensor(scatterer.vertices).to(DTYPE).to(device)
+        vert_list.append(vert)
+
+    verts = torch.cat(vert_list,dim=0).unsqueeze(0).permute(0,2,1)
+    return verts
+
+
 def get_areas(*scatterers: Mesh) -> Tensor:
     '''
     Returns the areas of faces of any number of scatterers\n
