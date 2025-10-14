@@ -19,6 +19,8 @@ wavelength = c_0 / f #0.008575
 '''Wavelength of 40KHz sound'''
 k = 2*pi / wavelength #732.7329804081634
 '''Wavenumber of 40KHz sound'''
+k_eps= k + 0.01j*k
+'''Damped Wavenumber of 40KHz sound'''
 # radius=0.005 
 radius = 0.0045
 '''Radius of transducer'''
