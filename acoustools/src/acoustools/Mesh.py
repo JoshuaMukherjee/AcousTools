@@ -7,6 +7,7 @@ import numpy as np
 
 from torch import Tensor
 from vedo import Mesh
+from typing import Literal
 
 
 def board_name(board:Tensor) -> str:
@@ -287,6 +288,55 @@ def get_verticies_as_points(*scatterers:Mesh):
     verts = torch.cat(vert_list,dim=0).unsqueeze(0).permute(0,2,1)
     return verts
 
+def get_cell_verticies(*scatterers:Mesh):
+    '''
+    Gets a tensor of (B,3,M,3) - batch x (xyz) x Faces x (vertex) \n
+    :param Mesh: Mesh to use
+    :returns verticies: verticies
+    '''
+    verts = get_verticies_as_points(*scatterers)
+    vert_list = []
+    for scatterer in scatterers:
+        cells = torch.tensor(scatterer.cells)
+        N = cells.shape[0]
+        cell_indexes = cells.flatten()
+        cell_verts = torch.index_select(verts, 2, cell_indexes)
+        cell_verts=cell_verts.reshape(1,3,N,3)
+
+
+        vert_list.append(cell_verts)
+    verts = torch.cat(vert_list,dim=0)
+    return verts
+
+
+def get_barycentric_points(*scatterers:Mesh, N=7, sum=True):
+    
+
+    if N != 7: raise ValueError("Only N=7 is supported") #Allow for N as a parameter incase it it implemented in future
+
+    cell_verts = get_cell_verticies(*scatterers)
+
+    DUNAVANT_7 = torch.tensor([
+    [1/3, 1/3, 1/3, 0.225],
+    [0.0597158717, 0.4701420641, 0.4701420641, 0.1323941527],
+    [0.4701420641, 0.0597158717, 0.4701420641, 0.1323941527],
+    [0.4701420641, 0.4701420641, 0.0597158717, 0.1323941527],
+    [0.7974269853, 0.1012865073, 0.1012865073, 0.1259391805],
+    [0.1012865073, 0.7974269853, 0.1012865073, 0.1259391805],
+    [0.1012865073, 0.1012865073, 0.7974269853, 0.1259391805],
+    ])
+    DUNAVANT_7_abg = DUNAVANT_7[:,:3].permute(1,0).unsqueeze(0).unsqueeze(0).unsqueeze(0)
+
+
+    DUNAVANT_7_W = DUNAVANT_7[:,3]
+
+    cell_verts = cell_verts.unsqueeze(-1)
+    barycentric_verts = cell_verts * DUNAVANT_7_abg
+    if sum: barycentric_verts = barycentric_verts.sum(dim=3)
+
+    return barycentric_verts, DUNAVANT_7_W
+
+    
 
 def get_areas(*scatterers: Mesh) -> Tensor:
     '''
@@ -521,4 +571,47 @@ def insert_parasite(scatterer:Mesh, parasite_path:str = '/Sphere-lam1.stl', root
     infected_scatterer = merge_scatterers(scatterer, parasite)
 
     return infected_scatterer
+
+def get_CHIEF_points(scatterer:Mesh, P=-1, method:Literal['random', 'uniform', 'volume-random']='random', start:Literal['surface', 'centre']='surface', scale=0.001) -> Mesh:
+    '''
+    Generates internal points that can be used for the CHIEF BEM formulation (or any other reason)\n
+    :param scatterer: The scatterer to insert points into
+    :param P: Number of points. if P=-1 then P= number of mesh elements
+    :param method: The method used to generate points \n
+        - random: will move scale metres along each of P randomly selected normals \n
+        - uniform:  will move scale metres along each of P uniformly spaced normals (based on order coming from `Mesh.get_normals_as_points`) \n
+        - volume-random: will use `vedo.Mesh..generate_random_points` to generate P internal points
+    :param start: The point to use as the basis for generating points \n
+         - surface: Will step along normals from surface (will step in the -ve normal direction)
+         - centre: Will step along normal from centre of mass (will step in +ve normal direction)
+    :param scale: The distance in m to step 
+    :returns internal points:
+    '''
+
+    centre_norms = get_normals_as_points(scatterer, permute_to_points=False)
     
+
+    if start.lower() == 'centre':
+        centres = get_centre_of_mass_as_points(scatterer, permute_to_points=False).unsqueeze(1)
+        internal_points = centres + centre_norms * scale
+    else:
+        centres = torch.tensor(scatterer.cell_centers().points, dtype=DTYPE, device=device)
+        internal_points = centres - centre_norms * scale
+
+    M = centres.shape[0]
+    if P == -1: P = M
+
+
+
+    
+    if method.lower() == 'rand':
+        internal_points = internal_points[:, torch.randint(0, M, (P,)),:].permute(0,2,1)
+    elif method.lower()== 'uniform':
+        idx = [i for i in range(M) if i%(int(M/P)) == 0]
+        internal_points = internal_points[:, idx,:].permute(0,2,1)
+    elif method.lower() == 'volume-random':
+        internal_points = torch.Tensor(scatterer.generate_random_points(P).points).unsqueeze(0).permute(0,2,1)
+
+
+
+    return internal_points

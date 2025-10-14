@@ -12,7 +12,7 @@ from acoustools.Mesh import get_areas, get_centres_as_points, get_normals_as_poi
 import acoustools.Constants as Constants
 
 def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor=None, use_cache_H:bool=True, 
-                           print_lines:bool=False, H:Tensor|None=None, return_components:bool=False,
+                           print_lines:bool=False, H:Tensor|None=None, return_components:bool=False,k=Constants.k,
                            path:str="Media", p_ref=Constants.P_ref) -> tuple[Tensor, Tensor, Tensor] | tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     '''
     Computes the gradient of the forward propagation for BEM\n
@@ -30,15 +30,15 @@ def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor=Non
 
     B = points.shape[0]
     if H is None:
-        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref)
+        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref, k=k)
     
-    Fx, Fy, Fz  = forward_model_grad(points, transducers,p_ref=p_ref)
-    Gx, Gy, Gz = get_G_partial(points, scatterer, transducers)
+    Fx, Fy, Fz  = forward_model_grad(points, transducers,p_ref=p_ref, k=k)
+    Gx, Gy, Gz = get_G_partial(points, scatterer, transducers, k=k)
 
 
-    Ex = Fx - Gx@H #Minus coming out of the PM grad -> Not entoerly sure where that comes from but seems to fix it?
-    Ey = Fy - Gy@H
-    Ez = Fz - Gz@H
+    Ex = Fx + Gx@H 
+    Ey = Fy + Gy@H
+    Ez = Fz + Gz@H
 
 
     if return_components:
@@ -47,7 +47,7 @@ def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor=Non
         return Ex.to(DTYPE), Ey.to(DTYPE), Ez.to(DTYPE)
     
 
-def get_G_second_unmixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False) -> tuple[Tensor, Tensor, Tensor]:
+def get_G_second_unmixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False, k=Constants.k) -> tuple[Tensor, Tensor, Tensor]:
 
     #Bk.3 Pg.80
     #P is much higher than the others?
@@ -60,7 +60,7 @@ def get_G_second_unmixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, 
     M = centres.shape[2]
 
     points.requires_grad_()
-    grad_Gx, grad_Gy, grad_Gz, G,P,C,Ga,Pa,Ca = get_G_partial(points, scatterer, board, True)
+    grad_Gx, grad_Gy, grad_Gz, G,P,C,Ga,Pa,Ca = get_G_partial(points, scatterer, board, True, k=k)
     # exit()
 
     points  = points.unsqueeze(3)  # [B, 3, N, 1]
@@ -80,11 +80,11 @@ def get_G_second_unmixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, 
     distances_expanded_four = distances_expanded**4
     distances_expanded_five = distances_expanded**5
 
-    kd = Constants.k * distances_expanded
+    kd = k * distances_expanded
 
     exp_ikd = torch.exp(1j*kd)
     
-    Gaa = areas/(4*Constants.pi * 1j) *exp_ikd * ((1j*Constants.k**2 * diff_square)/ distances_expanded_cube + (1j*Constants.k)/distances_expanded_square - 1/distances_expanded_cube - (3*1j*Constants.k*diff_square)/distances_expanded_four + (3*diff_square)/distances_expanded_five)
+    Gaa = areas/(4*Constants.pi * 1j) *exp_ikd * ((1j*k**2 * diff_square)/ distances_expanded_cube + (1j*k)/distances_expanded_square - 1/distances_expanded_cube - (3*1j*k*diff_square)/distances_expanded_four + (3*diff_square)/distances_expanded_five)
     Gxx = Gaa[:,0]
     Gyy = Gaa[:,1]
     Gzz = Gaa[:,2]
@@ -150,7 +150,7 @@ def get_G_second_unmixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, 
     return grad_2_G_unmixed_xx, grad_2_G_unmixed_yy, grad_2_G_unmixed_zz
 
 
-def get_G_second_mixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False) -> tuple[Tensor, Tensor, Tensor]:
+def get_G_second_mixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False, k=Constants.k) -> tuple[Tensor, Tensor, Tensor]:
 
     #Bk.3 Pg.81
     
@@ -159,7 +159,7 @@ def get_G_second_mixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, re
     normals = get_normals_as_points(scatterer).unsqueeze(2)
 
 
-    grad_Gx, grad_Gy, grad_Gz, G,P,C,Ga,Pa,Ca = get_G_partial(points, scatterer, board, True)
+    grad_Gx, grad_Gy, grad_Gz, G,P,C,Ga,Pa,Ca = get_G_partial(points, scatterer, board, True, k=k)
 
     points  = points.unsqueeze(3)  # [B, 3, N, 1]
     centres = centres.unsqueeze(2)  # [B, 3, 1, M]
@@ -170,7 +170,7 @@ def get_G_second_mixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, re
     distances_square = distances ** 2
     distances_cube = distances ** 3
     
-    kd = Constants.k * distances
+    kd = k * distances
     ikd = 1j * kd
 
     dx = diff[:,0,:,:]
@@ -243,7 +243,7 @@ def get_G_second_mixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, re
     return grad_2_G_mixed_xy, grad_2_G_mixed_xz, grad_2_G_mixed_yz
 
 
-def BEM_forward_model_second_derivative_unmixed(points:Tensor, scatterer:Mesh, transducers:Tensor=None, use_cache_H:bool=True, 
+def BEM_forward_model_second_derivative_unmixed(points:Tensor, scatterer:Mesh, transducers:Tensor=None, use_cache_H:bool=True, k=Constants.k,
                            print_lines:bool=False, H:Tensor|None=None, return_components:bool=False,
                            path:str="Media", p_ref=Constants.P_ref):
     
@@ -252,10 +252,10 @@ def BEM_forward_model_second_derivative_unmixed(points:Tensor, scatterer:Mesh, t
         transducers = TRANSDUCERS
 
     if H is None:
-        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref)
+        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref, k=k)
 
-    Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=transducers,p_ref=p_ref)
-    Gxx, Gyy, Gzz = get_G_second_unmixed(points, scatterer, transducers)
+    Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=transducers,p_ref=p_ref, k=k)
+    Gxx, Gyy, Gzz = get_G_second_unmixed(points, scatterer, transducers, k=k)
 
     Exx = Fxx + Gxx@H
     Eyy = Fyy + Gyy@H
@@ -263,7 +263,7 @@ def BEM_forward_model_second_derivative_unmixed(points:Tensor, scatterer:Mesh, t
 
     return Exx, Eyy, Ezz
 
-def BEM_forward_model_second_derivative_mixed(points:Tensor, scatterer:Mesh, transducers:Tensor|Mesh=None, use_cache_H:bool=True, 
+def BEM_forward_model_second_derivative_mixed(points:Tensor, scatterer:Mesh, transducers:Tensor|Mesh=None, use_cache_H:bool=True, k=Constants.k,
                            print_lines:bool=False, H:Tensor|None=None, return_components:bool=False,
                            path:str="Media", p_ref=Constants.P_ref):
     
@@ -272,10 +272,10 @@ def BEM_forward_model_second_derivative_mixed(points:Tensor, scatterer:Mesh, tra
         transducers = TRANSDUCERS
 
     if H is None:
-        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref)
+        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref, k=k)
 
-    Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=transducers)
-    Gxy, Gxz, Gyz = get_G_second_mixed(points, scatterer, transducers)
+    Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=transducers, k=k)
+    Gxy, Gxz, Gyz = get_G_second_mixed(points, scatterer, transducers, k=k)
 
 
     Exy = Fxy + Gxy@H
@@ -285,7 +285,7 @@ def BEM_forward_model_second_derivative_mixed(points:Tensor, scatterer:Mesh, tra
     return Exy, Exz, Eyz
 
 
-def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False) -> tuple[Tensor, Tensor, Tensor]:
+def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False, k=Constants.k) -> tuple[Tensor, Tensor, Tensor]:
     '''
     Computes gradient of the G matrix in BEM \n
     :param points: Points to propagate to
@@ -312,7 +312,7 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     points  = points.unsqueeze(3)  # [B, 3, N, 1]
     centres = centres.unsqueeze(2)  # [B, 3, 1, M]
 
-    diff = points - centres    
+    diff = (points - centres)
     diff_square = diff**2
     distances = torch.sqrt(torch.sum(diff_square, 1))
     distances_expanded = distances.unsqueeze(1)#.expand((1,3,N,M))
@@ -320,21 +320,20 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
     distances_expanded_cube = distances_expanded**3
 
     # G  =  e^(ikd) / 4pi d
-    G = areas * torch.exp(1j * Constants.k * distances_expanded) / (4*3.1415*distances_expanded)
+    G = areas * torch.exp(1j * k * distances_expanded) / (4*3.1415*distances_expanded)
 
     #Ga =  [i*da * e^{ikd} * (kd+i) / 4pi d^2]
 
     #d = distance
     #da = -(at - a)^2 / d
     da = diff / distances_expanded
-    kd = Constants.k * distances_expanded
+    kd = k * distances_expanded
     phase = torch.exp(1j*kd)
     Ga =  areas * ( (1j*da*phase * (kd + 1j))/ (4*3.1415*distances_expanded_square))
 
     #P = (ik - 1/d)
-    P = (1j*Constants.k - 1/distances_expanded)
-    #Pa = da / d^2
-    # Pa = da / distances_expanded_square
+    P = (1j*k - 1/distances_expanded)
+    #Pa = da / d^2 = (diff / d^2) /d
     Pa = diff / distances_expanded_cube
 
     #C = (diff \cdot normals) / distances
@@ -349,11 +348,7 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
 
     n_dot_d = nx*dx + ny*dy + nz*dz
 
-    dax = da[:,0,:]
-    day = da[:,1,:]
-    daz = da[:,2,:]
-
-    C = (nx*dx + ny*dy + nz*dz) / distances
+    C = (n_dot_d) / distances
 
 
     distance_square = distances**2
@@ -371,7 +366,7 @@ def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_
 
     grad_G = Ga*P*C + G*P*Ca + G*Pa*C
 
-    grad_G =  grad_G.to(DTYPE)
+    grad_G =  -grad_G.to(DTYPE)
 
     if return_components:
         return grad_G[:,0,:], grad_G[:,1,:], grad_G[:,2,:], G,P,C,Ga,Pa, Ca

@@ -10,9 +10,8 @@ BEM notes: https://www.personal.reading.ac.uk/~sms03snc/fe_bem_notes_sncw.pdf \n
 ` src.acoustools.BEM.Propagator `\n
 
 '''
-
+from acoustools.BEM.Gradients import *
 from acoustools.BEM.Forward_models import *
 from acoustools.BEM.Gorkov import *
-from acoustools.BEM.Gradients import *
 from acoustools.BEM.Propagator import *
 from acoustools.BEM.Force import *

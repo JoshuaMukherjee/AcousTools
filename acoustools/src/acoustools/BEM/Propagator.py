@@ -10,7 +10,7 @@ from acoustools.BEM.Gradients import BEM_forward_model_grad
 import acoustools.Constants as Constants
 
 def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
-                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False, p_ref=Constants.P_ref,k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a=None,c=None) ->Tensor:
+                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False, p_ref=Constants.P_ref,k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a=None,c=None, BM_c=None, internal_points=None) ->Tensor:
     '''
     Propagates transducer phases to points using BEM\n
     :param activations: Transducer hologram
@@ -25,6 +25,7 @@ def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,boar
     :param k: wavenumber
     :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
     :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
+    :param internal_points: The internal points to use for CHIEF based BEM
 
     :return pressure: complex pressure at points
     '''
@@ -34,13 +35,13 @@ def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,boar
     if E is None:
         if type(scatterer) == str:
             scatterer = load_scatterer(scatterer)
-        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines,p_ref=p_ref, k=k, betas=betas, alphas=alphas, a=a, c=c)
+        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines,p_ref=p_ref, k=k, betas=betas, alphas=alphas, a=a, c=c,BM_c=BM_c, internal_points=internal_points)
     
     out = E@activations
     return out
 
 def propagate_BEM_pressure(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:
-                           Tensor|None=None,E:Tensor|None=None, path:str="Media",use_cache_H:bool=True, print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=1, a=None,c=None) -> Tensor:
+                           Tensor|None=None,E:Tensor|None=None, path:str="Media",use_cache_H:bool=True, print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=1, a=None,c=None, BM_c=None, internal_points=None) -> Tensor:
     '''
     Propagates transducer phases to points using BEM and returns absolute value of complex pressure\n
     Equivalent to `torch.abs(propagate_BEM(activations,points,scatterer,board,H,E,path))` \n
@@ -54,6 +55,7 @@ def propagate_BEM_pressure(activations:Tensor,points:Tensor,scatterer:Mesh|None=
     :param k: wavenumber
     :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
     :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
+    :param internal_points: The internal points to use for CHIEF based BEM
 
     
     :param use_cache_H: If True uses the cache system to load and save the H matrix. Default `True`
@@ -64,12 +66,12 @@ def propagate_BEM_pressure(activations:Tensor,points:Tensor,scatterer:Mesh|None=
     if board is None:
         board = TOP_BOARD
 
-    point_activations = propagate_BEM(activations,points,scatterer,board,H,E,path,use_cache_H=use_cache_H,print_lines=print_lines,p_ref=p_ref, k=k, betas=betas, alphas=alphas, a=a, c=c)
+    point_activations = propagate_BEM(activations,points,scatterer,board,H,E,path,use_cache_H=use_cache_H,print_lines=print_lines,p_ref=p_ref, k=k, betas=betas, alphas=alphas, a=a, c=c,BM_c=BM_c, internal_points=internal_points)
     pressures =  torch.abs(point_activations)
     return pressures
 
 def propagate_BEM_pressure_grad(activations: Tensor, points: Tensor,board: Tensor|None=None, scatterer:Mesh = None, 
-                                path:str='Media', Fx=None, Fy=None, Fz=None, cat=True,p_ref=Constants.P_ref):
+                                path:str='Media', Fx=None, Fy=None, Fz=None, cat=True,p_ref=Constants.P_ref, k=Constants.k):
     '''
     Propagates a hologram to pressure gradient at points\n
     :param activations: Hologram to use
@@ -82,7 +84,7 @@ def propagate_BEM_pressure_grad(activations: Tensor, points: Tensor,board: Tenso
     '''
     
     if Fx is None or Fy is None or Fz is None:
-        _Fx,_Fy,_Fz = BEM_forward_model_grad(points, scatterer ,board, p_ref=p_ref)
+        _Fx,_Fy,_Fz = BEM_forward_model_grad(points, scatterer ,board, p_ref=p_ref, k=k)
         if Fx is None: Fx = _Fx
         if Fy is None: Fy = _Fy
         if Fz is None: Fz = _Fz
@@ -97,7 +99,7 @@ def propagate_BEM_pressure_grad(activations: Tensor, points: Tensor,board: Tenso
     return Px, Py, Pz
 
 def propagate_BEM_phase(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
-                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=1, a=None,c=None) ->Tensor:
+                  E:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, betas = 0, alphas:float|Tensor=1, a=None,c=None, BM_c=None, internal_points=None) ->Tensor:
     '''
     Propagates transducer phases to phases at points using BEM\n
     :param activations: Transducer hologram
@@ -112,6 +114,7 @@ def propagate_BEM_phase(activations:Tensor,points:Tensor,scatterer:Mesh|None=Non
     :param k: wavenumber
     :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
     :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
+    :param internal_points: The internal points to use for CHIEF based BEM
 
     :return pressure: complex pressure at points
     '''
@@ -121,7 +124,7 @@ def propagate_BEM_phase(activations:Tensor,points:Tensor,scatterer:Mesh|None=Non
     if E is None:
         if type(scatterer) == str:
             scatterer = load_scatterer(scatterer)
-        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines, p_ref=p_ref, k=k, betas=betas, alphas=alphas, a=a, c=c)
+        E = compute_E(scatterer,points,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines, p_ref=p_ref, k=k, betas=betas, alphas=alphas, a=a, c=c,BM_c=BM_c, internal_points=internal_points)
     
     out = E@activations
     return torch.angle(out)

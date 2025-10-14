@@ -6,7 +6,7 @@ import torch
 from torch import Tensor
 
 
-def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref):
+def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref, k=Constants.k):
     '''
     @private
     Computes the components to be used in the analytical gradient of the piston model, shouldnt be useed use `forward_model_grad` to get the gradient \\
@@ -26,14 +26,14 @@ def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref
     points = torch.unsqueeze(points,1)
     points = points.expand((-1,M,-1,-1))
 
-    diff = transducers - points
+    diff =  points - transducers
     distances = torch.sqrt(torch.sum(diff**2, 2))
     planar_distance= torch.sqrt(torch.sum((diff**2)[:,:,0:2,:],dim=2))
     planar_distance = planar_distance +  1e-8
 
     #Partial derivates of bessel function section wrt xyz
     sin_theta = torch.divide(planar_distance,distances) 
-    partialFpartialU = -1* (Constants.k**2 * Constants.radius**2)/4 * sin_theta + (Constants.k**4 * Constants.radius**4)/48 * sin_theta**3
+    partialFpartialU = -1* (k**2 * Constants.radius**2)/4 * sin_theta + (k**4 * Constants.radius**4)/48 * sin_theta**3
     partialUpartiala = torch.ones_like(diff)
     
     diff_z = torch.unsqueeze(diff[:,:,2,:],2)
@@ -57,21 +57,21 @@ def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref
     partialGpartialX = (p_ref.unsqueeze(3) * diff) / dist_expand**3
 
     #Grad of e^ikd(xt,t)
-    partialHpartialX = 1j * Constants.k * (diff / dist_expand) * torch.exp(1j * Constants.k * dist_expand)
+    partialHpartialX = 1j * k * (diff / dist_expand) * torch.exp(1j * k * dist_expand)
 
     #Combine
-    bessel_arg=Constants.k*Constants.radius*torch.divide(planar_distance,distances)
+    bessel_arg=k*Constants.radius*torch.divide(planar_distance,distances)
     F=1-torch.pow(bessel_arg,2)/8+torch.pow(bessel_arg,4)/192
     F = torch.unsqueeze(F,2)
     F = F.expand((-1,-1,3,-1))
 
     G = p_ref.unsqueeze(3) / dist_expand
-    H = torch.exp(1j * Constants.k * dist_expand)
+    H = torch.exp(1j * k * dist_expand)
 
 
     return F,G,H, partialFpartialX, partialGpartialX, partialHpartialX, partialFpartialU, partialUpartiala
 
-def forward_model_grad(points:Tensor, transducers:Tensor|None = None, p_ref=Constants.P_ref) -> tuple[Tensor]:
+def forward_model_grad(points:Tensor, transducers:Tensor|None = None, p_ref=Constants.P_ref, k=Constants.k) -> tuple[Tensor]:
     '''
     Computes the analytical gradient of the piston model\n
     :param points: Point position to compute propagation to 
@@ -91,15 +91,15 @@ def forward_model_grad(points:Tensor, transducers:Tensor|None = None, p_ref=Cons
     if transducers is None:
         transducers=TRANSDUCERS
 
-    F,G,H, partialFpartialX, partialGpartialX, partialHpartialX,_,_ = compute_gradients(points, transducers, p_ref=p_ref)
+    F,G,H, partialFpartialX, partialGpartialX, partialHpartialX,_,_ = compute_gradients(points, transducers, p_ref=p_ref,k=k)
     derivative = G*(H*partialFpartialX + F*partialHpartialX) + F*H*partialGpartialX
-    derivative = -derivative.to(device).to(DTYPE) # minus here to match f.d -> not 100% sure why its needed
+    derivative = derivative.to(device).to(DTYPE) # minus here to match f.d -> not 100% sure why its needed
 
 
     return derivative[:,:,0,:].permute((0,2,1)), derivative[:,:,1,:].permute((0,2,1)), derivative[:,:,2,:].permute((0,2,1))
 
 
-def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|None = None, p_ref = Constants.P_ref) ->Tensor:
+def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|None = None, p_ref = Constants.P_ref, k=Constants.k) ->Tensor:
     '''
     Computes the second degree unmixed analytical gradient of the piston model\n
     :param points: Point position to compute propagation to 
@@ -156,9 +156,9 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     # G  = Pref * e^(ikd) / d
     # H = 1 - (kr sin(theta))^2 / 8 + (kr sin(theta))^4 / 192
 
-    G = p_ref * torch.exp(1j * Constants.k * distances) / distances
+    G = p_ref * torch.exp(1j * k * distances) / distances
 
-    kr = Constants.k * Constants.radius
+    kr = k * Constants.radius
     kr_sine = kr*sin_theta
     H = 1 - ((kr_sine)**2) / 8 + ((kr_sine)**4)/192 
 
@@ -172,7 +172,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     #da = -(at - a)^2 / d
 
     da = -1 * diff / distances_expanded
-    kd = Constants.k * distances_expanded
+    kd = k * distances_expanded
     phase = torch.exp(1j*kd)
     Ga = p_ref_expand.expand((B,-1,3,N)) * ( (1j*da*phase * (kd + 1j))/ (distances_expanded_square))
 
@@ -223,7 +223,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
 
     return Faa[:,:,0,:].permute((0,2,1)), Faa[:,:,1,:].permute((0,2,1)), Faa[:,:,2,:].permute((0,2,1))
 
-def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|None = None, p_ref = Constants.P_ref)->Tensor:
+def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|None = None, p_ref = Constants.P_ref,  k=Constants.k)->Tensor:
     '''
     Computes the second degree mixed analytical gradient of the piston model\n
     :param points: Point position to compute propagation to 
@@ -276,9 +276,9 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     # G  = Pref * e^(ikd) / d
     # H = 1 - (kr sin(theta))^2 / 8 + (kr sin(theta))^4 / 192
 
-    G = p_ref * torch.exp(1j * Constants.k * distances) / distances
+    G = p_ref * torch.exp(1j * k * distances) / distances
 
-    kr = Constants.k * Constants.radius
+    kr = k * Constants.radius
     kr_sine = kr*sin_theta
     H = 1 - ((kr_sine)**2) / 8 + ((kr_sine)**4)/192 
 
@@ -295,8 +295,8 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     daz = da[:,:,2,:]
 
 
-    kd_exp = Constants.k * distances_expanded
-    kd = Constants.k * distances
+    kd_exp = k * distances_expanded
+    kd = k * distances
     phase = torch.exp(1j*kd_exp)
     Ga = p_ref_expand * ( (1j*da*phase * (kd_exp + 1j))/ (distances_expanded_square))
 
