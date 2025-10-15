@@ -155,7 +155,7 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
                        surface:Mesh|None=None, use_cache_H:bool=True, 
                        E:Tensor|None=None, Ex:Tensor|None=None, Ey:Tensor|None=None, Ez:Tensor|None=None, 
-                       use_momentum:float=True, p_ref:float=c.P_ref) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+                       use_momentum:float=True, p_ref:float=c.P_ref, internal_points=None) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
     Computes the torque on a scattering obejct by computing thr force on a far field surface\\
     :param activations: Hologram
@@ -191,12 +191,14 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
     areas = get_areas(surface)
     
     if E is None:
-        E,F,G,H = compute_E(scatterer, points, board,path=path, H=H, return_components=True, use_cache_H=use_cache_H, p_ref=p_ref)
+        E,F,G,H = compute_E(scatterer, points, board,path=path, H=H, return_components=True, use_cache_H=use_cache_H, p_ref=p_ref,internal_points=internal_points)
     
     force, momentum = force_mesh(activations, points,norms,areas,board=board,F=E, use_momentum=use_momentum, p_ref=p_ref,
                     grad_function=BEM_forward_model_grad, grad_function_args={'scatterer':scatterer,
                                                                                 'H':H,
-                                                                                'path':path}, return_components=True,
+                                                                                'path':path,
+                                                                                "internal_points":internal_points}, 
+                                                                                return_components=True,
                                                                                 Ax = Ex, Ay=Ey, Az=Ez)
 
 

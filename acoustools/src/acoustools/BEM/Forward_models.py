@@ -197,6 +197,8 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=No
 
     if internal_points is not None:
 
+        # if internal_points is not None: print(internal_points.shape)
+
         P = internal_points.shape[1]
 
         m_int = centres.unsqueeze(0).unsqueeze(1)
@@ -278,6 +280,11 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     if internal_points is not None and (internal_points.shape[1] == 3 and internal_points.shape[2] != 3):
             internal_points = internal_points.permute(0,2,1)
 
+    
+    # if internal_points is not None: print(internal_points.shape)
+    
+
+
     A = compute_A(scatterer, betas=betas, a=a, c=c, k=k,internal_points=internal_points)
     bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points)
 
@@ -303,7 +310,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
                            print_lines:bool=False, cache_name:str|None=None, p_ref = Constants.P_ref, 
-                           norms:Tensor|None=None, method=Literal['OLS','LU', 'INV'], k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None) -> Tensor:
+                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None) -> Tensor:
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)

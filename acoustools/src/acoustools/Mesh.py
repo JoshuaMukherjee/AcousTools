@@ -572,7 +572,7 @@ def insert_parasite(scatterer:Mesh, parasite_path:str = '/Sphere-lam1.stl', root
 
     return infected_scatterer
 
-def get_CHIEF_points(scatterer:Mesh, P=-1, method:Literal['random', 'uniform', 'volume-random']='random', start:Literal['surface', 'centre']='surface', scale=0.001) -> Mesh:
+def get_CHIEF_points(scatterer:Mesh, P=30, method:Literal['random', 'uniform', 'volume-random']='random', start:Literal['surface', 'centre']='surface', scale=0.001, scale_mode:Literal['abs','diameter-scale']='abs') -> Mesh:
     '''
     Generates internal points that can be used for the CHIEF BEM formulation (or any other reason)\n
     :param scatterer: The scatterer to insert points into
@@ -589,29 +589,39 @@ def get_CHIEF_points(scatterer:Mesh, P=-1, method:Literal['random', 'uniform', '
     '''
 
     centre_norms = get_normals_as_points(scatterer, permute_to_points=False)
+
+    if scale_mode.lower() == 'diameter-scale':
+        d = get_diameter(scatterer)
+        scale = scale * d
     
 
     if start.lower() == 'centre':
         centres = get_centre_of_mass_as_points(scatterer, permute_to_points=False).unsqueeze(1)
-        internal_points = centres + centre_norms * scale
+        internal_points = centres + centre_norms * scale      
+
     else:
         centres = torch.tensor(scatterer.cell_centers().points, dtype=DTYPE, device=device)
         internal_points = centres - centre_norms * scale
 
-    M = centres.shape[0]
+    M = centre_norms.shape[1]
+    
     if P == -1: P = M
 
+   
 
 
     
-    if method.lower() == 'rand':
-        internal_points = internal_points[:, torch.randint(0, M, (P,)),:].permute(0,2,1)
+    if method.lower() == 'random':
+        indices = torch.randperm(M)[:P]
+        internal_points = internal_points[:, indices,:]
+
     elif method.lower()== 'uniform':
         idx = [i for i in range(M) if i%(int(M/P)) == 0]
-        internal_points = internal_points[:, idx,:].permute(0,2,1)
+        internal_points = internal_points[:, idx,:]
     elif method.lower() == 'volume-random':
-        internal_points = torch.Tensor(scatterer.generate_random_points(P).points).unsqueeze(0).permute(0,2,1)
+        internal_points = torch.Tensor(scatterer.generate_random_points(P).points).unsqueeze(0)
 
+    internal_points = internal_points.permute(0,2,1)
 
 
     return internal_points
