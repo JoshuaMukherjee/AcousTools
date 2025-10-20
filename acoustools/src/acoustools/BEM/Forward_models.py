@@ -6,6 +6,7 @@ from vedo import Mesh
 from typing import Literal
 import hashlib
 import pickle
+import os
 
 import acoustools.Constants as Constants
 
@@ -350,7 +351,10 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
         except FileNotFoundError: 
             if print_lines: print("Not found, computing H...")
             H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, betas=betas, a=a, c=c, internal_points=internal_points)
-            f = open(f_name,"wb")
+            try:
+                f = open(f_name,"wb")
+            except FileNotFoundError:
+                raise FileNotFoundError("AcousTools BEM expects a directory named BEMCache inside of `path' in order to use the cache and this was not found. Check this directory exists")
             pickle.dump(H,f)
             f.close()
     else:
