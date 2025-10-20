@@ -83,6 +83,9 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     if colour_function_args is None and colour_functions is not None:
         colour_function_args = [{}]*len(colour_functions)
     
+    if type(activation) is not list :
+        activation = [activation] *len(colour_functions)
+    
     if type(A) != list:
         A = [A] * len(colour_functions)
     if type(B) != list:
@@ -93,9 +96,9 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     if colour_functions is not None:
         for i,colour_function in enumerate(colour_functions):
             if depth > 0:
-                result = Visualise_single_blocks(A[i],B[i],C[i],activation,colour_function, colour_function_args[i], res, depth=depth)
+                result = Visualise_single_blocks(A[i],B[i],C[i],activation[i],colour_function, colour_function_args[i], res, depth=depth)
             else:
-                result = Visualise_single(A[i],B[i],C[i],activation,colour_function, colour_function_args[i], res)
+                result = Visualise_single(A[i],B[i],C[i],activation[i],colour_function, colour_function_args[i], res)
             results.append(result)
         
             if add_lines_functions is not None:
