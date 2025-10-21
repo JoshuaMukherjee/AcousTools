@@ -537,7 +537,7 @@ def iterative_backpropagation(points:Tensor,iterations:int = 200, board:Tensor|N
 
 
 def gorkov_target(points:Tensor, objective:FunctionType = target_gorkov_BEM_mse_sine_objective,
-                  board:Tensor=None, U_targets:Tensor=None, iterations:int=20, lr:int=1e4,
+                  board:Tensor=None, U_targets:Tensor=None, iterations:int=100, lr:int=1e9,
                   constraint:FunctionType=sine_amplitude, reflector:Mesh|None=None, path:str|None=None) -> Tensor:
     '''
     Phase retrieval to generate target gorkov values at points via `acoustools.Solvers.gradient_descent_solver` \n
@@ -563,7 +563,7 @@ def gorkov_target(points:Tensor, objective:FunctionType = target_gorkov_BEM_mse_
         U_targets = torch.tensor([-1e-5])
 
     x = gradient_descent_solver(points, objective, 
-                                board, log=False, targets=U_targets, iters=iterations, 
+                                board, log=True, targets=U_targets, iters=iterations, 
                                 lr=lr, constrains=constraint, objective_params={'root':path,'reflector':reflector})
     
     return x

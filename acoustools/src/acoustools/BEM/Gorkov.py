@@ -11,6 +11,8 @@ from acoustools.BEM.Gradients import BEM_forward_model_grad
 
 import acoustools.Constants as Constants
 
+from acoustools.Gorkov  import get_gorkov_constants
+
 
 
 
@@ -60,8 +62,10 @@ def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|s
     else:
         pz = torch.Tensor((0,)).to(device)
     
-    K1 = V / (4*Constants.p_0*Constants.c_0**2)
-    K2 = 3*V / (4*(2*Constants.f**2 * Constants.p_0))
+    # K1 = V / (4*Constants.p_0*Constants.c_0**2)
+    # K2 = 3*V / (4*(2*Constants.f**2 * Constants.p_0))
+
+    K1, K2 = get_gorkov_constants(V=V)
 
     a = K1 * torch.abs(p)**2 
     b = K2*(torch.abs(px)**2 + torch.abs(py)**2 + torch.abs(pz)**2)
