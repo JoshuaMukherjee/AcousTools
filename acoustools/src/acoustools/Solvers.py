@@ -147,7 +147,7 @@ def gspat_solver(R,forward, backward, target, iterations,return_components=False
 
 
 def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:Tensor|None=None, 
-          R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False,p_ref = c.P_ref) -> Tensor:
+          R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False) -> Tensor:
     '''
     GSPAT Solver\n
     :param points: Target point positions
@@ -182,7 +182,7 @@ def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:T
         phase_hologram,pres = gspat_solver(R,A,B,b, iterations,return_components)
         return phase_hologram,pres
     
-    phase_hologram = gspat_solver(R,A,B,b, iterations,return_components,p_ref=p_ref)
+    phase_hologram = gspat_solver(R,A,B,b, iterations,return_components)
     return phase_hologram
 
 
