@@ -147,7 +147,7 @@ def gspat_solver(R,forward, backward, target, iterations,return_components=False
 
 
 def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:Tensor|None=None, 
-          R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False, p_ref=c.P_ref) -> Tensor:
+          R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False, p_ref=c.P_ref, norms=None) -> Tensor:
     '''
     GSPAT Solver\n
     :param points: Target point positions
@@ -165,7 +165,7 @@ def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:T
         board = TRANSDUCERS
 
     if A is None:
-        A = forward_model(points,board,p_ref=p_ref)
+        A = forward_model(points,board,p_ref=p_ref,norms=norms)
     if B is None:
         B = torch.conj(A).mT.to(DTYPE)
     if R is None:
