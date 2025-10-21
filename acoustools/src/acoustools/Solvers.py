@@ -147,7 +147,7 @@ def gspat_solver(R,forward, backward, target, iterations,return_components=False
 
 
 def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:Tensor|None=None, 
-          R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False) -> Tensor:
+          R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False, p_ref=c.P_ref) -> Tensor:
     '''
     GSPAT Solver\n
     :param points: Target point positions
