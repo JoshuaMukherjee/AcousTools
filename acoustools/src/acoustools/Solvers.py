@@ -60,7 +60,7 @@ def wgs_solver_batch(A, b, iterations):
     y =  torch.abs(A@x) 
     return y, p, x
 
-def wgs(points:Tensor,iter:int = 200, board:Tensor|None = None, A:Tensor|None = None, b:Tensor|None=None, return_components:bool=False, p_ref=c.P_ref) -> Tensor:
+def wgs(points:Tensor,iterations:int = 200, board:Tensor|None = None, A:Tensor|None = None, b:Tensor|None=None, return_components:bool=False, p_ref=c.P_ref) -> Tensor:
     '''
     Weighted-GS algorithm\n
     :param points: Points to use
@@ -102,9 +102,9 @@ def wgs(points:Tensor,iter:int = 200, board:Tensor|None = None, A:Tensor|None = 
         b = torch.ones(N,1).to(device).to(DTYPE)+0j
 
     if batch:
-        img,pha,act = wgs_solver_batch(A,b,iter)
+        img,pha,act = wgs_solver_batch(A,b,iterations)
     else:
-        img,pha,act = wgs_solver_unbatched(A,b,iter)
+        img,pha,act = wgs_solver_unbatched(A,b,iterations)
 
     if return_components:
         return img,pha,act
@@ -230,13 +230,13 @@ def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None,A=None,p_re
 
     return out, trans_phase
 
-def naive(points:Tensor, board:Tensor|None = None, return_components:bool=False, activation:Tensor|None=None, A=None, p_ref = c.P_ref) -> Tensor:
+def naive(points:Tensor, board:Tensor|None = None, return_components:bool=False, activation:Tensor|None=None, A=None, p_ref = c.P_ref, iterations=None) -> Tensor:
     '''
     Naive solver\n
     :param points: Target point positions
     :param board: The Transducer array, default two 16x16 arrays
-    :param return_components: If `True` will return `hologram, pressure` else will return `hologram`, default False
-    :param activation: Initial starting point activation 
+    :param return_components: If `True` will return `hologram, pr
+    :param iterations: Ignroed - for compatability
     :param A: propagator to use
     :return: hologram
     '''
