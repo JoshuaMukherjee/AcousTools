@@ -139,7 +139,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     distances_expanded_cube = distances_expanded ** 3
     
     planar_distance= torch.sqrt(torch.sum(diff_square[:,:,0:2,:],dim=2))
-    planar_distance += 1e-8
+    planar_distance = planar_distance + 1e-8
     planar_distance_square = planar_distance**2
 
     sin_theta = planar_distance / distances
@@ -260,7 +260,7 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     distances_expanded_square = distances_expanded**2
     
     planar_distance= torch.sqrt(torch.sum(diff_square[:,:,0:2,:],dim=2))
-    planar_distance += 1e-8
+    planar_distance = planar_distance +  1e-8
     planar_distance_cube = planar_distance**3
 
     sin_theta = planar_distance / distances

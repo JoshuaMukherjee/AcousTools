@@ -166,10 +166,11 @@ def target_gorkov_BEM_mse_sine_objective(transducer_phases, points, board, targe
     transducer_phases = sine_amplitude(transducer_phases)
     reflector = objective_params['reflector']
     root = objective_params['root']
+    E = objective_params["E"] if "E" in objective_params else None
     if 'dims' in objective_params:
         dims = objective_params['dims']
     else:
         dims = 'XYZ'
-    U = BEM_gorkov_analytical(transducer_phases, points, reflector, board, path=root, dims=dims)
+    U = BEM_gorkov_analytical(transducer_phases, points, reflector, board, path=root, dims=dims, E=E)
     loss = torch.mean((targets-U)**2).unsqueeze_(0).real
     return loss

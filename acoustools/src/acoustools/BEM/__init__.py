@@ -15,3 +15,4 @@ from acoustools.BEM.Forward_models import *
 from acoustools.BEM.Gorkov import *
 from acoustools.BEM.Propagator import *
 from acoustools.BEM.Force import *
+from acoustools.BEM.Stiffness import *
