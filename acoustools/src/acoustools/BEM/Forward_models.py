@@ -19,7 +19,7 @@ from acoustools.Utilities import forward_model_grad
 
 
 
-def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False, a=None, c=None, k=Constants.k) -> Tensor:
+def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False, a=None, c=None, k=Constants.k, smooth_distance=0) -> Tensor:
     '''
     Computes the derivative of greens function \n
     :param y: y in greens function - location of the source of sound
@@ -53,6 +53,9 @@ def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, r
 
     # del norms, vecs
     torch.cuda.empty_cache()
+
+    # distance = distance + smooth_distance
+    distance = distance.clamp_min(smooth_distance)
 
 
     A = 1 * greens(y,x,distance=distance,k=k)
@@ -102,7 +105,7 @@ def greens(y:Tensor,x:Tensor, k:float=Constants.k, distance=None):
 
     return green
 
-def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor=1, betas:float|Tensor = 0, a=None, c=None) -> Tensor:
+def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor=1, betas:float|Tensor = 0, a=None, c=None, smooth_distance=0) -> Tensor:
     '''
     Computes G in the BEM model\n
     :param points: The points to propagate to
@@ -136,7 +139,7 @@ def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float
     norms = get_normals_as_points(scatterer,permute_to_points=False).real.expand((B,N,-1,-1))
 
     # centres_p = get_centres_as_points(scatterer)
-    partial_greens = compute_green_derivative(centres,p,norms, B,N,M, a=a, c=c, k=k )
+    partial_greens = compute_green_derivative(centres,p,norms, B,N,M, a=a, c=c, k=k,smooth_distance=smooth_distance )
     
     if ((type(betas) in [int, float]) and betas != 0) or (type(betas) is Tensor and (betas != 0).any()):  #Either β non 0 and type(β) is number or β is Tensor and any elemenets non 0
         green = greens(centres, p, k=k) * 1j * k * betas
@@ -164,7 +167,7 @@ def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float
 
 
 
-def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None) -> Tensor:
+def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0) -> Tensor:
     '''
     Computes A for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -185,7 +188,7 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=No
     m = centres.expand((M, M, 3))
     m_prime = centres.unsqueeze(1).expand((M, M, 3))
 
-    partial_greens = compute_green_derivative(m.unsqueeze_(0), m_prime.unsqueeze_(0), norms, 1, M, M, a=a, c=c, k=k)
+    partial_greens = compute_green_derivative(m.unsqueeze_(0), m_prime.unsqueeze_(0), norms, 1, M, M, a=a, c=c, k=k,smooth_distance=smooth_distance)
     
 
     if ((type(betas) in [int, float]) and betas != 0) or (isinstance(betas, Tensor) and (betas != 0).any()):
@@ -257,7 +260,7 @@ def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tenso
     return bs   
 
  
-def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None) -> Tensor:
+def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0) -> Tensor:
     '''
     Computes H for the BEM model \n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -286,7 +289,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     
 
 
-    A = compute_A(scatterer, betas=betas, a=a, c=c, k=k,internal_points=internal_points)
+    A = compute_A(scatterer, betas=betas, a=a, c=c, k=k,internal_points=internal_points, smooth_distance=smooth_distance)
     bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points)
 
 
@@ -311,7 +314,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
                            print_lines:bool=False, cache_name:str|None=None, p_ref = Constants.P_ref, 
-                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None) -> Tensor:
+                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0) -> Tensor:
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -350,7 +353,7 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             H = pickle.load(open(f_name,"rb")).to(device).to(DTYPE)
         except FileNotFoundError: 
             if print_lines: print("Not found, computing H...")
-            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, betas=betas, a=a, c=c, internal_points=internal_points)
+            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance)
             try:
                 f = open(f_name,"wb")
             except FileNotFoundError as e:
@@ -360,13 +363,13 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             f.close()
     else:
         if print_lines: print("Computing H...")
-        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS, k=k, betas=betas, a=a, c=c, internal_points=internal_points)
+        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance)
 
     return H
 
 def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
                H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None, H_method=None, 
-               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a=None, c=None, internal_points=None) -> Tensor:
+               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a=None, c=None, internal_points=None, smooth_distance=0) -> Tensor:
     '''
     Computes E in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -422,10 +425,10 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     if print_lines: print("H...")
     
     if H is None:
-        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,norms=norms, method=H_method, k=k, betas=betas, a=a, c=c, internal_points=internal_points).to(DTYPE)
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,norms=norms, method=H_method, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance).to(DTYPE)
         
     if print_lines: print("G...")
-    G = compute_G(points, scatterer, k=k, betas=betas,alphas=alphas).to(DTYPE)
+    G = compute_G(points, scatterer, k=k, betas=betas,alphas=alphas, smooth_distance=smooth_distance).to(DTYPE)
     
     if print_lines: print("F...")
     F = forward_model_batched(points,board,p_ref=p_ref,norms=norms, k=k).to(DTYPE)  
