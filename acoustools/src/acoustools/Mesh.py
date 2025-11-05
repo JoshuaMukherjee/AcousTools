@@ -658,4 +658,3 @@ def get_CHIEF_points(scatterer:Mesh, P=30, method:Literal['random', 'uniform', '
 
     return internal_points
 
-
