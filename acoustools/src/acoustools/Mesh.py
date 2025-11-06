@@ -35,7 +35,7 @@ def scatterer_file_name(scatterer:Mesh) ->str:
     return f_name
 
 def load_scatterer(path:str, compute_areas:bool = True, compute_normals:bool=True, dx:float=0,
-                   dy:float=0,dz:float=0, rotx:float=0, roty:float=0, rotz:float=0, root_path:str="", force:bool=False) -> Mesh:
+                   dy:float=0,dz:float=0, rotx:float=0, roty:float=0, rotz:float=0, root_path:str="", force:bool=False, flip_normals=False) -> Mesh:
     '''
     Loads a scatterer as a `vedo` `Mesh` and applies translations as needed
     :param path: The name of the scatterer to load
@@ -56,6 +56,7 @@ def load_scatterer(path:str, compute_areas:bool = True, compute_normals:bool=Tru
         if compute_areas: scatterer.compute_cell_size()
         if compute_normals: 
             scatterer.compute_normals()
+            if flip_normals: scatterer.flip_normals()
 
         scatterer.metadata["rotX"] = 0
         scatterer.metadata["rotY"] = 0
