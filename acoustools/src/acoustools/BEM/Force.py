@@ -77,7 +77,8 @@ def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|No
                        H:Tensor=None, diameter=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
                        surface:Mesh|None=None, use_cache_H:bool=True, 
-                       E:Tensor|None=None, Ex:Tensor|None=None, Ey:Tensor|None=None, Ez:Tensor|None=None, ) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+                       E:Tensor|None=None, Ex:Tensor|None=None, Ey:Tensor|None=None, Ez:Tensor|None=None,
+                        internal_points=None ) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
     Computes the force on a scattering obejct by computing thr force on a far field surface\\
     :param activations: Hologram
@@ -116,7 +117,7 @@ def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|No
     
     if use_pressure:
         if E is None:
-            E = compute_E(scatterer, points, board, use_cache_H=use_cache_H, path=path, H=H)
+            E = compute_E(scatterer, points, board, use_cache_H=use_cache_H, path=path, H=H,internal_points=internal_points)
         p = propagate(activations,points,board,A=E)
         pressure_square = torch.abs(p)**2
         pressure_time_average = 1/2 * pressure_square
@@ -128,7 +129,7 @@ def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|No
         pressure_term = 0
 
     if Ex is None or Ey is None or Ez is None:
-        Ex, Ey, Ez = BEM_forward_model_grad(points, scatterer, board, use_cache_H=use_cache_H, H=H, path=path)
+        Ex, Ey, Ez = BEM_forward_model_grad(points, scatterer, board, use_cache_H=use_cache_H, H=H, path=path,internal_points=internal_points)
     
     px = (Ex@activations).squeeze(2).unsqueeze(0)
     py = (Ey@activations).squeeze(2).unsqueeze(0)
