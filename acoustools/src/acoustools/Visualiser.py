@@ -33,7 +33,8 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     :param C: Position of the bottom left corner of the image
     :param activation: The transducer activation to use
     :param points: List of point positions to add crosses for each plot. Positions should be given in their position in 3D
-    :param colour_functions: List of function to call at each position for each plot. Should return a value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`
+    :param colour_functions: List of function to call at each position for each plot. Should return a value to colour the pixel at that position. Default `acoustools.Utilities.propagate_abs`. \n
+        - If colour_functions is `difference` or `ratio` then the result will be the difference or ratio between existing images. To control which images are used `colour_function_args` should have a parameter called `ids`.
     :param colour_function_args: The arguments to pass to `colour_functions`
     :param res: Number of pixels as a tuple (X,Y). Default (200,200)
     :param cmaps: The cmaps to pass to plot
@@ -95,17 +96,27 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     
     if colour_functions is not None:
         for i,colour_function in enumerate(colour_functions):
-            if depth > 0:
-                result = Visualise_single_blocks(A[i],B[i],C[i],activation[i],colour_function, colour_function_args[i], res, depth=depth)
-            else:
-                result = Visualise_single(A[i],B[i],C[i],activation[i],colour_function, colour_function_args[i], res)
-            results.append(result)
-        
-            if add_lines_functions is not None:
-                if add_lines_functions[i] is not None:
-                    lines.append(add_lines_functions[i](**add_line_args[i]))
+            if type(colour_function) is not str:
+                if depth > 0:
+                    result = Visualise_single_blocks(A[i],B[i],C[i],activation[i],colour_function, colour_function_args[i], res, depth=depth)
                 else:
-                    lines.append(None)
+                    result = Visualise_single(A[i],B[i],C[i],activation[i],colour_function, colour_function_args[i], res)
+                results.append(result)
+            
+                if add_lines_functions is not None:
+                    if add_lines_functions[i] is not None:
+                        lines.append(add_lines_functions[i](**add_line_args[i]))
+                    else:
+                        lines.append(None)
+            else:  
+                i1, i2 = colour_function_args[i]['ids'] if (i<len(colour_function_args) and 'ids' in colour_function_args[i]) else (0,1)
+                img1 = results[i1]
+                img2 = results[i2]
+
+                if colour_function.lower() == 'difference' or colour_function.lower() == 'diff' or colour_function.lower() == '-':
+                    results.append(img2 - img1)
+                if colour_function.lower() == 'ratio' or colour_function.lower() == 'rat' or colour_function.lower() == '/':
+                    results.append(img2 / img1)
     
     else:
         for i,mat in enumerate(matricies):
