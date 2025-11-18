@@ -19,8 +19,10 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
     ```
     '''
 
+    its = [list, tuple]
+
     if N is None:
-        if (type(x) == list and type(y) == list and type(z) == list ): 
+        if (type(x) in its and type(y) in its and type(z) in its ): 
             N = len(x)
         elif (type(x) == float and type(y) == float and type(z) == float) or (type(x) == int and type(y) == int and type(z) == int):
             N = 1
@@ -32,7 +34,7 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
     if x is not None:
         if type(x) is float or type(x) is int:
             points[:,0,:] = x
-        elif type(x) is list:
+        elif type(x) in its:
             for i in range(N):
                 points[:,0,i] = x[i]
     else:
@@ -41,7 +43,7 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
     if y is not None:
         if type(y) is float or type(y) is int:
             points[:,1,:] = y
-        elif type(y) is list:
+        elif type(y) in its:
             for i in range(N):
                 points[:,1,i] = y[i]
     else:
@@ -50,7 +52,7 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
     if z is not None:
         if type(z) is float or type(z) is int:
             points[:,2,:] = z
-        elif type(z) is list:
+        elif type(z) in its:
             for i in range(N):
                 points[:,2,i] = z[i]
     else:
