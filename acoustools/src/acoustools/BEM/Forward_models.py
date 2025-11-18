@@ -2,16 +2,18 @@
 import torch
 from torch import Tensor
 
+import vedo
 from vedo import Mesh
 from typing import Literal
 import hashlib
 import pickle
 import os
 
+
 import acoustools.Constants as Constants
 
-from acoustools.Utilities import device, DTYPE, forward_model_batched, TOP_BOARD
-from acoustools.Mesh import get_normals_as_points, board_name, get_centres_as_points, get_areas, get_barycentric_points, get_cell_verticies
+from acoustools.Utilities import device, DTYPE, forward_model_batched, TOP_BOARD, create_points
+from acoustools.Mesh import get_normals_as_points, board_name, get_centres_as_points, get_areas, get_barycentric_points, get_cell_verticies, get_centre_of_mass_as_points
 
 from acoustools.Utilities import forward_model_grad
 
@@ -32,6 +34,7 @@ def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, r
     :return: returns the partial derivative of greeens fucntion wrt y
     '''
     norms= norms.real
+
     vecs = y.real-x.real
 
  
@@ -165,9 +168,49 @@ def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float
 
 
 
+def augment_A_CHIEF(A, internal_points, CHIEF_mode:Literal['square', 'rect'] = 'square', centres=None, norms=None, areas=None, scatterer=None, k:float=Constants.k):
+     # if internal_points is not None: print(internal_points.shape)
+
+        if internal_points is not None and (internal_points.shape[1] == 3 and internal_points.shape[2] != 3):
+            internal_points = internal_points.permute(0,2,1)
+
+        if areas is None: areas = torch.tensor(scatterer.celldata["Area"], dtype=DTYPE, device=device)
+        if centres is None: centres = torch.tensor(scatterer.cell_centers().points, dtype=DTYPE, device=device)
+        if norms is None: norms = get_normals_as_points(scatterer, permute_to_points=False)
 
 
-def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0) -> Tensor:
+
+        P = internal_points.shape[1]
+        M = centres.shape[0]
+
+        m_int = centres.unsqueeze(0).unsqueeze(1)
+        int_p = internal_points.unsqueeze(2)
+        # G_block = greens(m_int,int_p, k=k) 
+        
+        int_norms = norms.unsqueeze(1)
+        G_block = -compute_green_derivative(m_int,int_p, int_norms, 1, P, M, k=k)
+        G_block = G_block * areas[None,None,:] 
+        
+        G_block_t = G_block.mT
+        zero_block = torch.zeros((1, P, P), device=device, dtype=DTYPE)
+
+        
+        # return torch.cat((A, G_block), dim=1)
+        if CHIEF_mode.lower() == 'square':
+            A_aux = torch.cat((A, G_block_t), dim=2)
+            
+            GtZ = torch.cat((G_block, zero_block), dim=2)
+            A = torch.cat((A_aux, GtZ), dim=1)
+        elif CHIEF_mode.lower() == 'rect':
+            A = torch.cat([A, G_block], dim= 1)
+        else:
+            raise RuntimeError(f"Invalid CHIEF Mode {CHIEF_mode}, should be on of [square, rect]")
+
+        return A
+
+
+
+def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0, CHIEF_mode:Literal['square', 'rect'] = 'square') -> Tensor:
     '''
     Computes A for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -179,7 +222,7 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=No
     '''
 
     
-
+    
     areas = torch.tensor(scatterer.celldata["Area"], dtype=DTYPE, device=device)
     centres = torch.tensor(scatterer.cell_centers().points, dtype=DTYPE, device=device)
     norms = get_normals_as_points(scatterer, permute_to_points=False)
@@ -201,33 +244,9 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=No
 
     if internal_points is not None:
 
-        # if internal_points is not None: print(internal_points.shape)
+        A = augment_A_CHIEF(A, internal_points, CHIEF_mode, centres, norms, areas, scatterer,k=k)
+     
 
-        P = internal_points.shape[1]
-
-        m_int = centres.unsqueeze(0).unsqueeze(1)
-        int_p = internal_points.unsqueeze(2)
-        # G_block = greens(m_int,int_p, k=k) 
-        
-        int_norms = norms.unsqueeze(1)
-        G_block = -compute_green_derivative(m_int,int_p, int_norms, 1, P, M, k=k)
-        G_block = G_block * areas[None,None,:] 
-        
-        G_block_t = G_block.mT
-        zero_block = torch.zeros((1, P, P), device=device, dtype=DTYPE)
-
-        
-        A_aux = torch.cat((A, G_block_t), dim=2)
-        GtZ = torch.cat((G_block, zero_block), dim=2)
-        A = torch.cat((A_aux, GtZ), dim=1)
-
-        # A = torch.cat([A, G_block], dim=1)
-
-        # import matplotlib.pyplot as plt
-        # plt.matshow(A.real[0,:])
-        # plt.colorbar()
-        # plt.show()
-        # exit()
 
     # print('torch.norm(A).item()',torch.norm(A).item())
     # print('A[0:6,0:6]',A[0:6,0:6])
@@ -260,7 +279,7 @@ def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tenso
     return bs   
 
  
-def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0) -> Tensor:
+def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0, return_components:bool=False, CHIEF_mode:Literal['square', 'rect'] = 'square') -> Tensor:
     '''
     Computes H for the BEM model \n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -289,7 +308,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     
 
 
-    A = compute_A(scatterer, betas=betas, a=a, c=c, k=k,internal_points=internal_points, smooth_distance=smooth_distance)
+    A = compute_A(scatterer, betas=betas, a=a, c=c, k=k,internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode)
     bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points)
 
 
@@ -308,13 +327,14 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
     # exit()
     H = H[:,:M,: ]
+    if return_components: return H,A,bs
     return H
 
 
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
                            print_lines:bool=False, cache_name:str|None=None, p_ref = Constants.P_ref, 
-                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0) -> Tensor:
+                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0, CHIEF_mode:Literal['square', 'rect'] = 'square') -> Tensor:
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -353,7 +373,7 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             H = pickle.load(open(f_name,"rb")).to(device).to(DTYPE)
         except FileNotFoundError: 
             if print_lines: print("Not found, computing H...")
-            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance)
+            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode)
             try:
                 f = open(f_name,"wb")
             except FileNotFoundError as e:
@@ -363,13 +383,13 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             f.close()
     else:
         if print_lines: print("Computing H...")
-        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance)
+        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode)
 
     return H
 
 def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
                H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None, H_method=None, 
-               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a=None, c=None, internal_points=None, smooth_distance=0) -> Tensor:
+               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a=None, c=None, internal_points=None, smooth_distance=0,  CHIEF_mode:Literal['square', 'rect'] = 'square') -> Tensor:
     '''
     Computes E in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -425,7 +445,7 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     if print_lines: print("H...")
     
     if H is None:
-        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,norms=norms, method=H_method, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance).to(DTYPE)
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,norms=norms, method=H_method, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode).to(DTYPE)
         
     if print_lines: print("G...")
     G = compute_G(points, scatterer, k=k, betas=betas,alphas=alphas, smooth_distance=smooth_distance).to(DTYPE)
@@ -444,4 +464,57 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
         return E.to(DTYPE), F.to(DTYPE), G.to(DTYPE), H.to(DTYPE)
     return E.to(DTYPE)
 
+from acoustools.Mesh import get_CHIEF_points
+def find_optimal_CHIEF_points(scatterer: Mesh, board:Tensor, k:float=Constants.k, p_ref = Constants.P_ref, start_p = None, max_N = 10, steps= 20, lr=5e-4, log=False, optimiser:torch.optim.Optimizer=torch.optim.SGD):
+
+    # point = start_p if start_p is not None else torch.tensor(scatterer.generate_random_points(1).points).unsqueeze(2).permute(2,1,0)
+    com = get_centre_of_mass_as_points(scatterer)
+    # point = com.detach().clone()
+    point   = get_CHIEF_points(scatterer, P = 25, start='surface', method='uniform', scale = 0.2, scale_mode='diameter-scale')
+
+    startA = compute_A(scatterer, k=k)
+
+
+    areas = torch.tensor(scatterer.celldata["Area"], dtype=DTYPE, device=device)
+    centres = torch.tensor(scatterer.cell_centers().points, dtype=DTYPE, device=device)
+    norms = get_normals_as_points(scatterer, permute_to_points=False)
+
+    for j in range(5):
+        if j != 0: point = torch.cat([point, com.detach().clone() + create_points(1,1,max_pos=1e-4, min_pos=1e-4)], dim=2).detach()
+        # if j != 0: 
+            # p = torch.tensor(scatterer.generate_random_points(1).points).unsqueeze(2)
+            # point = torch.cat([point, p], dim=2).detach()
+        point =  point.requires_grad_() 
+        optim = optimiser([point],lr)
+        scheduler = torch.optim.lr_scheduler.StepLR(optim,step_size=1, gamma=0.8)
+
+        for i in range(steps):
+            optim.zero_grad()       
+
+
+            A = augment_A_CHIEF(startA.clone(), internal_points=point, k=k, scatterer=scatterer, CHIEF_mode='rect', centres=centres, areas=areas, norms=norms)
+            # A = compute_A(scatterer, k=k,internal_points=point, CHIEF_mode='rect')
+            # H = compute_H(scatterer, board, p_ref=p_ref, k=k, internal_points=point, )
+            ss = torch.linalg.svdvals(A)[0]
+            # print(ss)
+            sing_val_min = ss[-1]
+
+            dists = torch.norm(com - point, p=2, dim=1)
+            # print(dists, sing_val_min)
+
+
+            objective = -1* sing_val_min 
+            if log: print(j+1,i, objective.item())
+
+            objective.backward()
+            
+
+            optim.step()
+            # scheduler.step()
+        
+            # print(com, point)
+        
+        
+
+    return point
 
