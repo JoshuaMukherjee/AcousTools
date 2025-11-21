@@ -74,7 +74,7 @@ def BEM_compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,r
         return force 
 
 def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None, sum_elements = True, use_pressure:bool=False,
-                       H:Tensor=None, diameter=c.wavelength*2,
+                       H:Tensor=None, diameter=c.wavelength*2, p_ref = c.P_ref,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
                        surface:Mesh|None=None, use_cache_H:bool=True, 
                        E:Tensor|None=None, Ex:Tensor|None=None, Ey:Tensor|None=None, Ez:Tensor|None=None,
@@ -117,8 +117,8 @@ def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|No
     
     if use_pressure:
         if E is None:
-            E = compute_E(scatterer, points, board, use_cache_H=use_cache_H, path=path, H=H,internal_points=internal_points)
-        p = propagate(activations,points,board,A=E)
+            E = compute_E(scatterer, points, board, use_cache_H=use_cache_H, path=path, H=H,internal_points=internal_points, p_ref=p_ref)
+        p = propagate(activations,points,board,A=E, p_ref=p_ref)
         pressure_square = torch.abs(p)**2
         pressure_time_average = 1/2 * pressure_square
 
@@ -129,7 +129,7 @@ def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|No
         pressure_term = 0
 
     if Ex is None or Ey is None or Ez is None:
-        Ex, Ey, Ez = BEM_forward_model_grad(points, scatterer, board, use_cache_H=use_cache_H, H=H, path=path,internal_points=internal_points)
+        Ex, Ey, Ez = BEM_forward_model_grad(points, scatterer, board, use_cache_H=use_cache_H, H=H, path=path,internal_points=internal_points, p_ref=p_ref)
     
     px = (Ex@activations).squeeze(2).unsqueeze(0)
     py = (Ey@activations).squeeze(2).unsqueeze(0)
