@@ -12,7 +12,7 @@ def gorkov(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str=
     '''
     return gorkov_analytical(activations, points, board, axis, V, **params)
 
-def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", V:float=c.V, **params) -> Tensor:
+def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", V:float=c.V, p_ref=c.P_ref, **params) -> Tensor:
     '''
     Computes the Gorkov potential using analytical derivative of the piston model \n
     :param activation: The transducer activations to use 
@@ -41,8 +41,8 @@ def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None
     if board is None:
         board = TRANSDUCERS
 
-    Fx, Fy, Fz = forward_model_grad(points, transducers=board)
-    F = forward_model_batched(points,board)
+    Fx, Fy, Fz = forward_model_grad(points, transducers=board, p_ref=p_ref)
+    F = forward_model_batched(points,board, p_ref=p_ref)
     
     p = torch.abs(F@activations)**2
 
@@ -143,7 +143,7 @@ def gorkov_autograd(activations:Tensor, points:Tensor, K1:float|None=None, K2:fl
 
 
 def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize:float = 0.000135156253,K1:float|None=None, K2:float|None=None,
-                    prop_function:FunctionType=propagate,prop_fun_args:dict={}, board:Tensor|None=None, V=c.V) -> Tensor:
+                    prop_function:FunctionType=propagate,prop_fun_args:dict={}, board:Tensor|None=None, V=c.V, p_ref=c.P_ref) -> Tensor:
     '''
     Computes the Gorkov potential using finite differences to compute derivatives \n
     :param activation: The transducer activations to use 
@@ -187,7 +187,7 @@ def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize
 
     fin_diff_points = get_finite_diff_points_all_axis(points, axis, stepsize)
 
-    pressure_points = prop_function(activations, fin_diff_points,board=board,**prop_fun_args)
+    pressure_points = prop_function(activations, fin_diff_points,board=board,p_ref=p_ref,**prop_fun_args)
     # if len(pressure_points.shape)>1:
     # pressure_points = torch.squeeze(pressure_points,2)
 
@@ -203,7 +203,7 @@ def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize
     grad_term = torch.sum(grad_abs_square,dim=1)
 
     if K1 is None or K2 is None:
-        K1_, K2_ = get_gorkov_constants()
+        K1_, K2_ = get_gorkov_constants(V=V)
         if K1 is None:
             K1 = K1_
         if K2 is None:

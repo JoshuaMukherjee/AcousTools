@@ -12,7 +12,7 @@ from vedo import Mesh
 torch.set_printoptions(linewidth=400)
 
 def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:float= 0.000135156253,K1:float|None=None, 
-                   K2:float|None=None,U_function:FunctionType=gorkov_fin_diff,U_fun_args:dict={}, board:Tensor|None=None, V=c.V) -> Tensor:
+                   K2:float|None=None,U_function:FunctionType=gorkov_fin_diff,U_fun_args:dict={}, board:Tensor|None=None, V=c.V, p_ref=c.P_ref) -> Tensor:
     '''
     Returns the force on a particle using finite differences to approximate the derivative of the gor'kov potential\n
     :param activations: Transducer hologram
@@ -36,7 +36,7 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
 
     fin_diff_points = get_finite_diff_points_all_axis(points, axis, stepsize)
     
-    U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/10 ,K1=K1,K2=K2,**U_fun_args, board=board,V=V)
+    U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/10 ,K1=K1,K2=K2,**U_fun_args, board=board,V=V, p_ref=p_ref)
     U_grads = U_points[:,N:]
     split = torch.reshape(U_grads,(B,2,-1))
     # print(split)
