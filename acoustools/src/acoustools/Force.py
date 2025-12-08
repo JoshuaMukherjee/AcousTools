@@ -9,7 +9,6 @@ from torch import Tensor
 from types import FunctionType
 from vedo import Mesh
 
-torch.set_printoptions(linewidth=400)
 
 def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:float= 0.000135156253,K1:float|None=None, 
                    K2:float|None=None,U_function:FunctionType=gorkov_fin_diff,U_fun_args:dict={}, board:Tensor|None=None, V=c.V, p_ref=c.P_ref) -> Tensor:
