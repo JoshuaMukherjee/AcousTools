@@ -7,7 +7,6 @@ from acoustools.Mesh import translate, merge_scatterers, get_centres_as_points, 
 import torch
 from torch import Tensor
 from types import FunctionType
-from vedo import Mesh
 
 
 def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:float= 0.000135156253,K1:float|None=None, 
