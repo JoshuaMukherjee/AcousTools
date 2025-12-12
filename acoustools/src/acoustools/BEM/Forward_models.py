@@ -210,7 +210,8 @@ def augment_A_CHIEF(A, internal_points, CHIEF_mode:Literal['square', 'rect'] = '
 
 
 
-def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0, CHIEF_mode:Literal['square', 'rect'] = 'square') -> Tensor:
+
+def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0, CHIEF_mode:Literal['square', 'rect'] = 'square', h=None, BM_alpha=None, BM_mode='fd') -> Tensor:
     '''
     Computes A for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -228,8 +229,27 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=No
     norms = get_normals_as_points(scatterer, permute_to_points=False)
 
     M = centres.shape[0]
+    # if internal_points is not None:
+        # M = M + internal_points.shape[2]
+
+    if h is not None: #We want to do fin-diff BM
+        if BM_alpha is None: #We are in the grad step
+            centres = centres - h * norms.squeeze(0)
+        else:
+            if BM_mode != 'analytical':
+                Aminus = compute_A(scatterer=scatterer, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=None)
+                Aplus = compute_A(scatterer=scatterer, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=-h, BM_alpha=None)
+
+            else: #This will need to move as h is not required for analytical
+                A_grad = torch.stack(__get_G_partial(centres.unsqueeze(0).permute(0,2,1), scatterer, None, k=k), dim=1)
+                # A_grad = A_grad.permute(0,1,3,2)
+
+                n = norms.permute(0,2,1).unsqueeze(3)
+                A_norm = -1 * torch.sum(A_grad * n , dim=1)
+            
     m = centres.expand((M, M, 3))
     m_prime = centres.unsqueeze(1).expand((M, M, 3))
+
 
     partial_greens = compute_green_derivative(m.unsqueeze_(0), m_prime.unsqueeze_(0), norms, 1, M, M, a=a, c=c, k=k,smooth_distance=smooth_distance)
     
@@ -238,22 +258,33 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=No
         green = greens(m, m_prime, k=k) * 1j * k * betas
         partial_greens += green
 
-    # Core double-layer operator
     A = -partial_greens * areas
     A[:, torch.eye(M, dtype=torch.bool, device=device)] = 0.5
+    
 
-    if internal_points is not None:
+    if internal_points is not None: #CHIEF
 
         A = augment_A_CHIEF(A, internal_points, CHIEF_mode, centres, norms, areas, scatterer,k=k)
      
 
+    if BM_alpha is not None: #Burton-Miller F.D
 
-    # print('torch.norm(A).item()',torch.norm(A).item())
-    # print('A[0:6,0:6]',A[0:6,0:6])
+        if BM_mode == 'analytical':
+            A_grad = A_norm
+        
+        else:
+            A_grad = (Aplus - Aminus) / (2*h)
+
+
+        A_grad[:, torch.eye(A_grad.shape[2], dtype=torch.bool, device=device)] = 0.5     
+        A = A - BM_alpha * A_grad
+
+        A[:, torch.eye(A_grad.shape[2], dtype=torch.bool, device=device)] = 0.5     
+    
     return A.to(DTYPE)
 
  
-def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tensor|None=None, a=None, c=None, k=Constants.k, internal_points=None) -> Tensor:
+def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tensor|None=None, a=None, c=None, k=Constants.k, internal_points=None, h=None, BM_alpha=None, BM_mode='analytical') -> Tensor:
     '''
     Computes B for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -263,23 +294,49 @@ def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tenso
     :param internal_points: The internal points to use for CHIEF based BEM
     :return B: B tensor
     '''
+
+    if norms is None:
+        norms = (torch.zeros_like(board) + torch.tensor([0,0,1], device=device)) * torch.sign(board[:,2].real).unsqueeze(1).to(DTYPE)
+
+
     centres = torch.tensor(scatterer.cell_centers().points).to(DTYPE).to(device).T.unsqueeze_(0)
+    if h is not None: #Burton-Miller F.D
+        mesh_norms = get_normals_as_points(scatterer, permute_to_points=True)
+        if BM_alpha is None: #We are in the grad step
+            centres = centres - h * mesh_norms.squeeze(0)
+        elif BM_mode != 'analytical':
+            bs_grad = compute_bs(scatterer=scatterer, board=board, p_ref=p_ref, norms=norms, a=a, c=c, k=k, internal_points=internal_points,h=h, BM_alpha=None)
+
     bs = forward_model_batched(centres,board, p_ref=p_ref,norms=norms,k=k) 
 
 
-    if internal_points is not None:
+    if internal_points is not None: #CHIEF
         F_int = forward_model_batched(internal_points.permute(0,2,1), board, p_ref=p_ref,norms=norms,k=k)
         bs = torch.cat([bs, F_int], dim=1)
     
-    if a is not None:
-        f_mod = torch.sum(forward_model_batched(a,board, p_ref=p_ref,norms=norms), dim=1, keepdim=True)
+    if a is not None: #Modified Greens function
+        f_mod = torch.sum(forward_model_batched(a,board, p_ref=p_ref,norms=norms, k=k), dim=1, keepdim=True)
         bs += c * f_mod
     
+    
+    if BM_alpha is not None: #Burton-Miller
+        
+        if BM_mode == 'analytical': 
+            bs_a_grad = torch.stack(forward_model_grad(centres, board, p_ref=p_ref, k=k), dim=1)
+            
+
+
+            bs_norm_grad = torch.sum(bs_a_grad * mesh_norms.unsqueeze(3), dim=1)
+            bs = bs - BM_alpha * bs_norm_grad
+        else:
+            bs_grad = (bs-bs_grad)/h
+            bs = bs - BM_alpha * (bs-bs_grad)/h
+
 
     return bs   
 
  
-def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0, return_components:bool=False, CHIEF_mode:Literal['square', 'rect'] = 'square') -> Tensor:
+def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0, return_components:bool=False, CHIEF_mode:Literal['square', 'rect'] = 'square', h=None, BM_alpha=None) -> Tensor:
     '''
     Computes H for the BEM model \n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -308,12 +365,9 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     
 
 
-    A = compute_A(scatterer, betas=betas, a=a, c=c, k=k,internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode)
-    bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points)
+    A = compute_A(scatterer, betas=betas, a=a, c=c, k=k,internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha)
+    bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points, h=h, BM_alpha=BM_alpha)
 
-
-    # print(A.shape, bs.shape)
-    
     if use_LU:
         LU, pivots = torch.linalg.lu_factor(A)
         H = torch.linalg.lu_solve(LU, pivots, bs)
@@ -334,7 +388,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
                            print_lines:bool=False, cache_name:str|None=None, p_ref = Constants.P_ref, 
-                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0, CHIEF_mode:Literal['square', 'rect'] = 'square') -> Tensor:
+                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0, CHIEF_mode:Literal['square', 'rect'] = 'square', h=None, BM_alpha=None) -> Tensor:
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -373,7 +427,7 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             H = pickle.load(open(f_name,"rb")).to(device).to(DTYPE)
         except FileNotFoundError: 
             if print_lines: print("Not found, computing H...")
-            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode)
+            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode,h=h, BM_alpha=BM_alpha)
             try:
                 f = open(f_name,"wb")
             except FileNotFoundError as e:
@@ -383,13 +437,13 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             f.close()
     else:
         if print_lines: print("Computing H...")
-        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode)
+        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha)
 
     return H
 
 def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
                H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None, H_method=None, 
-               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a=None, c=None, internal_points=None, smooth_distance=0,  CHIEF_mode:Literal['square', 'rect'] = 'square') -> Tensor:
+               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a=None, c=None, internal_points=None, smooth_distance=0,  CHIEF_mode:Literal['square', 'rect'] = 'square', h=None, BM_alpha=None) -> Tensor:
     '''
     Computes E in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -445,7 +499,7 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     if print_lines: print("H...")
     
     if H is None:
-        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,norms=norms, method=H_method, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode).to(DTYPE)
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,norms=norms, method=H_method, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha).to(DTYPE)
         
     if print_lines: print("G...")
     G = compute_G(points, scatterer, k=k, betas=betas,alphas=alphas, smooth_distance=smooth_distance).to(DTYPE)
@@ -465,6 +519,8 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     return E.to(DTYPE)
 
 from acoustools.Mesh import get_CHIEF_points
+
+
 def find_optimal_CHIEF_points(scatterer: Mesh, board:Tensor, k:float=Constants.k, p_ref = Constants.P_ref, start_p = None, max_N = 10, steps= 20, lr=5e-4, log=False, optimiser:torch.optim.Optimizer=torch.optim.SGD):
 
     # point = start_p if start_p is not None else torch.tensor(scatterer.generate_random_points(1).points).unsqueeze(2).permute(2,1,0)
@@ -518,3 +574,95 @@ def find_optimal_CHIEF_points(scatterer: Mesh, board:Tensor, k:float=Constants.k
 
     return point
 
+
+
+
+def __get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False, k=Constants.k) -> tuple[Tensor, Tensor, Tensor]:
+    '''
+    @private
+    here so it can be used in Burton-Miller BEM above - not ideal for it to be here so this should be refactored at some point
+    Computes gradient of the G matrix in BEM \n
+    :param points: Points to propagate to
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Ignored
+    :param return_components: if true will return the subparts used to compute
+    :return: Gradient of the G matrix in BEM
+    '''
+    #Bk3. Pg. 26
+    # if board is None:
+    #     board = TRANSDUCERS
+
+    areas = get_areas(scatterer)
+    centres = get_centres_as_points(scatterer)
+    normals = get_normals_as_points(scatterer)
+
+
+    N = points.shape[2]
+    M = centres.shape[2]
+
+
+    # points = points.unsqueeze(3).expand(-1,-1,-1,M)
+    # centres = centres.unsqueeze(2).expand(-1,-1,N,-1)
+    points  = points.unsqueeze(3)  # [B, 3, N, 1]
+    centres = centres.unsqueeze(2)  # [B, 3, 1, M]
+
+    diff = (points - centres)
+    diff_square = diff**2
+    distances = torch.sqrt(torch.sum(diff_square, 1))
+    distances_expanded = distances.unsqueeze(1)#.expand((1,3,N,M))
+    distances_expanded_square = distances_expanded**2
+    distances_expanded_cube = distances_expanded**3
+
+    # G  =  e^(ikd) / 4pi d
+    G = areas * torch.exp(1j * k * distances_expanded) / (4*3.1415*distances_expanded)
+
+    #Ga =  [i*da * e^{ikd} * (kd+i) / 4pi d^2]
+
+    #d = distance
+    #da = -(at - a)^2 / d
+    da = diff / distances_expanded
+    kd = k * distances_expanded
+    phase = torch.exp(1j*kd)
+    Ga =  areas * ( (1j*da*phase * (kd + 1j))/ (4*3.1415*distances_expanded_square))
+
+    #P = (ik - 1/d)
+    P = (1j*k - 1/distances_expanded)
+    #Pa = da / d^2 = (diff / d^2) /d
+    Pa = diff / distances_expanded_cube
+
+    #C = (diff \cdot normals) / distances
+
+    nx = normals[:,0]
+    ny = normals[:,1]
+    nz = normals[:,2]
+
+    dx = diff[:,0,:]
+    dy = diff[:,1,:]
+    dz = diff[:,2,:]
+
+    n_dot_d = nx*dx + ny*dy + nz*dz
+
+    C = (n_dot_d) / distances
+
+
+    distance_square = distances**2
+
+
+    Cx = 1/distance_square * (nx * distances - (n_dot_d * dx) / distances)
+    Cy = 1/distance_square * (ny * distances - (n_dot_d * dy) / distances)
+    Cz = 1/distance_square * (nz * distances - (n_dot_d * dz) / distances)
+
+    Cx.unsqueeze_(1)
+    Cy.unsqueeze_(1)
+    Cz.unsqueeze_(1)
+
+    Ca = torch.cat([Cx, Cy, Cz],axis=1)
+
+    grad_G = Ga*P*C + G*P*Ca + G*Pa*C
+
+    grad_G =  -grad_G.to(DTYPE)
+
+    if return_components:
+        return grad_G[:,0,:], grad_G[:,1,:], grad_G[:,2,:], G,P,C,Ga,Pa, Ca
+    
+    return grad_G[:,0,:], grad_G[:,1,:], grad_G[:,2,:]
