@@ -1,12 +1,11 @@
 from acoustools.Utilities import create_points, TOP_BOARD, BOTTOM_BOARD, TRANSDUCERS, add_lev_sig
 from acoustools.Solvers import wgs, gspat, iterative_backpropagation, naive, gorkov_target
 from acoustools.Levitator import LevitatorController
-from acoustools.Mesh import cut_mesh_to_walls, load_scatterer
+from acoustools.Mesh import load_scatterer
 from acoustools.BEM import compute_E, get_cache_or_compute_H
 
 import torch, time, pickle
 from vedo import Mesh
-import vedo
 from torch import Tensor
 from types import FunctionType
 

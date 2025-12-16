@@ -1,11 +1,10 @@
 from ctypes import CDLL, POINTER
 import ctypes
 
-import torch, os, signal
+import torch, os
 
-from acoustools.Utilities import get_convert_indexes, batch_list
+from acoustools.Utilities import get_convert_indexes
 from torch import Tensor
-from typing import Literal
 
 
 class LevitatorController():
