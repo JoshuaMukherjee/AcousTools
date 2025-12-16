@@ -31,7 +31,7 @@ def scatterer_file_name(scatterer:Mesh) ->str:
     
     '''
 
-    f_name = str(list(scatterer.coordinates))
+    f_name = str(list(scatterer.coordinates)) + str(scatterer.cell_normals)
     return f_name
 
 def load_scatterer(path:str, compute_areas:bool = True, compute_normals:bool=True, dx:float=0,
@@ -73,7 +73,8 @@ def load_scatterer(path:str, compute_areas:bool = True, compute_normals:bool=Tru
         rotate(scatterer,(0,0,1),rotz)
 
         translate(scatterer,dx,dy,dz)
-
+    else:
+        raise ValueError(f"File not found at {path} - please check the path")
 
     return scatterer
 
@@ -92,6 +93,7 @@ def mesh_to_board(path:str, compute_areas:bool = True, compute_normals:bool=True
     :param rotz: Rotation around the z axis to apply
     :param root_path: The folder containing the file, the scatterer to be loaded will be loaded from `root_path+path`
     :param flip_normals: If True will flip the normals 
+    :param diameter: Size to scale the mesh to in thr x-axis
     :return: The `vedo` `Mesh` of the scatterer
     '''
     
@@ -343,6 +345,9 @@ def get_cell_verticies(*scatterers:Mesh):
 
 
 def get_barycentric_points(*scatterers:Mesh, N=7, sum=True):
+    '''
+    @private
+    '''
     
 
     if N != 7: raise ValueError("Only N=7 is supported") #Allow for N as a parameter incase it it implemented in future

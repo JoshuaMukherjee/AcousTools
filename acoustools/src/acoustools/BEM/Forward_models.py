@@ -21,7 +21,7 @@ from acoustools.Utilities import forward_model_grad
 
 
 
-def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False, a=None, c=None, k=Constants.k, smooth_distance=0) -> Tensor:
+def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False, a:Tensor=None, c:Tensor=None, k=Constants.k, smooth_distance:float=0) -> Tensor:
     '''
     Computes the derivative of greens function \n
     :param y: y in greens function - location of the source of sound
@@ -31,6 +31,10 @@ def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, r
     :param N: size of x
     :param M: size of y
     :param return_components: if true will return the subparts used to compute the derivative \n
+    :param k: Wavenumber to use
+    :param smooth_distance: amount to add to distances to avoid explosion over small values
+    :param a: position to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
+    :param c: constant to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
     :return: returns the partial derivative of greeens fucntion wrt y
     '''
     norms= norms.real
@@ -108,7 +112,7 @@ def greens(y:Tensor,x:Tensor, k:float=Constants.k, distance=None):
 
     return green
 
-def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor=1, betas:float|Tensor = 0, a=None, c=None, smooth_distance=0) -> Tensor:
+def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor=1, betas:float|Tensor = 0, a:Tensor=None, c:Tensor=None, smooth_distance:float=0) -> Tensor:
     '''
     Computes G in the BEM model\n
     :param points: The points to propagate to
@@ -116,6 +120,9 @@ def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float
     :param k: wavenumber
     :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements. If Tensor, should have shape [B,M] where M is the mesh size, B is the batch size and will normally be 1
     :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
+    :param smooth_distance: amount to add to distances to avoid explosion over small values
+    :param a: position to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
+    :param c: constant to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
     :return G: `torch.Tensor` of G
     '''
     torch.cuda.empty_cache()
@@ -168,56 +175,76 @@ def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float
 
 
 
-def augment_A_CHIEF(A, internal_points, CHIEF_mode:Literal['square', 'rect'] = 'square', centres=None, norms=None, areas=None, scatterer=None, k:float=Constants.k):
+def augment_A_CHIEF(A:Tensor, internal_points:Tensor, CHIEF_mode:Literal['square', 'rect'] = 'square', centres:Tensor=None, norms:Tensor=None, areas:Tensor=None, scatterer:Mesh=None, k:float=Constants.k):
+    '''
+    Augments an A matrix with CHIEF BEM equations\n
+    
+    :param A: A matrix
+    :param internal_points:  The internal points to use for CHIEF based BEM
+    :param CHIEF_mode: Mode for CHIEF -> augment A to be either rectangular (only appended to one axis) or square (appended to both with a 0 block in the corner)
+    :param centres: mesh centres
+    :param norms: mesh normals
+    :param areas: mesh aeras
+    :param scatterer: mesh
+    :param k: wavenumber
+    '''
      # if internal_points is not None: print(internal_points.shape)
 
-        if internal_points is not None and (internal_points.shape[1] == 3 and internal_points.shape[2] != 3):
-            internal_points = internal_points.permute(0,2,1)
+    if internal_points is not None and (internal_points.shape[1] == 3 and internal_points.shape[2] != 3):
+        internal_points = internal_points.permute(0,2,1)
 
-        if areas is None: areas = torch.tensor(scatterer.celldata["Area"], dtype=DTYPE, device=device)
-        if centres is None: centres = torch.tensor(scatterer.cell_centers().points, dtype=DTYPE, device=device)
-        if norms is None: norms = get_normals_as_points(scatterer, permute_to_points=False)
+    if areas is None: areas = torch.tensor(scatterer.celldata["Area"], dtype=DTYPE, device=device)
+    if centres is None: centres = torch.tensor(scatterer.cell_centers().points, dtype=DTYPE, device=device)
+    if norms is None: norms = get_normals_as_points(scatterer, permute_to_points=False)
 
 
 
-        P = internal_points.shape[1]
-        M = centres.shape[0]
+    P = internal_points.shape[1]
+    M = centres.shape[0]
 
-        m_int = centres.unsqueeze(0).unsqueeze(1)
-        int_p = internal_points.unsqueeze(2)
-        # G_block = greens(m_int,int_p, k=k) 
+    m_int = centres.unsqueeze(0).unsqueeze(1)
+    int_p = internal_points.unsqueeze(2)
+    # G_block = greens(m_int,int_p, k=k) 
+    
+    int_norms = norms.unsqueeze(1)
+    G_block = -compute_green_derivative(m_int,int_p, int_norms, 1, P, M, k=k)
+    G_block = G_block * areas[None,None,:] 
+    
+    G_block_t = G_block.mT
+    zero_block = torch.zeros((1, P, P), device=device, dtype=DTYPE)
+
+    
+    # return torch.cat((A, G_block), dim=1)
+    if CHIEF_mode.lower() == 'square':
+        A_aux = torch.cat((A, G_block_t), dim=2)
         
-        int_norms = norms.unsqueeze(1)
-        G_block = -compute_green_derivative(m_int,int_p, int_norms, 1, P, M, k=k)
-        G_block = G_block * areas[None,None,:] 
-        
-        G_block_t = G_block.mT
-        zero_block = torch.zeros((1, P, P), device=device, dtype=DTYPE)
-
-        
-        # return torch.cat((A, G_block), dim=1)
-        if CHIEF_mode.lower() == 'square':
-            A_aux = torch.cat((A, G_block_t), dim=2)
-            
-            GtZ = torch.cat((G_block, zero_block), dim=2)
-            A = torch.cat((A_aux, GtZ), dim=1)
-        elif CHIEF_mode.lower() == 'rect':
-            A = torch.cat([A, G_block], dim= 1)
-        else:
-            raise RuntimeError(f"Invalid CHIEF Mode {CHIEF_mode}, should be on of [square, rect]")
+        GtZ = torch.cat((G_block, zero_block), dim=2)
+        A = torch.cat((A_aux, GtZ), dim=1)
+    elif CHIEF_mode.lower() == 'rect':
+        A = torch.cat([A, G_block], dim= 1)
+    else:
+        raise RuntimeError(f"Invalid CHIEF Mode {CHIEF_mode}, should be on of [square, rect]")
 
         return A
 
 
 
 
-def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0, CHIEF_mode:Literal['square', 'rect'] = 'square', h=None, BM_alpha=None, BM_mode='fd') -> Tensor:
+def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, BM_mode:str='fd') -> Tensor:
     '''
     Computes A for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
     :param k: wavenumber
     :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
+    :param smooth_distance: amount to add to distances to avoid explosion over small values
+    :param a: position to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
+    :param c: constant to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
     :param internal_points: The internal points to use for CHIEF based BEM
+    :param CHIEF_mode: Mode for CHIEF -> augment A to be either rectangular (only appended to one axis) or square (appended to both with a 0 block in the corner)
+    :param h: finite difference step for Burton-Miller BEM
+    :param BM_alpha: constant alpha to use in Burton-Miller BEM
+    :param BM_mode: Mode to use for Burton-Miller BEM - should be fd for finite differences
+    
 
     :return A: A tensor
     '''
@@ -284,14 +311,21 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a=No
     return A.to(DTYPE)
 
  
-def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tensor|None=None, a=None, c=None, k=Constants.k, internal_points=None, h=None, BM_alpha=None, BM_mode='analytical') -> Tensor:
+def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tensor|None=None, a:Tensor=None, c:Tensor=None, k=Constants.k, internal_points:Tensor=None, h:float=None, BM_alpha:complex=None, BM_mode:str='analytical') -> Tensor:
     '''
     Computes B for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
     :param board: Transducers to use 
     :param p_ref: The value to use for p_ref
     :param norms: Tensor of normals for transduers
+    :param a: position to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
+    :param c: constant to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
     :param internal_points: The internal points to use for CHIEF based BEM
+    :param CHIEF_mode: Mode for CHIEF -> augment A to be either rectangular (only appended to one axis) or square (appended to both with a 0 block in the corner)
+    :param h: finite difference step for Burton-Miller BEM
+    :param BM_alpha: constant alpha to use in Burton-Miller BEM
+    :param BM_mode: Mode to use for Burton-Miller BEM - should be analytical
+    :param k: wavenumber
     :return B: B tensor
     '''
 
@@ -336,7 +370,8 @@ def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tenso
     return bs   
 
  
-def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0, return_components:bool=False, CHIEF_mode:Literal['square', 'rect'] = 'square', h=None, BM_alpha=None) -> Tensor:
+def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0, 
+              a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, return_components:bool=False, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None) -> Tensor:
     '''
     Computes H for the BEM model \n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -348,7 +383,12 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     :param k: wavenumber
     :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
     :param internal_points: The internal points to use for CHIEF based BEM
-
+    :param a: position to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
+    :param c: constant to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
+    :param smooth_distance: amount to add to distances to avoid explosion over small values
+    :param CHIEF_mode: Mode for CHIEF -> augment A to be either rectangular (only appended to one axis) or square (appended to both with a 0 block in the corner)
+    :param h: finite difference step for Burton-Miller BEM
+    :param BM_alpha: constant alpha to use in Burton-Miller BEM
     :return H: H
     '''
 
@@ -388,20 +428,29 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
                            print_lines:bool=False, cache_name:str|None=None, p_ref = Constants.P_ref, 
-                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k, betas:float|Tensor = 0, a=None, c=None, internal_points=None, smooth_distance=0, CHIEF_mode:Literal['square', 'rect'] = 'square', h=None, BM_alpha=None) -> Tensor:
+                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k, betas:float|Tensor = 0, a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None) -> Tensor:
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\n
+
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
-    :param  board: Transducers to use 
-    :param use_cache_H_grad: If true uses the cache system, otherwise computes H and does not save it
-    :param path: path to folder containing `BEMCache/ `
-    :param print_lines: if true prints messages detaling progress
-    :param method: Method to use to compute H: One of OLS (Least Squares), LU. (LU decomposition). If INV (or anything else) will use `torch.linalg.solve`
+    :param board: Transducers to use 
+    :param use_LU: if True computes H with LU decomposition, otherwise solves using standard linear inversion
+    :param use_OLS: if True computes H with OLS, otherwise solves using standard linear inversion
     :param p_ref: The value to use for p_ref
     :param norms: Tensor of normals for transduers
     :param k: wavenumber
     :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
     :param internal_points: The internal points to use for CHIEF based BEM
+    :param a: position to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
+    :param c: constant to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
+    :param smooth_distance: amount to add to distances to avoid explosion over small values
+    :param CHIEF_mode: Mode for CHIEF -> augment A to be either rectangular (only appended to one axis) or square (appended to both with a 0 block in the corner)
+    :param h: finite difference step for Burton-Miller BEM
+    :param BM_alpha: constant alpha to use in Burton-Miller BEM
+    :param use_cache_H: If true uses the cache system, otherwise computes H and does not save it
+    :param path: path to folder containing `BEMCache/ `
+    :param print_lines: if true prints messages detaling progress
+    :param method: Method to use to compute H: One of OLS (Least Squares), LU. (LU decomposition). If INV (or anything else) will use `torch.linalg.solve`
     :return H: H tensor
     '''
 
@@ -417,7 +466,9 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
     if use_cache_H:
         
         if cache_name is None:
-            cache_name = scatterer.filename+"--"+ board_name(board) + '--' + str(p_ref) + '--' + str(k)
+            ps = locals()
+            ps.__delitem__('scatterer')
+            cache_name = scatterer.filename+"--" + str(ps)
             cache_name = hashlib.md5(cache_name.encode()).hexdigest()
         f_name = path+"/BEMCache/"  +  cache_name + ".bin"
         # print(f_name)
@@ -442,23 +493,29 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
     return H
 
 def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
-               H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None, H_method=None, 
-               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a=None, c=None, internal_points=None, smooth_distance=0,  CHIEF_mode:Literal['square', 'rect'] = 'square', h=None, BM_alpha=None) -> Tensor:
+               H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None, H_method:Literal['OLS','LU', 'INV']=None, 
+               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0,  CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None) -> Tensor:
     '''
     Computes E in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
-    :param board: Transducers to use, if `None` then `acoustools.Utilities.TOP_BOARD` is used
-    :param use_cache_H_grad: If true uses the cache system, otherwise computes H and does not save it
-    :param print_lines: if true prints messages detaling progress
-    :param H: Precomputed H - if None H will be compute
-    :param path: path to folder containing `BEMCache/`
-    :param return_components: if true will return the subparts used to compute, F,G,H
+    :param board: Transducers to use 
+    :param use_LU: if True computes H with LU decomposition, otherwise solves using standard linear inversion
+    :param use_OLS: if True computes H with OLS, otherwise solves using standard linear inversion
     :param p_ref: The value to use for p_ref
     :param norms: Tensor of normals for transduers
     :param k: wavenumber
-    :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
     :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
     :param internal_points: The internal points to use for CHIEF based BEM
+    :param a: position to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
+    :param c: constant to use for a modified-green's function based BEM formulation (see (18) in `Eliminating the fictitious frequency problem in BEM solutions of the external Helmholtz equation` for more details)
+    :param smooth_distance: amount to add to distances to avoid explosion over small values
+    :param CHIEF_mode: Mode for CHIEF -> augment A to be either rectangular (only appended to one axis) or square (appended to both with a 0 block in the corner)
+    :param h: finite difference step for Burton-Miller BEM
+    :param BM_alpha: constant alpha to use in Burton-Miller BEM
+    :param use_cache_H: If true uses the cache system, otherwise computes H and does not save it
+    :param path: path to folder containing `BEMCache/ `
+    :param print_lines: if true prints messages detaling progress
+    :param method: Method to use to compute H: One of OLS (Least Squares), LU. (LU decomposition). If INV (or anything else) will use `torch.linalg.solve`
 
     :return E: Propagation matrix for BEM E
 
@@ -522,6 +579,25 @@ from acoustools.Mesh import get_CHIEF_points
 
 
 def find_optimal_CHIEF_points(scatterer: Mesh, board:Tensor, k:float=Constants.k, p_ref = Constants.P_ref, start_p = None, max_N = 10, steps= 20, lr=5e-4, log=False, optimiser:torch.optim.Optimizer=torch.optim.SGD):
+    '''
+    @private
+    Docstring for find_optimal_CHIEF_points
+    
+    :param scatterer: Description
+    :type scatterer: Mesh
+    :param board: Description
+    :type board: Tensor
+    :param k: Description
+    :type k: float
+    :param p_ref: Description
+    :param start_p: Description
+    :param max_N: Description
+    :param steps: Description
+    :param lr: Description
+    :param log: Description
+    :param optimiser: Description
+    :type optimiser: torch.optim.Optimizer
+    '''
 
     # point = start_p if start_p is not None else torch.tensor(scatterer.generate_random_points(1).points).unsqueeze(2).permute(2,1,0)
     com = get_centre_of_mass_as_points(scatterer)
