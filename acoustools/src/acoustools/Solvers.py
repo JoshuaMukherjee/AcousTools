@@ -3,7 +3,6 @@ from acoustools.Optimise.Constraints import constrain_phase_only
 from acoustools.Constraints import constrain_amplitude, constrain_field, constrain_field_weighted
 from acoustools.Optimise.Objectives import target_gorkov_BEM_mse_sine_objective
 from acoustools.Optimise.Constraints import sine_amplitude
-from acoustools.BEM import compute_E
 import torch
 
 from torch import Tensor

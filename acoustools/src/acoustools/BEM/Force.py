@@ -3,7 +3,7 @@ from acoustools.BEM import BEM_forward_model_second_derivative_mixed, BEM_forwar
 from acoustools.Utilities import TRANSDUCERS, propagate
 from acoustools.Force import force_mesh
 from acoustools.Mesh import load_scatterer, get_centres_as_points, get_normals_as_points, get_areas, scale_to_diameter,\
-    centre_scatterer, translate, merge_scatterers, get_edge_data, get_centre_of_mass_as_points, get_volume
+    centre_scatterer, translate, merge_scatterers, get_centre_of_mass_as_points, get_volume
 from acoustools.Gorkov import get_gorkov_constants
 
 

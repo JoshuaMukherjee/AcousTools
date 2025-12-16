@@ -2,18 +2,16 @@
 import torch
 from torch import Tensor
 
-import vedo
 from vedo import Mesh
 from typing import Literal
 import hashlib
 import pickle
-import os
 
 
 import acoustools.Constants as Constants
 
 from acoustools.Utilities import device, DTYPE, forward_model_batched, TOP_BOARD, create_points
-from acoustools.Mesh import get_normals_as_points, board_name, get_centres_as_points, get_areas, get_barycentric_points, get_cell_verticies, get_centre_of_mass_as_points
+from acoustools.Mesh import get_normals_as_points, get_centres_as_points, get_areas, get_centre_of_mass_as_points
 
 from acoustools.Utilities import forward_model_grad
 

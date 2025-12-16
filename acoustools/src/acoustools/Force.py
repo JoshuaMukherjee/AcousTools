@@ -1,8 +1,6 @@
 from acoustools.Gorkov import gorkov_fin_diff, get_finite_diff_points_all_axis, get_gorkov_constants
 from acoustools.Utilities import forward_model_batched, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed, TRANSDUCERS, propagate, DTYPE
 import acoustools.Constants as c
-# from acoustools.BEM import grad_H, grad_2_H, get_cache_or_compute_H, get_cache_or_compute_H_gradients
-from acoustools.Mesh import translate, merge_scatterers, get_centres_as_points, get_areas, get_normals_as_points
 
 import torch
 from torch import Tensor
