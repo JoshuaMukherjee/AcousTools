@@ -26,6 +26,9 @@ def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,boar
     :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
     :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
     :param internal_points: The internal points to use for CHIEF based BEM
+    :param smooth_distance: amount to add to distances to avoid explosion over small values
+    :param h: finite difference step for Burton-Miller BEM
+    :param BM_alpha: constant alpha to use in Burton-Miller BEM
 
     :return pressure: complex pressure at points
     '''
@@ -56,6 +59,9 @@ def propagate_BEM_pressure(activations:Tensor,points:Tensor,scatterer:Mesh|None=
     :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
     :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
     :param internal_points: The internal points to use for CHIEF based BEM
+    :param smooth_distance: amount to add to distances to avoid explosion over small values
+    :param h: finite difference step for Burton-Miller BEM
+    :param BM_alpha: constant alpha to use in Burton-Miller BEM
 
     
     :param use_cache_H: If True uses the cache system to load and save the H matrix. Default `True`
@@ -115,6 +121,9 @@ def propagate_BEM_phase(activations:Tensor,points:Tensor,scatterer:Mesh|None=Non
     :param alphas: Absorbance of each element, can be Tensor for element-wise attribution or a number for all elements
     :param betas: Ratio of impedances of medium and scattering material for each element, can be Tensor for element-wise attribution or a number for all elements
     :param internal_points: The internal points to use for CHIEF based BEM
+    :param smooth_distance: amount to add to distances to avoid explosion over small values
+    :param h: finite difference step for Burton-Miller BEM
+    :param BM_alpha: constant alpha to use in Burton-Miller BEM
 
     :return pressure: complex pressure at points
     '''
