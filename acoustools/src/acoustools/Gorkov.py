@@ -6,13 +6,17 @@ from torch import Tensor
 from types import FunctionType
 
 
-def gorkov(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", V:float=c.V, **params) -> Tensor:
+def gorkov(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", V:float=c.V, p_ref=c.P_ref, k=c.k, transducer_radius = c.radius,
+                        medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p, **params) -> Tensor:
     '''
     Use to compute the gorkov potential at a point. Alias for `src.acoustools.Gorkov.gorkov_analytical`
     '''
-    return gorkov_analytical(activations, points, board, axis, V, **params)
+    return gorkov_analytical(activations, points, board, axis, V=V, p_ref=p_ref, k=k, transducer_radius=transducer_radius, 
+                             medium_density=medium_density, medium_speed=medium_speed, particle_density=particle_density,particle_speed=particle_speed , **params)
 
-def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", V:float=c.V, p_ref=c.P_ref, **params) -> Tensor:
+def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", board_norms = None,
+                        V:float=c.V, p_ref=c.P_ref, k=c.k, transducer_radius = c.radius, 
+                        medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p , **params) -> Tensor:
     '''
     Computes the Gorkov potential using analytical derivative of the piston model \n
     :param activation: The transducer activations to use 
@@ -41,8 +45,8 @@ def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None
     if board is None:
         board = TRANSDUCERS
 
-    Fx, Fy, Fz = forward_model_grad(points, transducers=board, p_ref=p_ref)
-    F = forward_model_batched(points,board, p_ref=p_ref)
+    Fx, Fy, Fz = forward_model_grad(points, transducers=board, p_ref=p_ref, k=k, transducer_radius=transducer_radius)
+    F = forward_model_batched(points,board, p_ref=p_ref, k=k, transducer_radius=transducer_radius)
     
     p = torch.abs(F@activations)**2
 
@@ -52,7 +56,7 @@ def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None
 
     grad  = torch.cat((px,py,pz),dim=2)
 
-    K1, K2 = get_gorkov_constants(V=V)
+    K1, K2 = get_gorkov_constants(V=V, c_0=medium_speed, c_p=particle_speed, p_0=medium_density, p_p=particle_density)
     g = (torch.sum(torch.abs(grad)**2, dim=2, keepdim=True))
     
     # K1 = 1/4*V*(1/(c.c_0**2*c.p_0) - 1/(c.c_p**2*c.p_p))
@@ -83,8 +87,9 @@ def get_gorkov_constants(V=c.V, p_0 = c.p_0, p_p=c.p_p, c_0=c.c_0, c_p=c.c_p, an
 
     return K1, K2
 
-def gorkov_autograd(activations:Tensor, points:Tensor, K1:float|None=None, K2:float|None=None, 
-                    retain_graph:bool=False,board:Tensor|None=None,**params) -> Tensor:
+def gorkov_autograd(activations:Tensor, points:Tensor, K1:float|None=None, K2:float|None=None, V:float=c.V, p_ref=c.P_ref, k=c.k, transducer_radius = c.radius,
+                     medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p,
+                     retain_graph:bool=False,board:Tensor|None=None, board_norms = None,**params) -> Tensor:
     '''
     Computes the Gorkov potential using pytorch's autograd system\n
     :param activation: The transducer activations to use 
@@ -123,12 +128,12 @@ def gorkov_autograd(activations:Tensor, points:Tensor, K1:float|None=None, K2:fl
     if len(activations.shape) < 3:
         activations.unsqueeze_(0)    
     
-    pressure = propagate(activations.to(DTYPE),var_points,board=board)
+    pressure = propagate(activations.to(DTYPE),var_points,board=board, p_ref=p_ref, k=k, transducer_radius=transducer_radius, norms=board_norms)
     pressure.backward(torch.ones((B,N))+0j, inputs=var_points, retain_graph=retain_graph)
     grad_pos = var_points.grad
 
     if K1 is None or K2 is None:
-        K1_, K2_ = get_gorkov_constants()
+        K1_, K2_ = get_gorkov_constants(V=V, c_0=medium_speed, c_p=particle_speed, p_0=medium_density, p_p=particle_density)
         if K1 is None:
             K1 = K1_
         if K2 is None:
@@ -143,7 +148,9 @@ def gorkov_autograd(activations:Tensor, points:Tensor, K1:float|None=None, K2:fl
 
 
 def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize:float = 0.000135156253,K1:float|None=None, K2:float|None=None,
-                    prop_function:FunctionType=propagate,prop_fun_args:dict={}, board:Tensor|None=None, V=c.V, p_ref=c.P_ref) -> Tensor:
+                    prop_function:FunctionType=propagate,prop_fun_args:dict={}, board:Tensor|None=None, board_norms=None,
+                    V=c.V, p_ref=c.P_ref, k=c.k, transducer_radius = c.radius,
+                     medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p,) -> Tensor:
     '''
     Computes the Gorkov potential using finite differences to compute derivatives \n
     :param activation: The transducer activations to use 
@@ -187,7 +194,7 @@ def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize
 
     fin_diff_points = get_finite_diff_points_all_axis(points, axis, stepsize)
 
-    pressure_points = prop_function(activations, fin_diff_points,board=board,p_ref=p_ref,**prop_fun_args)
+    pressure_points = prop_function(activations, fin_diff_points,board=board,p_ref=p_ref, k=k, transducer_radius=transducer_radius, norms = board_norms,**prop_fun_args)
     # if len(pressure_points.shape)>1:
     # pressure_points = torch.squeeze(pressure_points,2)
 
@@ -203,7 +210,7 @@ def gorkov_fin_diff(activations: Tensor, points:Tensor, axis:str="XYZ", stepsize
     grad_term = torch.sum(grad_abs_square,dim=1)
 
     if K1 is None or K2 is None:
-        K1_, K2_ = get_gorkov_constants(V=V)
+        K1_, K2_ = get_gorkov_constants(V=V, c_0=medium_speed, c_p=particle_speed, p_0=medium_density, p_p=particle_density)
         if K1 is None:
             K1 = K1_
         if K2 is None:

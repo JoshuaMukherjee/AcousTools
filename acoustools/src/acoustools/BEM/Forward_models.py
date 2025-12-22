@@ -19,7 +19,8 @@ from acoustools.Utilities import forward_model_grad
 
 
 
-def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False, a:Tensor=None, c:Tensor=None, k=Constants.k, smooth_distance:float=0) -> Tensor:
+def compute_green_derivative(y:Tensor,x:Tensor,norms:Tensor,B:int,N:int,M:int, return_components:bool=False, 
+                             a:Tensor=None, c:Tensor=None, k=Constants.k, smooth_distance:float=0) -> Tensor:
     '''
     Computes the derivative of greens function \n
     :param y: y in greens function - location of the source of sound
@@ -309,7 +310,9 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a:Te
     return A.to(DTYPE)
 
  
-def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tensor|None=None, a:Tensor=None, c:Tensor=None, k=Constants.k, internal_points:Tensor=None, h:float=None, BM_alpha:complex=None, BM_mode:str='analytical') -> Tensor:
+def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tensor|None=None, 
+               a:Tensor=None, c:Tensor=None, k=Constants.k, internal_points:Tensor=None, h:float=None, 
+               BM_alpha:complex=None, BM_mode:str='analytical', transducer_radius = Constants.radius) -> Tensor:
     '''
     Computes B for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -337,24 +340,24 @@ def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tenso
         if BM_alpha is None: #We are in the grad step
             centres = centres - h * mesh_norms.squeeze(0)
         elif BM_mode != 'analytical':
-            bs_grad = compute_bs(scatterer=scatterer, board=board, p_ref=p_ref, norms=norms, a=a, c=c, k=k, internal_points=internal_points,h=h, BM_alpha=None)
+            bs_grad = compute_bs(scatterer=scatterer, board=board, p_ref=p_ref, norms=norms, a=a, c=c, k=k, internal_points=internal_points,h=h, BM_alpha=None, transducer_radius=transducer_radius)
 
-    bs = forward_model_batched(centres,board, p_ref=p_ref,norms=norms,k=k) 
+    bs = forward_model_batched(centres,board, p_ref=p_ref,norms=norms,k=k, transducer_radius=transducer_radius) 
 
 
     if internal_points is not None: #CHIEF
-        F_int = forward_model_batched(internal_points.permute(0,2,1), board, p_ref=p_ref,norms=norms,k=k)
+        F_int = forward_model_batched(internal_points.permute(0,2,1), board, p_ref=p_ref,norms=norms,k=k, transducer_radius=transducer_radius)
         bs = torch.cat([bs, F_int], dim=1)
     
     if a is not None: #Modified Greens function
-        f_mod = torch.sum(forward_model_batched(a,board, p_ref=p_ref,norms=norms, k=k), dim=1, keepdim=True)
+        f_mod = torch.sum(forward_model_batched(a,board, p_ref=p_ref,norms=norms, k=k, transducer_radius=transducer_radius), dim=1, keepdim=True)
         bs += c * f_mod
     
     
     if BM_alpha is not None: #Burton-Miller
         
         if BM_mode == 'analytical': 
-            bs_a_grad = torch.stack(forward_model_grad(centres, board, p_ref=p_ref, k=k), dim=1)
+            bs_a_grad = torch.stack(forward_model_grad(centres, board, p_ref=p_ref, k=k, transducer_radius=transducer_radius, norms=norms), dim=1)
             
 
 
@@ -369,7 +372,8 @@ def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tenso
 
  
 def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0, 
-              a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, return_components:bool=False, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None) -> Tensor:
+              a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, 
+              return_components:bool=False, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, transducer_radius = Constants.radius) -> Tensor:
     '''
     Computes H for the BEM model \n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -404,7 +408,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 
     A = compute_A(scatterer, betas=betas, a=a, c=c, k=k,internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha)
-    bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points, h=h, BM_alpha=BM_alpha)
+    bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
 
     if use_LU:
         LU, pivots = torch.linalg.lu_factor(A)
@@ -426,7 +430,9 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
                            print_lines:bool=False, cache_name:str|None=None, p_ref = Constants.P_ref, 
-                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k, betas:float|Tensor = 0, a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None) -> Tensor:
+                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k, betas:float|Tensor = 0, 
+                           a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, 
+                           CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, transducer_radius=Constants.radius) -> Tensor:
     '''
     Get H using cache system. Expects a folder named BEMCache in `path`\n
 
@@ -476,7 +482,7 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             H = pickle.load(open(f_name,"rb")).to(device).to(DTYPE)
         except FileNotFoundError: 
             if print_lines: print("Not found, computing H...")
-            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode,h=h, BM_alpha=BM_alpha)
+            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode,h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
             try:
                 f = open(f_name,"wb")
             except FileNotFoundError as e:
@@ -486,13 +492,13 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             f.close()
     else:
         if print_lines: print("Computing H...")
-        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha)
+        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
 
     return H
 
 def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H:bool=True, print_lines:bool=False,
                H:Tensor|None=None,path:str="Media", return_components:bool=False, p_ref = Constants.P_ref, norms:Tensor|None=None, H_method:Literal['OLS','LU', 'INV']=None, 
-               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0,  CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None) -> Tensor:
+               k:float=Constants.k, betas:float|Tensor = 0, alphas:float|Tensor=1, a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0,  CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, transducer_radius=Constants.radius) -> Tensor:
     '''
     Computes E in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -554,13 +560,15 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     if print_lines: print("H...")
     
     if H is None:
-        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,norms=norms, method=H_method, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha).to(DTYPE)
+        H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,
+                                   norms=norms, method=H_method, k=k, betas=betas, a=a, c=c, internal_points=internal_points,
+                                     smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius).to(DTYPE)
         
     if print_lines: print("G...")
     G = compute_G(points, scatterer, k=k, betas=betas,alphas=alphas, smooth_distance=smooth_distance).to(DTYPE)
     
     if print_lines: print("F...")
-    F = forward_model_batched(points,board,p_ref=p_ref,norms=norms, k=k).to(DTYPE)  
+    F = forward_model_batched(points,board,p_ref=p_ref,norms=norms, k=k, transducer_radius=transducer_radius).to(DTYPE)  
     # if a is not None:
     #     F += c * forward_model_batched(a,board, p_ref=p_ref,norms=norms)
     

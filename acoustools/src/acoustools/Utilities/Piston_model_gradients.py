@@ -6,7 +6,7 @@ import torch
 from torch import Tensor
 
 
-def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref, k=Constants.k):
+def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref, k=Constants.k, transducer_radius = Constants.radius):
     '''
     @private
     Computes the components to be used in the analytical gradient of the piston model, shouldnt be useed use `forward_model_grad` to get the gradient \\
@@ -33,7 +33,7 @@ def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref
 
     #Partial derivates of bessel function section wrt xyz
     sin_theta = torch.divide(planar_distance,distances) 
-    partialFpartialU = -1* (k**2 * Constants.radius**2)/4 * sin_theta + (k**4 * Constants.radius**4)/48 * sin_theta**3
+    partialFpartialU = -1* (k**2 * transducer_radius**2)/4 * sin_theta + (k**4 * transducer_radius**4)/48 * sin_theta**3
     partialUpartiala = torch.ones_like(diff)
     
     diff_z = torch.unsqueeze(diff[:,:,2,:],2)
@@ -60,7 +60,7 @@ def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref
     partialHpartialX = 1j * k * (diff / dist_expand) * torch.exp(1j * k * dist_expand)
 
     #Combine
-    bessel_arg=k*Constants.radius*torch.divide(planar_distance,distances)
+    bessel_arg=k*transducer_radius*torch.divide(planar_distance,distances)
     F=1-torch.pow(bessel_arg,2)/8+torch.pow(bessel_arg,4)/192
     F = torch.unsqueeze(F,2)
     F = F.expand((-1,-1,3,-1))
@@ -71,7 +71,7 @@ def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref
 
     return F,G,H, partialFpartialX, partialGpartialX, partialHpartialX, partialFpartialU, partialUpartiala
 
-def forward_model_grad(points:Tensor, transducers:Tensor|None = None, p_ref=Constants.P_ref, k=Constants.k) -> tuple[Tensor]:
+def forward_model_grad(points:Tensor, transducers:Tensor|None = None, p_ref=Constants.P_ref, k=Constants.k, transducer_radius=Constants.radius) -> tuple[Tensor]:
     '''
     Computes the analytical gradient of the piston model\n
     :param points: Point position to compute propagation to 
@@ -91,7 +91,7 @@ def forward_model_grad(points:Tensor, transducers:Tensor|None = None, p_ref=Cons
     if transducers is None:
         transducers=TRANSDUCERS
 
-    F,G,H, partialFpartialX, partialGpartialX, partialHpartialX,_,_ = compute_gradients(points, transducers, p_ref=p_ref,k=k)
+    F,G,H, partialFpartialX, partialGpartialX, partialHpartialX,_,_ = compute_gradients(points, transducers, p_ref=p_ref,k=k, transducer_radius=transducer_radius)
     derivative = G*(H*partialFpartialX + F*partialHpartialX) + F*H*partialGpartialX
     derivative = derivative.to(device).to(DTYPE) # minus here to match f.d -> not 100% sure why its needed
 
@@ -99,7 +99,7 @@ def forward_model_grad(points:Tensor, transducers:Tensor|None = None, p_ref=Cons
     return derivative[:,:,0,:].permute((0,2,1)), derivative[:,:,1,:].permute((0,2,1)), derivative[:,:,2,:].permute((0,2,1))
 
 
-def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|None = None, p_ref = Constants.P_ref, k=Constants.k) ->Tensor:
+def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|None = None, p_ref = Constants.P_ref, k=Constants.k, transducer_radius=Constants.radius) ->Tensor:
     '''
     Computes the second degree unmixed analytical gradient of the piston model\n
     :param points: Point position to compute propagation to 
@@ -158,7 +158,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
 
     G = p_ref * torch.exp(1j * k * distances) / distances
 
-    kr = k * Constants.radius
+    kr = k * transducer_radius
     kr_sine = kr*sin_theta
     H = 1 - ((kr_sine)**2) / 8 + ((kr_sine)**4)/192 
 
@@ -223,7 +223,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
 
     return Faa[:,:,0,:].permute((0,2,1)), Faa[:,:,1,:].permute((0,2,1)), Faa[:,:,2,:].permute((0,2,1))
 
-def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|None = None, p_ref = Constants.P_ref,  k=Constants.k)->Tensor:
+def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|None = None, p_ref = Constants.P_ref,  k=Constants.k, transducer_radius=Constants.radius)->Tensor:
     '''
     Computes the second degree mixed analytical gradient of the piston model\n
     :param points: Point position to compute propagation to 
@@ -278,7 +278,7 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
 
     G = p_ref * torch.exp(1j * k * distances) / distances
 
-    kr = k * Constants.radius
+    kr = k * transducer_radius
     kr_sine = kr*sin_theta
     H = 1 - ((kr_sine)**2) / 8 + ((kr_sine)**4)/192 
 

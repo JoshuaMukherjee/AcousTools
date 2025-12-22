@@ -59,7 +59,8 @@ def wgs_solver_batch(A, b, iterations):
     y =  torch.abs(A@x) 
     return y, p, x
 
-def wgs(points:Tensor,iterations:int = 200, board:Tensor|None = None, A:Tensor|None = None, b:Tensor|None=None, return_components:bool=False, p_ref=c.P_ref) -> Tensor:
+def wgs(points:Tensor,iterations:int = 200, board:Tensor|None = None, A:Tensor|None = None, b:Tensor|None=None, 
+        return_components:bool=False, p_ref=c.P_ref, k=c.k, transducer_radius = c.radius, norms=None) -> Tensor:
     '''
     Weighted-GS algorithm\n
     :param points: Points to use
@@ -96,7 +97,7 @@ def wgs(points:Tensor,iterations:int = 200, board:Tensor|None = None, A:Tensor|N
         batch=False
 
     if A is None:
-        A = forward_model(points, board, p_ref=p_ref).to(DTYPE)
+        A = forward_model(points, board, p_ref=p_ref, k=k, transducer_radius=transducer_radius, norms=norms).to(DTYPE)
     if b is None:
         b = torch.ones(N,1).to(device).to(DTYPE)+0j
 
@@ -146,7 +147,7 @@ def gspat_solver(R,forward, backward, target, iterations,return_components=False
 
 
 def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:Tensor|None=None, 
-          R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False, p_ref=c.P_ref, norms=None) -> Tensor:
+          R:Tensor|None=None ,b:Tensor|None = None, iterations:int=200, return_components:bool=False, p_ref=c.P_ref, k=c.k, transducer_radius = c.radius, norms=None) -> Tensor:
     '''
     GSPAT Solver\n
     :param points: Target point positions
@@ -164,7 +165,7 @@ def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:T
         board = TRANSDUCERS
 
     if A is None:
-        A = forward_model(points,board,p_ref=p_ref,norms=norms)
+        A = forward_model(points,board,p_ref=p_ref,norms=norms, k=k, transducer_radius=transducer_radius)
     if B is None:
         B = torch.conj(A).mT.to(DTYPE)
     if R is None:
@@ -185,7 +186,7 @@ def gspat(points:Tensor|None=None, board:Tensor|None=None,A:Tensor|None=None,B:T
     return phase_hologram
 
 
-def naive_solver_batched(points,board=TRANSDUCERS, activation=None, A=None,p_ref = c.P_ref):
+def naive_solver_batched(points,board=TRANSDUCERS, activation=None, A=None, p_ref=c.P_ref, k=c.k, transducer_radius = c.radius, norms=None):
     '''
     @private
     Batched naive (backpropagation) algorithm for phase retrieval\\
@@ -198,7 +199,7 @@ def naive_solver_batched(points,board=TRANSDUCERS, activation=None, A=None,p_ref
         activation = torch.ones(points.shape[2],1, device=device, dtype=DTYPE) +0j
     
     if A is None:
-        A = forward_model_batched(points,board,p_ref=p_ref)
+        A = forward_model_batched(points,board,p_ref=p_ref, k=k, transducer_radius=transducer_radius, norms=norms)
     back = torch.conj(A).mT
     trans = back@activation
     trans_phase=  constrain_amplitude(trans)
@@ -207,7 +208,7 @@ def naive_solver_batched(points,board=TRANSDUCERS, activation=None, A=None,p_ref
 
     return out, trans_phase
 
-def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None,A=None,p_ref = c.P_ref):
+def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None,A=None, p_ref=c.P_ref, k=c.k, transducer_radius = c.radius, norms=None):
     '''
     @private
     Unbatched naive (backpropagation) algorithm for phase retrieval\\
@@ -220,7 +221,7 @@ def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None,A=None,p_re
         activation = torch.ones(points.shape[1]) +0j
         activation = activation.to(device)
     if A is None:
-        A = forward_model(points,board,p_ref=p_ref)
+        A = forward_model(points,board,p_ref=p_ref, k=k, transducer_radius=transducer_radius, norms=norms)
     back = torch.conj(A).T
     trans = back@activation
     trans_phase=  constrain_amplitude(trans)
@@ -229,7 +230,8 @@ def naive_solver_unbatched(points,board=TRANSDUCERS, activation=None,A=None,p_re
 
     return out, trans_phase
 
-def naive(points:Tensor, board:Tensor|None = None, return_components:bool=False, activation:Tensor|None=None, A=None, p_ref = c.P_ref, iterations=None) -> Tensor:
+def naive(points:Tensor, board:Tensor|None = None, return_components:bool=False, activation:Tensor|None=None, A=None, 
+          p_ref=c.P_ref, k=c.k, transducer_radius = c.radius, norms=None, iterations=None) -> Tensor:
     '''
     Naive solver\n
     :param points: Target point positions
@@ -242,9 +244,9 @@ def naive(points:Tensor, board:Tensor|None = None, return_components:bool=False,
     if board is None:
         board = TRANSDUCERS
     if is_batched_points(points):
-        out,act = naive_solver_batched(points,board=board, activation=activation, A=A, p_ref=p_ref)
+        out,act = naive_solver_batched(points,board=board, activation=activation, A=A, p_ref=p_ref, k=k, transducer_radius=transducer_radius, norms=norms)
     else:
-        out,act = naive_solver_unbatched(points,board=board, activation=activation, A=A, p_ref=p_ref)
+        out,act = naive_solver_unbatched(points,board=board, activation=activation, A=A, p_ref=p_ref, k=k, transducer_radius=transducer_radius, norms=norms)
     if return_components:
         return act, out
     return act
@@ -352,7 +354,8 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
                             objective_params:dict={}, start:Tensor|None=None, iters:int=200, 
                             maximise:bool=False, targets:Tensor=None, constrains:FunctionType=constrain_phase_only, log:bool=False, return_loss:bool=False,
                             scheduler:torch.optim.lr_scheduler.LRScheduler=None, scheduler_args:dict=None, save_each_n:int = 0, save_set_n:list[int] = None,
-                            init_type:Literal['rand', 'ones','focal','trap']|Tensor='rand') -> Tensor:
+                            init_type:Literal['rand', 'ones','focal','trap']|Tensor='rand',
+                            p_ref=c.P_ref, k=c.k, transducer_radius = c.radius, norms=None) -> Tensor:
     '''
     Solves phases using gradient descent\n
     :param points: Target point positions 
@@ -408,7 +411,7 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
                 start = torch.ones((B,M,1))
             elif init_type == 'focal':
     
-                start = naive(points, board=board,return_components=False)
+                start = naive(points, board=board,return_components=False, p_ref=p_ref, k=k, transducer_radius=transducer_radius, norms=norms)
             elif init_type == 'trap':
                 new_points = points.expand(B,3,2*N).clone()
                 SCALE = 2
@@ -419,7 +422,7 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
                 activation = torch.exp(1j * target_phases).unsqueeze(2).to(device)
                 
             
-                start = naive(new_points, board, return_components=False, activation=activation)
+                start = naive(new_points, board, return_components=False, activation=activation, p_ref=p_ref, k=k, transducer_radius=transducer_radius, norms=norms)
                 
             else: #rand is default
                 start = torch.exp(1j*torch.rand((B,M,1))*torch.pi)
@@ -470,7 +473,7 @@ def gradient_descent_solver(points: Tensor, objective: FunctionType, board:Tenso
     
 
 def iterative_backpropagation(points:Tensor,iterations:int = 200, board:Tensor|None = None, A:Tensor|None = None, 
-                              b:Tensor|None=None, return_components: bool=False) -> list[Tensor]:
+                              b:Tensor|None=None, return_components: bool=False, p_ref=c.P_ref, k=c.k, transducer_radius = c.radius, norms=None) -> list[Tensor]:
     '''
     IB solver for transducer phases\n
     :param points: Points to use
@@ -509,7 +512,7 @@ def iterative_backpropagation(points:Tensor,iterations:int = 200, board:Tensor|N
         batch=False
 
     if A is None:
-        A = forward_model(points, board)
+        A = forward_model(points, board, p_ref=p_ref, k=k, transducer_radius=transducer_radius, norms=norms)
     
     if batch:
         M = A.shape[2]

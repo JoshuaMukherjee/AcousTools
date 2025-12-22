@@ -17,6 +17,7 @@ from acoustools.BEM.Gradients.E_Gradient import get_G_partial
 def grad_H(points: Tensor, scatterer: Mesh, transducers: Tensor, return_components:bool = False, 
            path:str='', H:Tensor=None, use_cache_H:bool=True) ->tuple[Tensor,Tensor, Tensor] | tuple[Tensor,Tensor, Tensor, Tensor,Tensor, Tensor, Tensor]:
     '''
+    @private
     Computes the gradient of H wrt scatterer centres\n
     Ignores `points` - for compatability with other gradient functions, takes centres of the scatterers
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -24,7 +25,7 @@ def grad_H(points: Tensor, scatterer: Mesh, transducers: Tensor, return_componen
     :param return_components: if true will return the subparts used to compute the derivative
     :return grad_H: The gradient of the H matrix wrt the position of the mesh
     '''
-
+    print("Implementation not tested H grad - probably do correct")
     if H is None:
         H = get_cache_or_compute_H(scatterer, transducers, use_cache_H, path)
     
@@ -89,6 +90,7 @@ def grad_H(points: Tensor, scatterer: Mesh, transducers: Tensor, return_componen
 def grad_2_H(points: Tensor, scatterer: Mesh, transducers: Tensor, A:Tensor|None = None, 
              A_inv:Tensor|None = None, Ax:Tensor|None = None, Ay:Tensor|None = None, Az:Tensor|None = None) -> Tensor:
     '''
+    @private
     Computes the second derivative of H wrt scatterer centres\n
     Ignores `points` - for compatability with other gradient functions, takes centres of the scatterers
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -100,7 +102,7 @@ def grad_2_H(points: Tensor, scatterer: Mesh, transducers: Tensor, A:Tensor|None
     :param Az: The gradient of A wrt the z position of scatterer centres
     :return Haa: second order unmixed gradient of H wrt scatterer positions
     '''
-
+    print("Implementation not tested H grad - probably do correct")
     centres = get_centres_as_points(scatterer)
     M = centres.shape[2]
 
@@ -229,6 +231,7 @@ def grad_2_H(points: Tensor, scatterer: Mesh, transducers: Tensor, A:Tensor|None
  
 def get_cache_or_compute_H_2_gradients(scatterer:Mesh,board:Tensor,use_cache_H_grad:bool=True, path:str="Media", print_lines:bool=False) -> Tensor:
     '''
+    @private
     Get second derivatives of H using cache system. Expects a folder named BEMCache in `path`\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
     :param board: Transducers to use 
@@ -237,6 +240,7 @@ def get_cache_or_compute_H_2_gradients(scatterer:Mesh,board:Tensor,use_cache_H_g
     :param print_lines: if true prints messages detaling progress
     :return: second derivatives of H
     '''
+    print("Implementation not tested H grad - probably do correct")
     if use_cache_H_grad:
         
         f_name = scatterer.filename+"--"+ board_name(board)
@@ -262,6 +266,7 @@ def get_cache_or_compute_H_2_gradients(scatterer:Mesh,board:Tensor,use_cache_H_g
  
 def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path="Media", print_lines=False) -> tuple[Tensor, Tensor, Tensor]:
     '''
+    @private
     Get derivatives of H using cache system. Expects a folder named BEMCache in `path`\\
     :param scatterer: The mesh used (as a `vedo` `mesh` object)\\
     :param board: Transducers to use \\
@@ -270,7 +275,7 @@ def get_cache_or_compute_H_gradients(scatterer,board,use_cache_H_grad=True, path
     :param print_lines: if true prints messages detaling progress\\
     Returns derivatives of H
     '''
-
+    print("Implementation not tested for H grad - probably do correct")
     if use_cache_H_grad:
         
         f_name = scatterer.filename +"--"+ board_name(board)
