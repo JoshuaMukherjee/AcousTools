@@ -79,6 +79,36 @@ def propagate_abs(activations: Tensor, points: Tensor,board:Tensor|None=None, A:
     out = propagate(activations, points,board,A=A,p_ref=p_ref,norms=norms,k=k, transducer_radius=transducer_radius)
     return torch.abs(out)
 
+def propagate_abs_normalised(activations: Tensor, points: Tensor,board:Tensor|None=None, A:Tensor|None=None, A_function:FunctionType=None, A_function_args:dict={}, p_ref=c.P_ref, norms:Tensor=None,k=c.k, transducer_radius=c.radius) -> Tensor:
+    '''
+    Propagates a hologram to target points and returns pressure normalised from [0,1] - Same as `torch.abs(propagate(activations, points,board, A))`\n
+    :param activations: Hologram to use
+    :param points: Points to propagate to
+    :param board: The Transducer array, default two 16x16 arrays
+    :param A: The forward model to use, if None it is computed using `forward_model_batched`. Default:`None`
+    :return: point pressure
+
+    ```Python
+    from acoustools.Solvers import iterative_backpropagation
+    from acoustools.Utilities import create_points, propagate_abs
+
+    p = create_points(2,1)
+    x = iterative_backpropagation(p)
+    
+    p = p.squeeze(0)
+    x = iterative_backpropagation(p)
+    print(propagate_abs(x,p))
+    ```
+    '''
+    if board is None:
+        board = TRANSDUCERS
+    if A_function is not None:
+        A = A_function(points, board, norms=norms, **A_function_args)
+
+    out = propagate(activations, points,board,A=A,p_ref=p_ref,norms=norms,k=k, transducer_radius=transducer_radius)
+    img = torch.abs(out)
+    return img / torch.max(img)
+
 def propagate_phase(activations:Tensor, points:Tensor,board:Tensor|None=None, A:Tensor|None=None,p_ref=c.P_ref, norms:Tensor=None,k=c.k, transducer_radius=c.radius) -> Tensor:
     '''
     Propagates a hologram to target points and returns phase - Same as `torch.angle(propagate(activations, points,board, A))`\n
