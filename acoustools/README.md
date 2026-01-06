@@ -3,13 +3,9 @@
 <!-- [![PyPI - Version](https://img.shields.io/pypi/v/acoustools.svg)](https://pypi.org/project/acoustools)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/acoustools.svg)](https://pypi.org/project/acoustools) -->
 
-A Python based library for working with acoustic fields for levitation. Developed mostly using PyTorch, AcousTools uses PyTorch Tensors to represent points, acoustic fields and holograms to enable development of new algorithms, applications and acoustic systems. 
+A Python based library for working with acoustic fields for holgraphy. Developed using PyTorch, AcousTools uses PyTorch Tensors to represent points, acoustic fields and holograms to enable development of new algorithms, applications and acoustic systems. As a full-stack solution, Acoustools is able to implement each stage of development making it a single point of call.
 
 See [Here](https://github.com/JoshuaMukherjee/AcousticExperiments/tree/main/AcousTools_Examples) for examples of code using AcousTools.
-
------
-
-## Survey: In order to help us understand who is using AcousTools please fill in this [form](https://forms.gle/E3fCFpATdeNken7JA)
 
 -----
 
