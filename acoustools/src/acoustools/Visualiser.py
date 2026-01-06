@@ -25,7 +25,7 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
               res:tuple[int]=(200,200), cmaps:list[str]=[], add_lines_functions:list[FunctionType]|None=None, 
               add_line_args:list[dict]|None=None,vmin:int|list[int]|None=None,vmax:int|list[int]|None=None, 
               matricies:Tensor|list[Tensor]|None = None, show:bool=True,block:bool=True, clr_labels:list[str]|None=None, depth:int=2, link_ax:str|list|None='all',
-              cursor:bool=False, arangement:tuple|None = None, titles:list[str]|None=None, call_abs=False, norm_axes=None ) -> None:
+              cursor:bool=False, arrangement:tuple|None = None, arangement:tuple|None = None, titles:list[str]|None=None, call_abs=False, norm_axes=None ) -> None:
     '''
     Visualises any number of fields generated from activation to the plane ABC and arranges them in a (1,N) grid \n
     :param A: Position of the top left corner of the image
@@ -79,6 +79,8 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     results = []
     lines = []
     
+    if arangement is None and arrangement is not None:
+        arangement = arrangement
 
 
     if colour_function_args is None and colour_functions is not None:
