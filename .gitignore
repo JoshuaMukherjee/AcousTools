@@ -8,3 +8,4 @@ read_beast_file.py
 times.txt
 profile_output*
 *.holo
+*/dist/*

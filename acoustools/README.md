@@ -17,6 +17,14 @@ See [Here](https://github.com/JoshuaMukherjee/AcousticExperiments/tree/main/Acou
 
 ## Installation
 
+Run 
+```console
+pip install acoustools
+```
+Or visit [AcousTools' on PyPi](https://pypi.org/project/acoustools/)
+
+### Local Installation
+
 Clone the repo and then run
 
 ```console
