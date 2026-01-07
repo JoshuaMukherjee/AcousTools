@@ -19,8 +19,8 @@ The [Preprint of AcousTools can be found on arXiv](https://arxiv.org/abs/2511.07
 ## Installation
 
 
-Optionally create a virtual environment to install AcousTools into \n
-Optionally install the correct version of [PyTorch](https://pytorch.org/get-started/locally/) \n
+Optionally create a virtual environment to install AcousTools into \\
+Optionally install the correct version of [PyTorch](https://pytorch.org/get-started/locally/) \\
 
 Run 
 ```console
