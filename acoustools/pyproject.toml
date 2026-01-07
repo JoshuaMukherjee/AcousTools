@@ -27,9 +27,9 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Documentation = "https://github.com/unknown/acoustools#readme"
-Issues = "https://github.com/unknown/acoustools/issues"
-Source = "https://github.com/unknown/acoustools"
+Documentation = "https://joshuamukherjee.github.io/AcousTools/src/acoustools.html"
+Issues = "https://github.com/JoshuaMukherjee/AcousTools"
+Source = "https://github.com/JoshuaMukherjee/AcousTools"
 
 [tool.hatch.version]
 path = "src/acoustools/__about__.py"
