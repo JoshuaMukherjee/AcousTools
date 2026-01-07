@@ -9,3 +9,4 @@ times.txt
 profile_output*
 *.holo
 */dist/*
+*.pdf
