@@ -4,10 +4,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "acoustools"
-description = ''
+description = "A Full-Stack Python based library for working with acoustic fields for holgraphy"
 readme = "README.md"
 requires-python = ">=3.7"
-version = "1.0.0"
+version = "1.0.2"
 license = "MIT"
 keywords = []
 authors = [
