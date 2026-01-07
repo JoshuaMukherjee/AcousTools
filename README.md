@@ -6,7 +6,7 @@
 A Python based library for working with acoustic fields for holgraphy. Developed using PyTorch, AcousTools uses PyTorch Tensors to represent points, acoustic fields and holograms to enable development of new algorithms, applications and acoustic systems. As a full-stack solution, Acoustools is able to implement each stage of development making it a single point of call.
 
 See [Here](https://github.com/JoshuaMukherjee/AcousticExperiments/tree/main/AcousTools_Examples) for examples of code using AcousTools.
-See [Pre-print](https://arxiv.org/abs/2511.07336) for more information
+
 -----
 
 **Table of Contents**
@@ -16,6 +16,14 @@ See [Pre-print](https://arxiv.org/abs/2511.07336) for more information
 - [Docs](#documentation)
 
 ## Installation
+
+Run 
+```console
+pip install acoustools
+```
+Or visit [AcousTools' on PyPi](https://pypi.org/project/acoustools/)
+
+### Local Installation
 
 Clone the repo and then run
 
