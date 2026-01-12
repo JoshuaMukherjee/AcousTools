@@ -224,7 +224,7 @@ def augment_A_CHIEF(A:Tensor, internal_points:Tensor, CHIEF_mode:Literal['square
     else:
         raise RuntimeError(f"Invalid CHIEF Mode {CHIEF_mode}, should be on of [square, rect]")
 
-        return A
+    return A
 
 
 
