@@ -116,9 +116,16 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
                 img2 = results[i2]
 
                 if colour_function.lower() == 'difference' or colour_function.lower() == 'diff' or colour_function.lower() == '-':
-                    results.append(img2 - img1)
+                    image = (img2 - img1)
                 if colour_function.lower() == 'ratio' or colour_function.lower() == 'rat' or colour_function.lower() == '/':
-                    results.append(img2 / img1)
+                    image = (img2 / img1)
+
+                post_function= colour_function_args[i]['post_function'] if (i<len(colour_function_args) and 'post_function' in colour_function_args[i]) else None
+                if post_function is not None:
+                    image = post_function(image)
+
+                results.append(image)
+
     
     else:
         for i,mat in enumerate(matricies):

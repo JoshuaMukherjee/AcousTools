@@ -357,11 +357,21 @@ def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tenso
     if BM_alpha is not None: #Burton-Miller
         
         if BM_mode == 'analytical': 
-            bs_a_grad = torch.stack(forward_model_grad(centres, board, p_ref=p_ref, k=k, transducer_radius=transducer_radius, norms=norms), dim=1)
-            
-
-
+            bs_a_grad = torch.stack(forward_model_grad(centres, board, p_ref=p_ref, k=k, transducer_radius=transducer_radius), dim=1)
             bs_norm_grad = torch.sum(bs_a_grad * mesh_norms.unsqueeze(3), dim=1)
+
+
+            if internal_points is not None: #CHIEF
+                # int_bs_grad = torch.stack(forward_model_grad(internal_points.permute(0,2,1), board, p_ref=p_ref, k=k, transducer_radius=transducer_radius), dim=1)
+                p_n = internal_points.shape[1]
+                M = board.shape[0]
+                # int_bs_grad = torch.zeros_like(int_bs_grad)[:,0,:]
+                int_bs_grad = torch.zeros((1,p_n,M))
+
+                bs_norm_grad = torch.cat([bs_norm_grad,int_bs_grad], dim=1)
+
+
+            
             bs = bs - BM_alpha * bs_norm_grad
         else:
             bs_grad = (bs-bs_grad)/h
@@ -410,10 +420,12 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     A = compute_A(scatterer, betas=betas, a=a, c=c, k=k,internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha)
     bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
 
+
+
     if use_LU:
         LU, pivots = torch.linalg.lu_factor(A)
         H = torch.linalg.lu_solve(LU, pivots, bs)
-    elif use_OLS:
+    elif use_OLS: 
        
         H = torch.linalg.lstsq(A,bs, rcond=1e-6).solution    
     else:
@@ -423,6 +435,14 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
     # exit()
     H = H[:,:M,: ]
+    
+    # print(torch.linalg.eig(A))
+
+    # exit()
+
+    # print((k*H, A@H, bs), H/bs)
+    # exit()
+
     if return_components: return H,A,bs
     return H
 
@@ -576,11 +596,13 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
 
     E = F+G@H
 
+
     torch.cuda.empty_cache()
     if return_components:
         return E.to(DTYPE), F.to(DTYPE), G.to(DTYPE), H.to(DTYPE)
     return E.to(DTYPE)
 
+    
 from acoustools.Mesh import get_CHIEF_points
 
 

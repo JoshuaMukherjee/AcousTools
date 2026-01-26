@@ -6,7 +6,7 @@ from vedo import Mesh
 
 from acoustools.Utilities import TOP_BOARD
 from acoustools.BEM.Forward_models import compute_E
-from acoustools.BEM.Gradients import BEM_forward_model_grad
+from acoustools.BEM.Gradients import BEM_forward_model_grad, BEM_laplacian
 import acoustools.Constants as Constants
 
 def propagate_BEM(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
@@ -128,7 +128,7 @@ def propagate_BEM_phase(activations:Tensor,points:Tensor,scatterer:Mesh|None=Non
     :param h: finite difference step for Burton-Miller BEM
     :param BM_alpha: constant alpha to use in Burton-Miller BEM
 
-    :return pressure: complex pressure at points
+    :return pressure: phase at points
     '''
     if board is None:
         board = TOP_BOARD
@@ -140,3 +140,114 @@ def propagate_BEM_phase(activations:Tensor,points:Tensor,scatterer:Mesh|None=Non
     
     out = E@activations
     return torch.angle(out)
+
+
+def propagate_BEM_laplacian(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
+                  E_lap:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, internal_points=None, transducer_radius=Constants.radius):
+    '''
+    Propagate transducer hologram to the laplacian of pressure at points
+    
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Transducers to use, if `None` then uses `acoustools.Utilities.TOP_BOARD` 
+    :param H: Precomputed H - if None H will be computed
+    :param E: Precomputed E - if None E will be computed
+    :param path: path to folder containing `BEMCache/ `
+    :param use_cache_H: If True uses the cache system to load and save the H matrix. Default `True`
+    :param print_lines: if true prints messages detaling progress
+    :param k: wavenumber
+    :param internal_points: The internal points to use for CHIEF based BEM
+
+    :return pressure: laplacian at points
+    '''
+    
+    if board is None:
+        board = TOP_BOARD
+
+    if E_lap is None:
+        if type(scatterer) == str:
+            scatterer = load_scatterer(scatterer)
+        E_lap = BEM_laplacian(points, scatterer ,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines, p_ref=p_ref, k=k, internal_points=internal_points, transducer_radius=transducer_radius)
+
+
+    lap = E_lap @ activations
+
+    return lap
+    
+
+def propagate_BEM_laplacian_abs(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None,
+                  E_lap:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, internal_points=None, transducer_radius=Constants.radius):
+    '''
+    Propagate transducer hologram to the absolute value of the laplacian of pressure at points
+
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Transducers to use, if `None` then uses `acoustools.Utilities.TOP_BOARD` 
+    :param H: Precomputed H - if None H will be computed
+    :param E: Precomputed E - if None E will be computed
+    :param path: path to folder containing `BEMCache/ `
+    :param use_cache_H: If True uses the cache system to load and save the H matrix. Default `True`
+    :param print_lines: if true prints messages detaling progress
+    :param k: wavenumber
+    :param internal_points: The internal points to use for CHIEF based BEM
+
+    :return pressure: laplacian at points
+    '''
+    
+    lap = propagate_BEM_laplacian(activations,points, scatterer ,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines, p_ref=p_ref, k=k, internal_points=internal_points, transducer_radius=transducer_radius, E_lap=E_lap)
+
+    return torch.abs(lap)
+
+def propagate_BEM_helmholtz(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None, E:Tensor|None=None,
+                  E_lap:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, internal_points=None, transducer_radius=Constants.radius):
+    '''
+    Computes the Helmholtz eq. at points given a hologram
+
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Transducers to use, if `None` then uses `acoustools.Utilities.TOP_BOARD` 
+    :param H: Precomputed H - if None H will be computed
+    :param E: Precomputed E - if None E will be computed
+    :param path: path to folder containing `BEMCache/ `
+    :param use_cache_H: If True uses the cache system to load and save the H matrix. Default `True`
+    :param print_lines: if true prints messages detaling progress
+    :param k: wavenumber
+    :param internal_points: The internal points to use for CHIEF based BEM
+
+    :return pressure: laplacian at points
+    '''
+    
+    lap = propagate_BEM_laplacian(activations,points, scatterer ,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines, p_ref=p_ref, k=k, internal_points=internal_points, transducer_radius=transducer_radius, E_lap=E_lap)
+    pressure = propagate_BEM(activations=activations,points=points, scatterer=scatterer,board=board, H=H, E=E, use_cache_H=use_cache_H, path=path, p_ref=p_ref, k=k, internal_points=internal_points, transducer_radius=transducer_radius)
+
+
+    return lap + k**2 * pressure
+
+
+def propagate_BEM_helmholtz_abs(activations:Tensor,points:Tensor,scatterer:Mesh|None=None,board:Tensor|None=None,H:Tensor|None=None, E:Tensor|None=None,
+                  E_lap:Tensor|None=None,path:str="Media", use_cache_H: bool=True,print_lines:bool=False,p_ref=Constants.P_ref,k:float=Constants.k, internal_points=None, transducer_radius=Constants.radius):
+    
+    '''
+    Computes the absolute value of the Helmholtz eq. at points given a hologram
+
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Transducers to use, if `None` then uses `acoustools.Utilities.TOP_BOARD` 
+    :param H: Precomputed H - if None H will be computed
+    :param E: Precomputed E - if None E will be computed
+    :param path: path to folder containing `BEMCache/ `
+    :param use_cache_H: If True uses the cache system to load and save the H matrix. Default `True`
+    :param print_lines: if true prints messages detaling progress
+    :param k: wavenumber
+    :param internal_points: The internal points to use for CHIEF based BEM
+
+    :return pressure: laplacian at points
+    '''
+    
+    helmholtz = propagate_BEM_helmholtz(activations,points, scatterer ,board,H=H, path=path,use_cache_H=use_cache_H,print_lines=print_lines, p_ref=p_ref, k=k, internal_points=internal_points, transducer_radius=transducer_radius, E_lap=E_lap, E=E)
+    
+    return torch.abs(helmholtz)

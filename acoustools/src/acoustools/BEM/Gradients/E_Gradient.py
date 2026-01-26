@@ -246,6 +246,7 @@ def get_G_second_mixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, re
 def BEM_forward_model_second_derivative_unmixed(points:Tensor, scatterer:Mesh, transducers:Tensor=None, use_cache_H:bool=True, k=Constants.k,
                            print_lines:bool=False, H:Tensor|None=None, return_components:bool=False,
                            path:str="Media", p_ref=Constants.P_ref,internal_points = None, transducer_radius=Constants.radius):
+                           
     
     
     if transducers is None:
@@ -283,6 +284,33 @@ def BEM_forward_model_second_derivative_mixed(points:Tensor, scatterer:Mesh, tra
     Eyz = Fyz + Gyz@H
 
     return Exy, Exz, Eyz
+
+def BEM_laplacian(points:Tensor, scatterer:Mesh, transducers:Tensor|Mesh=None, use_cache_H:bool=True, k=Constants.k,
+                           print_lines:bool=False, H:Tensor|None=None, return_components:bool=False, 
+                           path:str="Media", p_ref=Constants.P_ref,internal_points = None, transducer_radius=Constants.radius):
+    
+    '''
+    Computes the laplacian of pressure at points given a hologram
+
+    :param activations: Transducer hologram
+    :param points: Points to propagate to
+    :param scatterer: The mesh used (as a `vedo` `mesh` object)
+    :param board: Transducers to use, if `None` then uses `acoustools.Utilities.TOP_BOARD` 
+    :param H: Precomputed H - if None H will be computed
+    :param E: Precomputed E - if None E will be computed
+    :param path: path to folder containing `BEMCache/ `
+    :param use_cache_H: If True uses the cache system to load and save the H matrix. Default `True`
+    :param print_lines: if true prints messages detaling progress
+    :param k: wavenumber
+    :param internal_points: The internal points to use for CHIEF based BEM
+
+    :return pressure: laplacian at points
+    '''
+    
+    Exx, Eyy, Ezz = BEM_forward_model_second_derivative_unmixed(points=points, scatterer=scatterer, transducers=transducers, use_cache_H=use_cache_H, k=k, print_lines=print_lines, H=H, return_components=return_components, path=path, p_ref=p_ref, internal_points=internal_points, transducer_radius=transducer_radius)
+
+    return Exx + Eyy + Ezz
+
 
 
 def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False, k=Constants.k) -> tuple[Tensor, Tensor, Tensor]:
