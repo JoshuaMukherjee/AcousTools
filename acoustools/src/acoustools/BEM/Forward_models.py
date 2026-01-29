@@ -383,7 +383,7 @@ def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tenso
  
 def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0, 
               a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, 
-              return_components:bool=False, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, transducer_radius = Constants.radius) -> Tensor:
+              return_components:bool=False, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, transducer_radius = Constants.radius, A:Tensor|None=None, bs:Tensor|None=None) -> Tensor:
     '''
     Computes H for the BEM model \n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -417,9 +417,8 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     
 
 
-    A = compute_A(scatterer, betas=betas, a=a, c=c, k=k,internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha)
-    bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
-
+    if A is None: A = compute_A(scatterer, betas=betas, a=a, c=c, k=k,internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha)
+    if bs is None: bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
 
 
     if use_LU:
@@ -602,81 +601,6 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
         return E.to(DTYPE), F.to(DTYPE), G.to(DTYPE), H.to(DTYPE)
     return E.to(DTYPE)
 
-    
-from acoustools.Mesh import get_CHIEF_points
-
-
-def find_optimal_CHIEF_points(scatterer: Mesh, board:Tensor, k:float=Constants.k, p_ref = Constants.P_ref, start_p = None, max_N = 10, steps= 20, lr=5e-4, log=False, optimiser:torch.optim.Optimizer=torch.optim.SGD):
-    '''
-    @private
-    Docstring for find_optimal_CHIEF_points
-    
-    :param scatterer: Description
-    :type scatterer: Mesh
-    :param board: Description
-    :type board: Tensor
-    :param k: Description
-    :type k: float
-    :param p_ref: Description
-    :param start_p: Description
-    :param max_N: Description
-    :param steps: Description
-    :param lr: Description
-    :param log: Description
-    :param optimiser: Description
-    :type optimiser: torch.optim.Optimizer
-    '''
-
-    # point = start_p if start_p is not None else torch.tensor(scatterer.generate_random_points(1).points).unsqueeze(2).permute(2,1,0)
-    com = get_centre_of_mass_as_points(scatterer)
-    # point = com.detach().clone()
-    point   = get_CHIEF_points(scatterer, P = 25, start='surface', method='uniform', scale = 0.2, scale_mode='diameter-scale')
-
-    startA = compute_A(scatterer, k=k)
-
-
-    areas = torch.tensor(scatterer.celldata["Area"], dtype=DTYPE, device=device)
-    centres = torch.tensor(scatterer.cell_centers().points, dtype=DTYPE, device=device)
-    norms = get_normals_as_points(scatterer, permute_to_points=False)
-
-    for j in range(5):
-        if j != 0: point = torch.cat([point, com.detach().clone() + create_points(1,1,max_pos=1e-4, min_pos=1e-4)], dim=2).detach()
-        # if j != 0: 
-            # p = torch.tensor(scatterer.generate_random_points(1).points).unsqueeze(2)
-            # point = torch.cat([point, p], dim=2).detach()
-        point =  point.requires_grad_() 
-        optim = optimiser([point],lr)
-        scheduler = torch.optim.lr_scheduler.StepLR(optim,step_size=1, gamma=0.8)
-
-        for i in range(steps):
-            optim.zero_grad()       
-
-
-            A = augment_A_CHIEF(startA.clone(), internal_points=point, k=k, scatterer=scatterer, CHIEF_mode='rect', centres=centres, areas=areas, norms=norms)
-            # A = compute_A(scatterer, k=k,internal_points=point, CHIEF_mode='rect')
-            # H = compute_H(scatterer, board, p_ref=p_ref, k=k, internal_points=point, )
-            ss = torch.linalg.svdvals(A)[0]
-            # print(ss)
-            sing_val_min = ss[-1]
-
-            dists = torch.norm(com - point, p=2, dim=1)
-            # print(dists, sing_val_min)
-
-
-            objective = -1* sing_val_min 
-            if log: print(j+1,i, objective.item())
-
-            objective.backward()
-            
-
-            optim.step()
-            # scheduler.step()
-        
-            # print(com, point)
-        
-        
-
-    return point
 
 
 
