@@ -32,29 +32,29 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
     points = torch.zeros((B, 3, N), device=device)
     
     if x is not None:
-        if type(x) is float or type(x) is int:
-            points[:,0,:] = x
-        elif type(x) in its:
+        if type(x) in its:
             for i in range(N):
                 points[:,0,i] = x[i]
+        else:
+            points[:,0,:] = x
     else:
         points[:,0,:].uniform_(min_pos, max_pos)
     
     if y is not None:
-        if type(y) is float or type(y) is int:
-            points[:,1,:] = y
-        elif type(y) in its:
+        if type(y) in its:
             for i in range(N):
                 points[:,1,i] = y[i]
+        else:
+            points[:,1,:] = y
     else:
         points[:,1,:].uniform_(min_pos, max_pos)
     
     if z is not None:
-        if type(z) is float or type(z) is int:
-            points[:,2,:] = z
-        elif type(z) in its:
+        if type(z) in its:
             for i in range(N):
-                points[:,2,i] = z[i]
+              points[:,2,i] = z[i]
+        else:
+            points[:,2,:] = z
     else:
         points[:,2,:].uniform_(min_pos, max_pos)
 
