@@ -200,9 +200,7 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
                                                                                 'H':H,
                                                                                 'path':path,
                                                                                 "internal_points":internal_points,
-                                                                                "transducer_radius":transducer_radius,
-                                                                                "k":k,
-                                                                                "p_ref":p_ref}, 
+                                                                                }, 
                                                                                 return_components=True,
                                                                                 Ax = Ex, Ay=Ey, Az=Ez)
 
