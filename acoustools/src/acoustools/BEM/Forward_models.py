@@ -229,7 +229,7 @@ def augment_A_CHIEF(A:Tensor, internal_points:Tensor, CHIEF_mode:Literal['square
 
 
 
-def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, BM_mode:str='fd') -> Tensor:
+def compute_A(scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor = 1, betas:float|Tensor = 0, a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, BM_mode:str='fd') -> Tensor:
     '''
     Computes A for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -306,6 +306,19 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, betas:float|Tensor = 0, a:Te
         A = A - BM_alpha * A_grad
 
         A[:, torch.eye(A_grad.shape[2], dtype=torch.bool, device=device)] = 0.5     
+
+
+    if ((type(alphas) in [int, float]) and alphas != 1) or (type(alphas) is Tensor and (alphas != 1).any()):
+        if type(alphas) is Tensor:
+            alphas = alphas.unsqueeze(1)
+            alphas = alphas.expand(1, M, M)
+        vecs = m_prime - m
+        angle = torch.sum(vecs * norms, dim=3) #Technically not the cosine of the angle - would need to /distance but as we only care about the sign then it doesnt matter
+        angle = angle.real
+        if type(alphas) is Tensor:
+            A[angle>0] = A[angle>0] * alphas[angle>0]
+        else:
+            A[angle>0] = A[angle>0] * alphas
     
     return A.to(DTYPE)
 
@@ -381,7 +394,7 @@ def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tenso
     return bs   
 
  
-def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, betas:float|Tensor = 0, 
+def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = False, p_ref = Constants.P_ref, norms:Tensor|None=None, k:float=Constants.k, alphas:float|Tensor = 1, betas:float|Tensor = 0, 
               a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, 
               return_components:bool=False, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, transducer_radius = Constants.radius, A:Tensor|None=None, bs:Tensor|None=None) -> Tensor:
     '''
@@ -417,7 +430,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     
 
 
-    if A is None: A = compute_A(scatterer, betas=betas, a=a, c=c, k=k,internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha)
+    if A is None: A = compute_A(scatterer, alphas=alphas, betas=betas, a=a, c=c, k=k,internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha)
     if bs is None: bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
 
 
@@ -449,7 +462,7 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str="Media", 
                            print_lines:bool=False, cache_name:str|None=None, p_ref = Constants.P_ref, 
-                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k, betas:float|Tensor = 0, 
+                           norms:Tensor|None=None, method:Literal['OLS','LU', 'INV']='LU', k:float=Constants.k,alphas:float|Tensor = 1, betas:float|Tensor = 0, 
                            a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, 
                            CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, transducer_radius=Constants.radius) -> Tensor:
     '''
@@ -501,7 +514,7 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             H = pickle.load(open(f_name,"rb")).to(device).to(DTYPE)
         except FileNotFoundError: 
             if print_lines: print("Not found, computing H...")
-            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode,h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
+            H = compute_H(scatterer,board,use_LU=use_LU,use_OLS=use_OLS,norms=norms, k=k, alphas=alphas, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode,h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
             try:
                 f = open(f_name,"wb")
             except FileNotFoundError as e:
@@ -511,7 +524,7 @@ def get_cache_or_compute_H(scatterer:Mesh,board,use_cache_H:bool=True, path:str=
             f.close()
     else:
         if print_lines: print("Computing H...")
-        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS, k=k, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
+        H = compute_H(scatterer,board, p_ref=p_ref,norms=norms,use_LU=use_LU,use_OLS=use_OLS, k=k, alphas=alphas, betas=betas, a=a, c=c, internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
 
     return H
 
@@ -581,7 +594,7 @@ def compute_E(scatterer:Mesh, points:Tensor, board:Tensor|None=None, use_cache_H
     if H is None:
         H = get_cache_or_compute_H(scatterer,board,use_cache_H, path, print_lines,p_ref=p_ref,
                                    norms=norms, method=H_method, k=k, betas=betas, a=a, c=c, internal_points=internal_points,
-                                     smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius).to(DTYPE)
+                                     smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius, alphas=alphas).to(DTYPE)
         
     if print_lines: print("G...")
     G = compute_G(points, scatterer, k=k, betas=betas,alphas=alphas, smooth_distance=smooth_distance).to(DTYPE)
