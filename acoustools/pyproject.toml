@@ -7,7 +7,7 @@ name = "acoustools"
 description = "A Full-Stack Python based library for working with acoustic fields for holgraphy"
 readme = "README.md"
 requires-python = ">=3.7"
-version = "1.0.4"
+version = "1.0.5"
 license = "MIT"
 keywords = []
 authors = [
