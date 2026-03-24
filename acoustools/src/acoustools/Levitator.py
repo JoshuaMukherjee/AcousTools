@@ -173,6 +173,7 @@ class LevitatorController():
                 for h in hologram:
                     holos.append(h.unsqueeze(0).cpu().detach())
                 hologram = holos
+            
 
             if type(hologram) is list:
                 #chunk this up - blocks of 32....
@@ -216,4 +217,5 @@ class LevitatorController():
                 amplitudes = None
                 relative_amplitude = ctypes.c_float(relative_amplitude)
             
-            self.send_message(phases, amplitudes, 0, num_geometries,sleep_ms=sleep_ms,loop=loop,num_loops=num_loops)
+            
+            self.send_message(phases, amplitudes, relative_amplitude, num_geometries,sleep_ms=sleep_ms,loop=loop,num_loops=num_loops)

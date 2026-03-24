@@ -165,7 +165,7 @@ def propagate_pressure_grad(activations: Tensor, points: Tensor,board: Tensor|No
     '''
     
     if Fx is None or Fy is None or Fz is None:
-        _Fx,_Fy,_Fz = forward_model_grad(points, board,norms=norms,k=k, transducer_radius=transducer_radius)
+        _Fx,_Fy,_Fz = forward_model_grad(points, board,k=k, transducer_radius=transducer_radius)
         if Fx is None: Fx = _Fx
         if Fy is None: Fy = _Fy
         if Fz is None: Fz = _Fz
