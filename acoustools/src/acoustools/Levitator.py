@@ -15,25 +15,24 @@ class LevitatorController():
     def __init__(self, bin_path:str|None = None, ids:tuple[int] = (1000,999), matBoardToWorld:list[int]|None=None, 
                  print_lines:bool=False):
         '''
-        Creates the controller\n
+        Creates the controller - reccomended to use in a `with` block\n
         ```python
         from acoustools.Levitator import LevitatorController
         from acoustools.Utilities import create_points, add_lev_sig, propagate_abs
         from acoustools.Solvers import wgs
 
-        lev = LevitatorController()
-
         p = create_points(1,1,x=0,y=0,z=0)
         x = wgs(p)
         print(propagate_abs(x,p))
+        print(x.shape)
         x = add_lev_sig(x)
 
-        lev.levitate(x)
-        print('Levitating...')
-        input()
-        print('Stopping...')
-        lev.disconnect()
-        print('Stopped')
+        with LevitatorController(ids=-1) as lev:
+
+            lev.levitate(x)
+            print('Levitating...')
+            input()
+            print('Stopping...')
 
         ```
         THIS CHANGES THE CURRENT WORKING DIRECTORY AND THEN CHANGES IT BACK \n
@@ -115,6 +114,12 @@ class LevitatorController():
             os.chdir(cwd)
 
             self.IDX = get_convert_indexes(256*self.board_number).cpu().detach()
+
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self.disconnect()
     
     
     def send_message(self, phases, amplitudes=None, relative_amplitude=1, num_geometries = 1, sleep_ms = 0, loop=False, num_loops = 0):
