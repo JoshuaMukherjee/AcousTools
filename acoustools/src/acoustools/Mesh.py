@@ -664,3 +664,15 @@ def get_CHIEF_points(scatterer:Mesh, P=30, method:Literal['random', 'uniform', '
 
     return internal_points
 
+
+def get_tetra_centroids(scatterer:Mesh) -> Tensor:
+
+    tetra = scatterer.tetralize()
+    
+    cell_centres = tetra.cell_centers()
+    
+    
+    centres =  torch.tensor(cell_centres.points).to(DTYPE).to(device)
+    
+
+    return centres.T.unsqueeze_(0)
