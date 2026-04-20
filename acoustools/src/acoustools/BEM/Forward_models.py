@@ -170,7 +170,7 @@ def compute_G(points: Tensor, scatterer: Mesh, k:float=Constants.k, alphas:float
         else:
             G[angle>0] = G[angle>0] * alphas
     
-    return G
+    return G.to(DTYPE)
 
 
 
