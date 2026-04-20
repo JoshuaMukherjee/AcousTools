@@ -142,10 +142,10 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
     v_max = vmax
     
     if type(vmax) is list:
-        v_max = vmax[i]
+        v_max = vmax[0]
     
     if type(vmin) is list:
-        v_min = vmin[i]
+        v_min = vmin[0]
     
     norms = {}
     
@@ -155,7 +155,9 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
             norms[i] = norm
     elif link_ax == 'none' or link_ax is None or link_ax == False:
         for i in range(len(results)):
-            norms[i] = None
+            mn = vmin[i] if (vmin is not None and i < len(vmin)) else None
+            mx = vmax[i] if (vmax is not None and i < len(vmax)) else None
+            norms[i] = mcolors.Normalize(vmin=mn, vmax=mx)
     
     else:
         if type(link_ax[0]) == list or type(link_ax[0]) == tuple:
