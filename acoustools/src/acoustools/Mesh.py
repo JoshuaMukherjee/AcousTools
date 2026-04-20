@@ -610,7 +610,7 @@ def insert_parasite(scatterer:Mesh, parasite_path:str = '/Sphere-lam1.stl', root
 
     return infected_scatterer
 
-def get_CHIEF_points(scatterer:Mesh, P=30, method:Literal['random', 'uniform', 'volume-random']='random', start:Literal['surface', 'centre']='surface', scale=0.001, scale_mode:Literal['abs','diameter-scale']='abs') -> Mesh:
+def get_CHIEF_points(scatterer:Mesh, P=30, method:Literal['random', 'uniform', 'volume-random', 'tetra-random']='random', start:Literal['surface', 'centre']='surface', scale=0.001, scale_mode:Literal['abs','diameter-scale']='abs') -> Mesh:
     '''
     Generates internal points that can be used for the CHIEF BEM formulation (or any other reason)\n
     :param scatterer: The scatterer to insert points into
@@ -658,6 +658,14 @@ def get_CHIEF_points(scatterer:Mesh, P=30, method:Literal['random', 'uniform', '
         internal_points = internal_points[:, idx,:]
     elif method.lower() == 'volume-random':
         internal_points = torch.Tensor(scatterer.generate_random_points(P).points).unsqueeze(0)
+    elif method.lower() == 'tetra-random':
+        tetra = get_tetra_centroids(scatterer)
+        indices = torch.randperm(tetra.shape[2])[:P]
+        internal_points = tetra[:,:,indices]
+        return internal_points
+    elif method.lower() == 'tetra-all':
+        tetra = get_tetra_centroids(scatterer)
+        return tetra
 
     internal_points = internal_points.permute(0,2,1)
 
