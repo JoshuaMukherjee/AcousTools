@@ -368,8 +368,8 @@ def get_image_positions(A:Tensor,B:Tensor,C:Tensor, res:tuple[int]=(200,200)):
 
     for i in range(0,res[0]):
         for j in range(res[1]):
-            positions[:,:,i*res[0]+j] = A + step_x * i + step_y * j
-        
+            positions[:,:,i*res[1]+j] = A + step_x * i + step_y * j
+    
     return positions
 
 
