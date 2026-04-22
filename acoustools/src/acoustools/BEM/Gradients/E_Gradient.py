@@ -192,9 +192,12 @@ def get_G_second_mixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, re
 
 
     # print(areas.shape, exp_ikd.shape, day.shape, dax.shape, distances.shape, distances_cube.shape)
-    Gxy = (-areas * exp_ikd * (day * dax * (kd**2 + 2*ikd - 2) + distances * dxy * (1 - ikd))) / (4*Constants.pi * distances_cube)
-    Gxz = (-areas * exp_ikd * (daz * dax * (kd**2 + 2*ikd - 2) + distances * dxz * (1 - ikd))) / (4*Constants.pi * distances_cube)
-    Gyz = (-areas * exp_ikd * (day * daz * (kd**2 + 2*ikd - 2) + distances * dyz * (1 - ikd))) / (4*Constants.pi * distances_cube)
+    aikd = -areas * exp_ikd 
+    kd_ikd = (kd**2 + 2*ikd - 2)
+    denom = (4*Constants.pi * distances_cube)
+    Gxy = (aikd * (day * dax * kd_ikd+  distances * dxy * (1 - ikd))) / denom
+    Gxz = (aikd * (daz * dax * kd_ikd + distances * dxz * (1 - ikd))) / denom
+    Gyz = (aikd * (day * daz * kd_ikd + distances * dyz * (1 - ikd))) / denom
 
     nx = normals[:,0,:]
     ny = normals[:,1,:]
@@ -310,7 +313,6 @@ def BEM_laplacian(points:Tensor, scatterer:Mesh, transducers:Tensor|Mesh=None, u
     Exx, Eyy, Ezz = BEM_forward_model_second_derivative_unmixed(points=points, scatterer=scatterer, transducers=transducers, use_cache_H=use_cache_H, k=k, print_lines=print_lines, H=H, return_components=return_components, path=path, p_ref=p_ref, internal_points=internal_points, transducer_radius=transducer_radius)
 
     return Exx + Eyy + Ezz
-
 
 
 def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False, k=Constants.k) -> tuple[Tensor, Tensor, Tensor]:

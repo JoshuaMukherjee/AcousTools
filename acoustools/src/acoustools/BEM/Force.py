@@ -14,6 +14,7 @@ import torch
 
 from vedo import Mesh
 
+
 def BEM_compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False, V:float=c.V, scatterer:Mesh=None, 
                   H:Tensor=None, path:str="Media", k=c.k, transducer_radius=c.radius, p_ref=c.P_ref,
                   medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p) -> Tensor | tuple[Tensor, Tensor, Tensor]:
