@@ -203,10 +203,10 @@ def Visualise(A:Tensor,B:Tensor,C:Tensor,activation:Tensor,points:list[Tensor]|T
         if call_abs: im = torch.abs(im)
         
 
-        if v_min is None:
-            v_min = torch.min(im)
-        if v_max is None:
-            v_max = torch.max(im)
+        # if v_min is None:
+        #     v_min = torch.min(im)
+        # if v_max is None:
+        #     v_max = torch.max(im)
         
 
         # print(vmax,vmin)
