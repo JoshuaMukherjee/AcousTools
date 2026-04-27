@@ -659,7 +659,7 @@ def get_CHIEF_points(scatterer:Mesh, P=30, method:Literal['random', 'uniform', '
     elif method.lower() == 'volume-random':
         internal_points = torch.Tensor(scatterer.generate_random_points(P).points).unsqueeze(0)
     elif method.lower() == 'tetra-random':
-        tetra = get_tetra_centroids(scatterer)
+        tetra = get_tetra_centroids(scatterer, side=0.01)
         indices = torch.randperm(tetra.shape[2])[:P]
         internal_points = tetra[:,:,indices]
         return internal_points
@@ -673,9 +673,9 @@ def get_CHIEF_points(scatterer:Mesh, P=30, method:Literal['random', 'uniform', '
     return internal_points
 
 
-def get_tetra_centroids(scatterer:Mesh) -> Tensor:
+def get_tetra_centroids(scatterer:Mesh, side=0.02) -> Tensor:
 
-    tetra = scatterer.tetralize()
+    tetra = scatterer.tetralize(side=side)
     
     cell_centres = tetra.cell_centers()
     
