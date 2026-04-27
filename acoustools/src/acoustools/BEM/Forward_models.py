@@ -359,7 +359,8 @@ def compute_bs(scatterer: Mesh, board:Tensor, p_ref=Constants.P_ref, norms:Tenso
 
 
     if internal_points is not None: #CHIEF
-        F_int = forward_model_batched(internal_points.permute(0,2,1), board, p_ref=p_ref,norms=norms,k=k, transducer_radius=transducer_radius)
+        # F_int = forward_model_batched(internal_points.permute(0,2,1), board, p_ref=p_ref,norms=norms,k=k, transducer_radius=transducer_radius)
+        F_int = forward_model_batched(internal_points, board, p_ref=p_ref,norms=norms,k=k, transducer_radius=transducer_radius)
         bs = torch.cat([bs, F_int], dim=1)
     
     if a is not None: #Modified Greens function
@@ -422,6 +423,9 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     centres = torch.tensor(scatterer.cell_centers().points, dtype=DTYPE, device=device)
     M = centres.shape[0]
 
+    if bs is None: bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
+
+
     if internal_points is not None and (internal_points.shape[1] == 3 and internal_points.shape[2] != 3):
             internal_points = internal_points.permute(0,2,1)
 
@@ -431,8 +435,11 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
 
 
     if A is None: A = compute_A(scatterer, alphas=alphas, betas=betas, a=a, c=c, k=k,internal_points=internal_points, smooth_distance=smooth_distance, CHIEF_mode=CHIEF_mode, h=h, BM_alpha=BM_alpha)
-    if bs is None: bs = compute_bs(scatterer,board,p_ref=p_ref,norms=norms,a=a,c=c, k=k,internal_points=internal_points, h=h, BM_alpha=BM_alpha, transducer_radius=transducer_radius)
 
+
+    # print(A.shape, torch.linalg.matrix_rank(A), A.det(), torch.linalg.cond(A))
+    # print(A)
+    # print(A.inverse())
 
     if use_LU:
         LU, pivots = torch.linalg.lu_factor(A)
@@ -444,10 +451,10 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
          H = torch.linalg.solve(A,bs)
     
     # H = H / (1-eta*1j)
-
     # exit()
-    H = H[:,:M,: ]
     
+    H_clipped = H[:,:M,: ]
+
     # print(torch.linalg.eig(A))
 
     # exit()
@@ -455,8 +462,10 @@ def compute_H(scatterer: Mesh, board:Tensor ,use_LU:bool=True, use_OLS:bool = Fa
     # print((k*H, A@H, bs), H/bs)
     # exit()
 
-    if return_components: return H,A,bs
-    return H
+    if return_components: return H_clipped,A,bs, H
+
+    
+    return H_clipped
 
 
 
