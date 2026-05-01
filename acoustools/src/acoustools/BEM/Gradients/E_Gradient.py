@@ -45,7 +45,7 @@ def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor=Non
         return Ex.to(DTYPE), Ey.to(DTYPE), Ez.to(DTYPE), Fx, Fy, Fz, Gx, Gy, Gz, H
     else:
         return Ex.to(DTYPE), Ey.to(DTYPE), Ez.to(DTYPE)
-    
+
 
 def get_G_second_unmixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False, k=Constants.k) -> tuple[Tensor, Tensor, Tensor]:
 
@@ -80,11 +80,12 @@ def get_G_second_unmixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, 
     distances_expanded_four = distances_expanded**4
     distances_expanded_five = distances_expanded**5
 
-    kd = k * distances_expanded
+    ik = 1j * k
+    ikd = ik * distances_expanded
 
-    exp_ikd = torch.exp(1j*kd)
+    exp_ikd = torch.exp(ikd)
     
-    Gaa = areas/(4*Constants.pi * 1j) *exp_ikd * ((1j*k**2 * diff_square)/ distances_expanded_cube + (1j*k)/distances_expanded_square - 1/distances_expanded_cube - (3*1j*k*diff_square)/distances_expanded_four + (3*diff_square)/distances_expanded_five)
+    Gaa = areas/(4*Constants.pi * 1j) *exp_ikd * ((1j*k**2 * diff_square)/ distances_expanded_cube + (ik)/distances_expanded_square - 1/distances_expanded_cube - (3*ik*diff_square)/distances_expanded_four + (3*diff_square)/distances_expanded_five)
     Gxx = Gaa[:,0]
     Gyy = Gaa[:,1]
     Gzz = Gaa[:,2]
