@@ -112,7 +112,6 @@ def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P
 
 
 
-
     bessel_arg=k*transducer_radius*sine_angle
     directivity=1/2-torch.pow(bessel_arg,2)/16+torch.pow(bessel_arg,4)/384
     

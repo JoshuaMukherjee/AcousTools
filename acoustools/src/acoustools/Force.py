@@ -1,5 +1,5 @@
 from acoustools.Gorkov import gorkov_fin_diff, get_finite_diff_points_all_axis, get_gorkov_constants
-from acoustools.Utilities import forward_model_batched, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed, TRANSDUCERS, propagate, DTYPE
+from acoustools.Utilities import forward_model_batched, forward_model_grad, forward_model_second_derivative_unmixed, forward_model_second_derivative_mixed, TRANSDUCERS, propagate, DTYPE, device
 import acoustools.Constants as c
 
 import torch
@@ -50,7 +50,7 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
 
 def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False, V=c.V, p_ref=c.P_ref, 
                   transducer_radius=c.radius, k=c.k,
-                 medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+                 medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p, transducer_norms=None) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
     Returns the force on a particle using the analytical derivative of the Gor'kov potential and the piston model\n
     :param activations: Transducer hologram
@@ -65,8 +65,11 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
 
     if board is None:
         board = TRANSDUCERS
+
+    if transducer_norms is None:
+        transducer_norms = (torch.zeros_like(board) + torch.tensor([0,0,1], device=device)) * torch.sign(board[:,2].real).unsqueeze(1).to(DTYPE)
     
-    F = forward_model_batched(points,transducers=board,p_ref=p_ref, transducer_radius=transducer_radius, k=k)
+    F = forward_model_batched(points,transducers=board,p_ref=p_ref, transducer_radius=transducer_radius, k=k, norms=transducer_norms)
     Fx, Fy, Fz = forward_model_grad(points,transducers=board,p_ref=p_ref, transducer_radius=transducer_radius, k=k)
     Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board,p_ref=p_ref, transducer_radius=transducer_radius, k=k)
     Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=board,p_ref=p_ref, transducer_radius=transducer_radius, k=k)
