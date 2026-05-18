@@ -9,7 +9,7 @@ from types import FunctionType
 
 def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:float= 0.000135156253,K1:float|None=None, 
                    K2:float|None=None,U_function:FunctionType=gorkov_fin_diff,U_fun_args:dict={}, board:Tensor|None=None, V=c.V, p_ref=c.P_ref,
-                    k=c.k, transducer_radius = c.radius,
+                    k=c.k, transducer_radius = c.radius, transducer_norms = None,
                     medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p) -> Tensor:
     '''
     Returns the force on a particle using finite differences to approximate the derivative of the gor'kov potential\n
@@ -35,7 +35,7 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
     fin_diff_points = get_finite_diff_points_all_axis(points, axis, stepsize)
     
     U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/10 ,K1=K1,K2=K2,**U_fun_args, board=board,V=V, 
-                            p_ref=p_ref, k=k, transducer_radius=transducer_radius, 
+                            p_ref=p_ref, k=k, transducer_radius=transducer_radius, transducer_norms=transducer_norms,
                             medium_density=medium_density, medium_speed=medium_speed, particle_density=particle_density,particle_speed=particle_speed)
     U_grads = U_points[:,N:]
     split = torch.reshape(U_grads,(B,2,-1))
@@ -70,9 +70,9 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
         transducer_norms = (torch.zeros_like(board) + torch.tensor([0,0,1], device=device)) * torch.sign(board[:,2].real).unsqueeze(1).to(DTYPE)
     
     F = forward_model_batched(points,transducers=board,p_ref=p_ref, transducer_radius=transducer_radius, k=k, norms=transducer_norms)
-    Fx, Fy, Fz = forward_model_grad(points,transducers=board,p_ref=p_ref, transducer_radius=transducer_radius, k=k)
-    Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board,p_ref=p_ref, transducer_radius=transducer_radius, k=k)
-    Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=board,p_ref=p_ref, transducer_radius=transducer_radius, k=k)
+    Fx, Fy, Fz = forward_model_grad(points,transducers=board,p_ref=p_ref, transducer_radius=transducer_radius, k=k, transducer_norms=transducer_norms)
+    Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=board,p_ref=p_ref, transducer_radius=transducer_radius, k=k,transducer_norms=transducer_norms)
+    Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=board,p_ref=p_ref, transducer_radius=transducer_radius, k=k,transducer_norms=transducer_norms)
 
     p   = (F@activations)
     Px  = (Fx@activations)
@@ -119,7 +119,7 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
         return force 
 
     
-def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axis:int=2, transducer_radius=c.radius, k=c.k,
+def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axis:int=2, transducer_radius=c.radius, k=c.k, transducer_norms=None,
                  medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p) -> Tensor:
     '''
     Returns the force in one axis on a particle using the analytical derivative of the Gor'kov potential and the piston model \n
@@ -133,7 +133,7 @@ def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axi
     '''
     if board is None:
         board = TRANSDUCERS
-    forces = compute_force(activations, points,return_components=True, board=board, transducer_radius=transducer_radius, k=k, 
+    forces = compute_force(activations, points,return_components=True, board=board, transducer_radius=transducer_radius, k=k, transducer_norms=transducer_norms,
                            medium_density=medium_density, medium_speed=medium_speed,particle_density=particle_density, particle_speed=particle_speed)
     force = forces[axis]
 
@@ -143,7 +143,8 @@ def get_force_axis(activations:Tensor, points:Tensor,board:Tensor|None=None, axi
 def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, board:Tensor, grad_function:FunctionType=forward_model_grad, 
                grad_function_args:dict={}, F_fun:FunctionType|None=forward_model_batched, F_function_args:dict={},
                F:Tensor|None=None, Ax:Tensor|None=None, Ay:Tensor|None=None,Az:Tensor|None=None,
-               use_momentum:bool=False, return_components:bool=False, p_ref=c.P_ref, transducer_radius=c.radius, k=c.k, 
+               use_momentum:bool=False, return_components:bool=False, p_ref=c.P_ref, transducer_radius=c.radius, 
+               transducer_norms=None,k=c.k, 
                medium_density = c.p_0, wave_speed = c.c_0, angular_frequency = c.angular_frequency ) -> Tensor:
     '''
     Returns the force on a mesh using a discritised version of Eq. 1 in `Acoustical boundary hologram for macroscopic rigid-body levitation`\n
@@ -166,14 +167,14 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     '''
 
     if F is None:
-        F = F_fun(points=points, transducers=board, p_ref=p_ref, transducer_radius=transducer_radius, k=k ,**F_function_args)
+        F = F_fun(points=points, transducers=board, p_ref=p_ref, transducer_radius=transducer_radius,norms=transducer_norms, k=k ,**F_function_args)
     p = propagate(activations,points,board,A=F, p_ref=p_ref, transducer_radius=transducer_radius, k=k)
     pressure_square = torch.abs(p)**2
     pressure_time_average = 1/2 * pressure_square
 
     # return pressure_time_average.expand((1,3,-1)), None 
     if Ax is None or Ay is None or Az is None:
-        Ax, Ay, Az = grad_function(points=points, transducers=board, p_ref=p_ref, k=k, transducer_radius=transducer_radius, **grad_function_args)
+        Ax, Ay, Az = grad_function(points=points, transducers=board, p_ref=p_ref, k=k, transducer_radius=transducer_radius, transducer_norms=transducer_norms, **grad_function_args)
     
     px = (Ax@activations).squeeze(2).unsqueeze(0)
     py = (Ay@activations).squeeze(2).unsqueeze(0)
@@ -208,7 +209,7 @@ def force_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, bo
     return force
 
 def torque_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, centre_of_mass:Tensor, board:Tensor,force:Tensor|None=None, 
-                grad_function:FunctionType=forward_model_grad,grad_function_args:dict={},F:Tensor|None=None, 
+                grad_function:FunctionType=forward_model_grad,grad_function_args:dict={},F:Tensor|None=None, transducer_norms=None,
                 Ax:Tensor|None=None, Ay:Tensor|None=None,Az:Tensor|None=None, transducer_radius=c.radius, k=c.k, 
                medium_density = c.p_0, wave_speed = c.c_0, angular_frequency = c.angular_frequency, p_ref=c.P_ref) -> Tensor:
     '''
@@ -230,7 +231,7 @@ def torque_mesh(activations:Tensor, points:Tensor, norms:Tensor, areas:Tensor, c
     '''
 
     if force is None:
-        force = force_mesh(activations, points, norms, areas, board,grad_function,grad_function_args,F=F, Ax=Ax, Ay=Ay, Az=Az, 
+        force = force_mesh(activations, points, norms, areas, board,grad_function,grad_function_args,F=F, Ax=Ax, Ay=Ay, Az=Az, transducer_norms=transducer_norms,
                            p_ref=p_ref, k=k, wave_speed=wave_speed, medium_density=medium_density, transducer_radius=transducer_radius, angular_frequency=angular_frequency)
     force = force.to(DTYPE)
     

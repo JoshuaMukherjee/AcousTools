@@ -19,7 +19,7 @@ from acoustools.Gorkov  import get_gorkov_constants
 def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|str=None,
                           board:Tensor|None=None,H:Tensor|None=None,E:Tensor|None=None, return_components:bool=False, dims='XYZ',
                           V:float=Constants.V, p_ref = Constants.P_ref, k=Constants.k, transducer_radius = Constants.radius, 
-                        medium_density=Constants.p_0, medium_speed = Constants.c_0, particle_density = Constants.p_p, particle_speed = Constants.c_p,
+                        medium_density=Constants.p_0, medium_speed = Constants.c_0, particle_density = Constants.p_p, particle_speed = Constants.c_p, transducer_norms=None,
                           **params) -> Tensor:
     '''
     Returns Gor'kov potential computed analytically from the BEM model\n
@@ -42,9 +42,9 @@ def BEM_gorkov_analytical(activations:Tensor,points:Tensor,scatterer:Mesh|None|s
     path = params['path']
     
     if E is None:
-        E = compute_E(scatterer,points,board,H=H,path=path, k=k, p_ref=p_ref, transducer_radius= transducer_radius)
+        E = compute_E(scatterer,points,board,H=H,path=path, k=k, p_ref=p_ref, transducer_radius= transducer_radius, norms=transducer_norms)
 
-    Ex, Ey, Ez = BEM_forward_model_grad(points,scatterer,board,H=H,path=path)
+    Ex, Ey, Ez = BEM_forward_model_grad(points,scatterer,board,H=H,path=path, transducer_norms=transducer_norms)
 
     p = E@activations
     

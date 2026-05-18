@@ -17,7 +17,7 @@ from vedo import Mesh
 
 def BEM_compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,return_components:bool=False, V:float=c.V, scatterer:Mesh=None, 
                   H:Tensor=None, path:str="Media", k=c.k, transducer_radius=c.radius, p_ref=c.P_ref,
-                  medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+                  medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p, transucer_norms=None) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
     Returns the force on a particle using the analytical derivative of the Gor'kov potential and BEM\n
     :param activations: Transducer hologram
@@ -36,10 +36,10 @@ def BEM_compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,r
     if board is None:
         board = TRANSDUCERS
     
-    F = compute_E(scatterer=scatterer,points=points,board=board,H=H, path=path, k=k, transducer_radius=transducer_radius, p_ref=p_ref)
-    Fx, Fy, Fz = BEM_forward_model_grad(points,transducers=board,scatterer=scatterer,H=H, path=path, k=k, transducer_radius=transducer_radius, p_ref=p_ref)
-    Fxx, Fyy, Fzz = BEM_forward_model_second_derivative_unmixed(points,transducers=board,scatterer=scatterer,H=H, path=path, k=k, transducer_radius=transducer_radius, p_ref=p_ref)
-    Fxy, Fxz, Fyz = BEM_forward_model_second_derivative_mixed(points,transducers=board,scatterer=scatterer,H=H, path=path, k=k, transducer_radius=transducer_radius, p_ref=p_ref)
+    F = compute_E(scatterer=scatterer,points=points,board=board,H=H, path=path, k=k, transducer_radius=transducer_radius, p_ref=p_ref, norms=transucer_norms)
+    Fx, Fy, Fz = BEM_forward_model_grad(points,transducers=board,scatterer=scatterer,H=H, path=path, k=k, transducer_radius=transducer_radius, p_ref=p_ref, transducer_norms=transucer_norms)
+    Fxx, Fyy, Fzz = BEM_forward_model_second_derivative_unmixed(points,transducers=board,scatterer=scatterer,H=H, path=path, k=k, transducer_radius=transducer_radius, p_ref=p_ref, transducer_norms=transucer_norms)
+    Fxy, Fxz, Fyz = BEM_forward_model_second_derivative_mixed(points,transducers=board,scatterer=scatterer,H=H, path=path, k=k, transducer_radius=transducer_radius, p_ref=p_ref, transducer_norms=transucer_norms)
 
     p   = (F@activations)
     Px  = (Fx@activations)
@@ -80,7 +80,7 @@ def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|No
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
                        surface:Mesh|None=None, use_cache_H:bool=True, 
                        E:Tensor|None=None, Ex:Tensor|None=None, Ey:Tensor|None=None, Ez:Tensor|None=None,
-                        internal_points=None ) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+                        internal_points=None, transducer_norms=None, transducer_radius=c.radius ) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
     Computes the force on a scattering obejct by computing thr force on a far field surface\\
     :param activations: Hologram
@@ -119,7 +119,7 @@ def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|No
     
     if use_pressure:
         if E is None:
-            E = compute_E(scatterer, points, board, use_cache_H=use_cache_H, path=path, H=H,internal_points=internal_points, p_ref=p_ref)
+            E = compute_E(scatterer, points, board, use_cache_H=use_cache_H, path=path, H=H,internal_points=internal_points, p_ref=p_ref, norms=transducer_norms, transducer_radius=transducer_radius)
         p = propagate(activations,points,board,A=E, p_ref=p_ref)
         pressure_square = torch.abs(p)**2
         pressure_time_average = 1/2 * pressure_square
@@ -131,7 +131,7 @@ def torque_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|No
         pressure_term = 0
 
     if Ex is None or Ey is None or Ez is None:
-        Ex, Ey, Ez = BEM_forward_model_grad(points, scatterer, board, use_cache_H=use_cache_H, H=H, path=path,internal_points=internal_points, p_ref=p_ref)
+        Ex, Ey, Ez = BEM_forward_model_grad(points, scatterer, board, use_cache_H=use_cache_H, H=H, path=path,internal_points=internal_points, p_ref=p_ref, transducer_norms=transducer_norms, transducer_radius=transducer_radius)
     
     px = (Ex@activations).squeeze(2).unsqueeze(0)
     py = (Ey@activations).squeeze(2).unsqueeze(0)
@@ -158,7 +158,7 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
                        surface:Mesh|None=None, use_cache_H:bool=True, 
                        E:Tensor|None=None, Ex:Tensor|None=None, Ey:Tensor|None=None, Ez:Tensor|None=None, 
-                       use_momentum:float=True, p_ref:float=c.P_ref, internal_points=None, k=c.k, transducer_radius=c.radius) -> Tensor | tuple[Tensor, Tensor, Tensor]:
+                       use_momentum:float=True, p_ref:float=c.P_ref, internal_points=None, k=c.k, transducer_radius=c.radius, transducer_norms=None) -> Tensor | tuple[Tensor, Tensor, Tensor]:
     '''
     Computes the torque on a scattering obejct by computing thr force on a far field surface\\
     :param activations: Hologram
@@ -194,13 +194,14 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
     areas = get_areas(surface)
     
     if E is None:
-        E,F,G,H = compute_E(scatterer, points, board,path=path, H=H, return_components=True, use_cache_H=use_cache_H, p_ref=p_ref,internal_points=internal_points, k=k, transducer_radius=transducer_radius)
+        E,F,G,H = compute_E(scatterer, points, board,path=path, H=H, return_components=True, use_cache_H=use_cache_H, p_ref=p_ref,internal_points=internal_points, k=k, transducer_radius=transducer_radius, norms=transducer_norms)
     
     force, momentum = force_mesh(activations, points,norms,areas,board=board,F=E, use_momentum=use_momentum, p_ref=p_ref, k=k, transducer_radius=transducer_radius,
                     grad_function=BEM_forward_model_grad, grad_function_args={'scatterer':scatterer,
                                                                                 'H':H,
                                                                                 'path':path,
                                                                                 "internal_points":internal_points,
+                                                                                "transducer_norms":transducer_norms,
                                                                                 }, 
                                                                                 return_components=True,
                                                                                 Ax = Ex, Ay=Ey, Az=Ez)
@@ -221,7 +222,7 @@ def force_mesh_surface(activations:Tensor, scatterer:Mesh=None, board:Tensor|Non
 def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
                        sum_elements:bool = True, H:Tensor=None, diameter:float=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
-                       surface:Mesh|None=None, use_cache_H:bool=True, force:Tensor|None=None, norms:Tensor|None=None, p_ref=c.P_ref, k=c.k, transducer_radius=c.radius) -> Tensor:
+                       surface:Mesh|None=None, use_cache_H:bool=True, force:Tensor|None=None, norms:Tensor|None=None, p_ref=c.P_ref, k=c.k, transducer_radius=c.radius,transducer_norms=None) -> Tensor:
     '''
     Computes the divergance force (the dot product of the force and normals on the surface) on a scattering obejct by computing thr force on a far field surface\\
     :param activations: Hologram
@@ -249,7 +250,7 @@ def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board
     
     if force is None:
         force = force_mesh_surface(activations, scatterer, board, H=H, diameter=diameter, path=path, 
-                               surface_path=surface_path, surface=surface, use_cache_H=use_cache_H, sum_elements=False, use_momentum=True, k=k, p_ref=p_ref, transducer_radius=transducer_radius) 
+                               surface_path=surface_path, surface=surface, use_cache_H=use_cache_H, sum_elements=False, use_momentum=True, k=k, p_ref=p_ref, transducer_radius=transducer_radius, transducer_norms=transducer_norms) 
 
     if norms is None: norms = get_normals_as_points(surface)
     areas = get_areas(surface)
@@ -266,7 +267,7 @@ def force_mesh_surface_divergance(activations:Tensor, scatterer:Mesh=None, board
 def force_mesh_surface_curl(activations:Tensor, scatterer:Mesh=None, board:Tensor|None=None,
                        sum_elements:bool = True, H:Tensor=None, diameter:float=c.wavelength*2,
                        path:str="Media", surface_path:str = "/Sphere-solidworks-lam2.stl",
-                       surface:Mesh|None=None, use_cache_H:bool=True, magnitude:Tensor|None = False, force:Tensor|None=None, p_ref=c.P_ref, k=c.k, transducer_radius=c.radius) -> Tensor:
+                       surface:Mesh|None=None, use_cache_H:bool=True, magnitude:Tensor|None = False, force:Tensor|None=None, p_ref=c.P_ref, k=c.k, transducer_radius=c.radius,transducer_norms=None) -> Tensor:
     '''
     Computes the curl force (the cross product of the force and normals on the surface) on a scattering obejct by computing thr force on a far field surface\\
     :param activations: Hologram
@@ -285,7 +286,7 @@ def force_mesh_surface_curl(activations:Tensor, scatterer:Mesh=None, board:Tenso
     '''
     
     if force is None: force = force_mesh_surface(activations, scatterer, board, H=H, diameter=diameter, path=path, 
-                               surface_path=surface_path, surface=surface, use_cache_H=use_cache_H, sum_elements=False, k=k, p_ref=p_ref, transducer_radius=transducer_radius) 
+                               surface_path=surface_path, surface=surface, use_cache_H=use_cache_H, sum_elements=False, k=k, p_ref=p_ref, transducer_radius=transducer_radius, transducer_norms=transducer_norms) 
 
     if surface is None:
         surface = load_scatterer(path+surface_path)
@@ -312,7 +313,7 @@ def force_mesh_surface_curl(activations:Tensor, scatterer:Mesh=None, board:Tenso
 
 def get_force_mesh_along_axis(start:Tensor,end:Tensor, activations:Tensor, scatterers:list[Mesh], board:Tensor, mask:Tensor|None=None, steps:int=200, 
                               path:str="Media",print_lines:bool=False, use_cache:bool=True, 
-                              Hs:Tensor|None = None, Hxs:Tensor|None=None, Hys:Tensor|None=None, Hzs:Tensor|None=None, p_ref=c.P_ref, k=c.k, transducer_radius=c.radius) -> tuple[list[Tensor],list[Tensor],list[Tensor]]:
+                              Hs:Tensor|None = None, Hxs:Tensor|None=None, Hys:Tensor|None=None, Hzs:Tensor|None=None, p_ref=c.P_ref, k=c.k, transducer_radius=c.radius,transducer_norms=None) -> tuple[list[Tensor],list[Tensor],list[Tensor]]:
     '''
     @private
     Computes the force on a mesh at each point from `start` to `end` with number of samples = `steps`  \n
@@ -362,7 +363,7 @@ def get_force_mesh_along_axis(start:Tensor,end:Tensor, activations:Tensor, scatt
         norms = get_normals_as_points(scatterer)
 
         if Hs is None:
-            H = get_cache_or_compute_H(scatterer, board, path=path, print_lines=print_lines, use_cache_H=use_cache, k=k, p_ref=p_ref, transducer_radius=transducer_radius)
+            H = get_cache_or_compute_H(scatterer, board, path=path, print_lines=print_lines, use_cache_H=use_cache, k=k, p_ref=p_ref, transducer_radius=transducer_radius, norms=transducer_norms)
         else:
             H = Hs[i]
         

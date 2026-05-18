@@ -27,7 +27,7 @@ def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref
 
     if transducer_norms is None:
         transducer_norms = (torch.zeros_like(transducers) + torch.tensor([0,0,1], device=device)) * torch.sign(transducers[:,2].real).unsqueeze(1).to(DTYPE)
-        transducer_norms_exp = transducer_norms.unsqueeze(0).unsqueeze(3)
+    transducer_norms_exp = transducer_norms.unsqueeze(0).unsqueeze(3)
     
     transducers = torch.unsqueeze(transducers,2)
     transducers = transducers.expand((B,-1,-1,N))
@@ -68,7 +68,7 @@ def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref
 
     return F,G,H, partialFpartialX, partialGpartialX, partialHpartialX, partialFpartialU, partialUpartiala
 
-def forward_model_grad(points:Tensor, transducers:Tensor|None = None, p_ref=Constants.P_ref, k=Constants.k, transducer_radius=Constants.radius) -> tuple[Tensor]:
+def forward_model_grad(points:Tensor, transducers:Tensor|None = None, p_ref=Constants.P_ref, k=Constants.k, transducer_radius=Constants.radius, transducer_norms=None) -> tuple[Tensor]:
     '''
     Computes the analytical gradient of the piston model\n
     :param points: Point position to compute propagation to 
@@ -89,7 +89,7 @@ def forward_model_grad(points:Tensor, transducers:Tensor|None = None, p_ref=Cons
         transducers=TRANSDUCERS
     
 
-    F,G,H, partialFpartialX, partialGpartialX, partialHpartialX,_,_ = compute_gradients(points, transducers, p_ref=p_ref,k=k, transducer_radius=transducer_radius)
+    F,G,H, partialFpartialX, partialGpartialX, partialHpartialX,_,_ = compute_gradients(points, transducers, p_ref=p_ref,k=k, transducer_radius=transducer_radius, transducer_norms=transducer_norms)
     derivative = G*(H*partialFpartialX + F*partialHpartialX) + F*H*partialGpartialX
     derivative = derivative.to(device).to(DTYPE) # minus here to match f.d -> not 100% sure why its needed
 
@@ -120,7 +120,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
 
     if transducer_norms is None:
         transducer_norms = (torch.zeros_like(transducers) + torch.tensor([0,0,1], device=device)) * torch.sign(transducers[:,2].real).unsqueeze(1).to(DTYPE)
-        transducer_norms_exp = transducer_norms.unsqueeze(0).unsqueeze(3)
+    transducer_norms_exp = transducer_norms.unsqueeze(0).unsqueeze(3)
 
     B = points.shape[0]
     N = points.shape[2]
@@ -190,7 +190,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     Gaa =  p_ref_expand * (-1/distances_expanded_cube * torch.exp(1j*kd) * (da**2 * (kd**2 + 2*1j*kd - 2) + distances_expanded *daa * (1-1j * kd)))
 
     cos_theta = torch.sum(diff * transducer_norms_exp, dim=2) / distances
-    cos_theta_exp = cos_theta.unsqueeze(3)
+    cos_theta_exp = cos_theta.unsqueeze(2)
 
     sa = da * cos_theta_exp
 
@@ -231,7 +231,7 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
 
     if transducer_norms is None:
         transducer_norms = (torch.zeros_like(transducers) + torch.tensor([0,0,1], device=device)) * torch.sign(transducers[:,2].real).unsqueeze(1).to(DTYPE)
-        transducer_norms_exp = transducer_norms.unsqueeze(0).unsqueeze(3)
+    transducer_norms_exp = transducer_norms.unsqueeze(0).unsqueeze(3)
 
     B = points.shape[0]
     N = points.shape[2]
@@ -286,7 +286,7 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
 
 
     cos_theta = torch.sum(diff * transducer_norms_exp, dim=2) / distances
-    cos_theta_exp = cos_theta.unsqueeze(3)
+    cos_theta_exp = cos_theta.unsqueeze(2)
     sa = da * cos_theta_exp
     sx = sa[:,:,0]
     sy = sa[:,:,1]
