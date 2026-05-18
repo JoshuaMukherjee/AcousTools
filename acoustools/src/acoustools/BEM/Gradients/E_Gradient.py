@@ -13,7 +13,7 @@ import acoustools.Constants as Constants
 
 def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor=None, use_cache_H:bool=True, 
                            print_lines:bool=False, H:Tensor|None=None, return_components:bool=False,k=Constants.k,
-                           path:str="Media", p_ref=Constants.P_ref, internal_points = None, transducer_radius=Constants.radius) -> tuple[Tensor, Tensor, Tensor] | tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
+                           path:str="Media", p_ref=Constants.P_ref, internal_points = None, transducer_radius=Constants.radius, transducer_norms=None) -> tuple[Tensor, Tensor, Tensor] | tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
     '''
     Computes the gradient of the forward propagation for BEM\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -30,7 +30,7 @@ def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor=Non
 
     B = points.shape[0]
     if H is None:
-        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref, k=k, internal_points=internal_points, transducer_radius=transducer_radius)
+        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref, k=k, internal_points=internal_points, transducer_radius=transducer_radius, norms=transducer_norms)
     
     Fx, Fy, Fz  = forward_model_grad(points, transducers,p_ref=p_ref, k=k, transducer_radius=transducer_radius)
     Gx, Gy, Gz = get_G_partial(points, scatterer, transducers, k=k)
@@ -45,7 +45,7 @@ def BEM_forward_model_grad(points:Tensor, scatterer:Mesh, transducers:Tensor=Non
         return Ex.to(DTYPE), Ey.to(DTYPE), Ez.to(DTYPE), Fx, Fy, Fz, Gx, Gy, Gz, H
     else:
         return Ex.to(DTYPE), Ey.to(DTYPE), Ez.to(DTYPE)
-    
+
 
 def get_G_second_unmixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False, k=Constants.k) -> tuple[Tensor, Tensor, Tensor]:
 
@@ -80,11 +80,12 @@ def get_G_second_unmixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, 
     distances_expanded_four = distances_expanded**4
     distances_expanded_five = distances_expanded**5
 
-    kd = k * distances_expanded
+    ik = 1j * k
+    ikd = ik * distances_expanded
 
-    exp_ikd = torch.exp(1j*kd)
+    exp_ikd = torch.exp(ikd)
     
-    Gaa = areas/(4*Constants.pi * 1j) *exp_ikd * ((1j*k**2 * diff_square)/ distances_expanded_cube + (1j*k)/distances_expanded_square - 1/distances_expanded_cube - (3*1j*k*diff_square)/distances_expanded_four + (3*diff_square)/distances_expanded_five)
+    Gaa = areas/(4*Constants.pi * 1j) *exp_ikd * ((1j*k**2 * diff_square)/ distances_expanded_cube + (ik)/distances_expanded_square - 1/distances_expanded_cube - (3*ik*diff_square)/distances_expanded_four + (3*diff_square)/distances_expanded_five)
     Gxx = Gaa[:,0]
     Gyy = Gaa[:,1]
     Gzz = Gaa[:,2]
@@ -192,9 +193,12 @@ def get_G_second_mixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, re
 
 
     # print(areas.shape, exp_ikd.shape, day.shape, dax.shape, distances.shape, distances_cube.shape)
-    Gxy = (-areas * exp_ikd * (day * dax * (kd**2 + 2*ikd - 2) + distances * dxy * (1 - ikd))) / (4*Constants.pi * distances_cube)
-    Gxz = (-areas * exp_ikd * (daz * dax * (kd**2 + 2*ikd - 2) + distances * dxz * (1 - ikd))) / (4*Constants.pi * distances_cube)
-    Gyz = (-areas * exp_ikd * (day * daz * (kd**2 + 2*ikd - 2) + distances * dyz * (1 - ikd))) / (4*Constants.pi * distances_cube)
+    aikd = -areas * exp_ikd 
+    kd_ikd = (kd**2 + 2*ikd - 2)
+    denom = (4*Constants.pi * distances_cube)
+    Gxy = (aikd * (day * dax * kd_ikd+  distances * dxy * (1 - ikd))) / denom
+    Gxz = (aikd * (daz * dax * kd_ikd + distances * dxz * (1 - ikd))) / denom
+    Gyz = (aikd * (day * daz * kd_ikd + distances * dyz * (1 - ikd))) / denom
 
     nx = normals[:,0,:]
     ny = normals[:,1,:]
@@ -245,7 +249,7 @@ def get_G_second_mixed(points:Tensor, scatterer:Mesh, board:Tensor|None=None, re
 
 def BEM_forward_model_second_derivative_unmixed(points:Tensor, scatterer:Mesh, transducers:Tensor=None, use_cache_H:bool=True, k=Constants.k,
                            print_lines:bool=False, H:Tensor|None=None, return_components:bool=False,
-                           path:str="Media", p_ref=Constants.P_ref,internal_points = None, transducer_radius=Constants.radius):
+                           path:str="Media", p_ref=Constants.P_ref,internal_points = None, transducer_radius=Constants.radius, transducer_norms=None):
                            
     
     
@@ -253,9 +257,9 @@ def BEM_forward_model_second_derivative_unmixed(points:Tensor, scatterer:Mesh, t
         transducers = TRANSDUCERS
 
     if H is None:
-        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref, k=k, internal_points=internal_points, transducer_radius=transducer_radius)
+        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref, k=k, internal_points=internal_points, transducer_radius=transducer_radius, norms=transducer_norms)
 
-    Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=transducers,p_ref=p_ref, k=k, transducer_radius=transducer_radius)
+    Fxx, Fyy, Fzz = forward_model_second_derivative_unmixed(points,transducers=transducers,p_ref=p_ref, k=k, transducer_radius=transducer_radius, transducer_norms=transducer_norms)
     Gxx, Gyy, Gzz = get_G_second_unmixed(points, scatterer, transducers, k=k)
 
     Exx = Fxx + Gxx@H
@@ -266,16 +270,16 @@ def BEM_forward_model_second_derivative_unmixed(points:Tensor, scatterer:Mesh, t
 
 def BEM_forward_model_second_derivative_mixed(points:Tensor, scatterer:Mesh, transducers:Tensor|Mesh=None, use_cache_H:bool=True, k=Constants.k,
                            print_lines:bool=False, H:Tensor|None=None, return_components:bool=False, 
-                           path:str="Media", p_ref=Constants.P_ref,internal_points = None, transducer_radius=Constants.radius):
+                           path:str="Media", p_ref=Constants.P_ref,internal_points = None, transducer_radius=Constants.radius, transducer_norms=None):
     
        
     if transducers is None:
         transducers = TRANSDUCERS
 
     if H is None:
-        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref, k=k, internal_points=internal_points, transducer_radius=transducer_radius)
+        H = get_cache_or_compute_H(scatterer,transducers,use_cache_H, path, print_lines,p_ref=p_ref, k=k, internal_points=internal_points, transducer_radius=transducer_radius, norms=transducer_norms)
 
-    Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=transducers, k=k, transducer_radius=transducer_radius, p_ref=p_ref)
+    Fxy, Fxz, Fyz = forward_model_second_derivative_mixed(points,transducers=transducers, k=k, transducer_radius=transducer_radius, p_ref=p_ref, transducer_norms=transducer_norms)
     Gxy, Gxz, Gyz = get_G_second_mixed(points, scatterer, transducers, k=k)
 
 
@@ -287,7 +291,7 @@ def BEM_forward_model_second_derivative_mixed(points:Tensor, scatterer:Mesh, tra
 
 def BEM_laplacian(points:Tensor, scatterer:Mesh, transducers:Tensor|Mesh=None, use_cache_H:bool=True, k=Constants.k,
                            print_lines:bool=False, H:Tensor|None=None, return_components:bool=False, 
-                           path:str="Media", p_ref=Constants.P_ref,internal_points = None, transducer_radius=Constants.radius):
+                           path:str="Media", p_ref=Constants.P_ref,internal_points = None, transducer_radius=Constants.radius, transducer_norms=None):
     
     '''
     Computes the laplacian of pressure at points given a hologram
@@ -307,10 +311,9 @@ def BEM_laplacian(points:Tensor, scatterer:Mesh, transducers:Tensor|Mesh=None, u
     :return pressure: laplacian at points
     '''
     
-    Exx, Eyy, Ezz = BEM_forward_model_second_derivative_unmixed(points=points, scatterer=scatterer, transducers=transducers, use_cache_H=use_cache_H, k=k, print_lines=print_lines, H=H, return_components=return_components, path=path, p_ref=p_ref, internal_points=internal_points, transducer_radius=transducer_radius)
+    Exx, Eyy, Ezz = BEM_forward_model_second_derivative_unmixed(points=points, scatterer=scatterer, transducers=transducers, use_cache_H=use_cache_H, k=k, print_lines=print_lines, H=H, return_components=return_components, path=path, p_ref=p_ref, internal_points=internal_points, transducer_radius=transducer_radius, transducer_norms=transducer_norms)
 
     return Exx + Eyy + Ezz
-
 
 
 def get_G_partial(points:Tensor, scatterer:Mesh, board:Tensor|None=None, return_components:bool=False, k=Constants.k) -> tuple[Tensor, Tensor, Tensor]:

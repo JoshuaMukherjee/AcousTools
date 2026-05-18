@@ -55,7 +55,7 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
             sig = torch.atan2(plane[:,0], plane[:,1]).unsqueeze(0).unsqueeze(2).reshape((B,-1, board_size))
         if mode == 'Twin':
             plane = board[:,0:2]
-            sig = torch.zeros_like(sig) + torch.pi * (plane[:,0] > 0).unsqueeze(0).unsqueeze(2).reshape((B,-1, board_size))
+            sig = torch.zeros_like(sig) + torch.pi * (plane[:,0].real > 0).unsqueeze(0).unsqueeze(2).reshape((B,-1, board_size))
         if mode == 'Eye':
             
             b = board.reshape(-1,board_size,3)
