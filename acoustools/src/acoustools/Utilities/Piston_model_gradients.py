@@ -35,10 +35,12 @@ def compute_gradients(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref
     points = points.expand((-1,M,-1,-1))
 
     diff =  points - transducers
-    distances = torch.sqrt(torch.sum(diff**2, 2))
-    
+    diff = diff + 0j
+    distances = torch.sqrt(torch.sum(diff**2, 2)) 
+
     sin_theta = torch.norm(torch.cross(diff, transducer_norms_exp, dim=2),2, dim=2) / distances
     partialFpartialU = -1* (k**2 * transducer_radius**2)/4 * sin_theta + (k**4 * transducer_radius**4)/48 * sin_theta**3
+    
     
     partialUpartiala = torch.sum(diff * transducer_norms_exp, dim=2) / distances #d/dx sin(x) = cos(x)
     partialUpartiala = partialUpartiala.unsqueeze(2)
