@@ -133,7 +133,7 @@ def forward_model_second_derivative_unmixed(points:Tensor, transducers:Tensor|No
     points = torch.unsqueeze(points,1)
     points = points.expand((-1,M,-1,-1))
 
-    diff = transducers - points
+    diff = transducers - points + 0j
     
     diff_square = diff**2
     distances = torch.sqrt(torch.sum(diff_square, 2))
@@ -248,7 +248,7 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     points = torch.unsqueeze(points,1)
     points = points.expand((-1,M,-1,-1))
 
-    diff = transducers - points
+    diff = transducers - points + 0j
     
     diff_square = diff**2
     distances = torch.sqrt(torch.sum(diff_square, 2))
@@ -257,7 +257,6 @@ def forward_model_second_derivative_mixed(points: Tensor, transducers:Tensor|Non
     distances_expanded = distances.unsqueeze(2).expand((B,M,3,N))
     distances_expanded_square = distances_expanded**2
     
-
     sin_theta = torch.norm(torch.cross(diff, transducer_norms_exp, dim=2),2, dim=2) / distances
     sin_theta_expand = sin_theta.unsqueeze(2).expand((B,M,3,N))
 
