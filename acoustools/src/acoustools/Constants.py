@@ -30,3 +30,5 @@ P_ref = 0.17*20 #3.4
 '''Reference pressure for transducers'''
 angular_frequency = f * 2 * pi 
 '''Angular Frequency of 40kHz sound'''
+pitch=0.0105
+'''Standard transducer pitch for a PAT'''
