@@ -9,18 +9,26 @@ import warnings
 def create_board(N:int, z:float, pitch:float = pitch) -> Tensor: 
     '''
     Create a single transducer array \n
-    :param N: Number of transducers per side eg for 16 transducers `N=17`
+    :param N: Number of transducers per side eg for 16 transducers `N=16` NOTE: before AcousTools 1.1.2 this behavioour was different. In the past N-1 Transducers were created. Run using --deprecated for old bahaviour
     :param z: z-coordinate of board
     :param pitch: The pitch of the transducers (gap between them)
     :return: tensor of transducer positions
     '''
 
-    if N == 17 and not supress_warnings: warnings.warn('acoustools.Boards.create_board: behavious has changed from acoustools 1.1.2 onwards. N equals number of transducers, triggered by requesting baord of size 17 (the parameter to get a standard 16x16 PAT under old bahviour) - if a 17x17 array  is required then ignore this warning and run AcousTools with --supress_warninigs')
+    if N == 17 and not supress_warnings: warnings.warn(
+      'acoustools.Boards.create_board: behavious has changed from acoustools 1.1.2 onwards.' \
+      ' N equals number of transducers, triggered by requesting baord of size 17 (the parameter to get a standard 16x16 PAT under old bahviour) ' \
+      '- if a 17x17 array  is required then ignore this warning and run AcousTools with --supress_warninigs'
+    )
     
     if not deprecated:
        N = N + 1
     else:
-       if not supress_warnings: warnings.warn('acoustools.Boards.create_board: running in deprecated mode - old behavious is for N to be number of transducers+1, new behaviour is N equals number of transducers')
+       if not supress_warnings: warnings.warn(
+        'acoustools.Boards.create_board: running in deprecated mode -' \
+        ' old behavious is for N to be number of transducers+1, ' \
+        'new behaviour is N equals number of transducers'
+       )
     
        
     grid_vec=pitch*(torch.arange(-N/2+1, N/2, 1)).to(device)
