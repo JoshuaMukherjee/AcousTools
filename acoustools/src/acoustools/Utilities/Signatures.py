@@ -5,7 +5,7 @@ import torch
 from typing import Literal
 
 from acoustools.Utilities.Boards import TRANSDUCERS
-from acoustools.Utilities.Setup import device
+from acoustools.Utilities.Setup import device, DTYPE
 
 def add_lev_sig(activation:Tensor, board:Tensor|None=None, 
                 mode:Literal['Focal', 'Trap', 'Vortex','Twin', 'Eye']='Trap', sig:Tensor|None=None, return_sig:bool=False, board_size:int=256) -> Tensor:
@@ -42,6 +42,7 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
     B = s[0]
 
     act = torch.reshape(act,(B,-1, board_size))
+    nB = act.shape[1]
 
     # act[:,0,:] = torch.e**(1j*(sig + torch.angle(act[:,0,:].clone())))
     if sig is None:
@@ -68,6 +69,8 @@ def add_lev_sig(activation:Tensor, board:Tensor|None=None,
 
             sig[0,0,:][mask[0,:] == 1] = torch.pi
             sig[0,1,:][mask[0,:] == 1] = 0
+        
+        
 
     x = torch.abs(act) * torch.exp(1j* (torch.angle(act) + sig))
 
