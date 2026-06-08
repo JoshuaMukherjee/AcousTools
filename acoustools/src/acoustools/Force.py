@@ -33,8 +33,9 @@ def force_fin_diff(activations:Tensor, points:Tensor, axis:str="XYZ", stepsize:f
         board = TRANSDUCERS
 
     fin_diff_points = get_finite_diff_points_all_axis(points, axis, stepsize)
+
     
-    U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/10 ,K1=K1,K2=K2,**U_fun_args, board=board,V=V, 
+    U_points = U_function(activations, fin_diff_points, axis=axis, stepsize=stepsize/4 ,K1=K1,K2=K2,**U_fun_args, board=board,V=V, 
                             p_ref=p_ref, k=k, transducer_radius=transducer_radius, transducer_norms=transducer_norms,
                             medium_density=medium_density, medium_speed=medium_speed, particle_density=particle_density,particle_speed=particle_speed)
     U_grads = U_points[:,N:]
@@ -103,11 +104,12 @@ def compute_force(activations:Tensor, points:Tensor,board:Tensor|None=None,retur
     # K2 = 3*V / (4*(2*c.f**2 * c.p_0))
     K1, K2 = get_gorkov_constants(V=V, c_0=medium_speed, c_p=particle_speed, p_0=medium_density, p_p=particle_density)
 
+
     # grad_U = K1 * p_term - K2 * (px_term + py_term + pz_term)
 
     grad_U_x = K1 * p_term_x - K2 * ((Pxx*Px.conj() + Px*Pxx.conj()) + (Pxy*Py.conj() + Py.conj()*Pxy) + (Pxz*Pz.conj() + Pxz.conj()*Pz))
     grad_U_y = K1 * p_term_y - K2 * ((Pxy*Px.conj() + Px*Pxy.conj()) + (Pyy*Py.conj() + Py.conj()*Pyy) + (Pyz*Pz.conj() + Pyz.conj()*Pz))
-    grad_U_z = K1 * p_term_z - K2 * ((Pxz*Px.conj() + Px*Pxz.conj()) + (Pyz*Py.conj() + Py.conj()*Pyz) + (Pzz*Pz.conj() + Pxz.conj()*Pz))
+    grad_U_z = K1 * p_term_z - K2 * ((Pxz*Px.conj() + Px*Pxz.conj()) + (Pyz*Py.conj() + Py.conj()*Pyz) + (Pzz*Pz.conj() + Pzz.conj()*Pz))
 
     grad_U = torch.stack([grad_U_x, grad_U_y, grad_U_z])
 

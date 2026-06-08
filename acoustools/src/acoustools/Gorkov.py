@@ -16,7 +16,7 @@ def gorkov(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str=
 
 def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None, axis:str="XYZ", transducer_norms = None,
                         V:float=c.V, p_ref=c.P_ref, k=c.k, transducer_radius = c.radius, 
-                        medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p , **params) -> Tensor:
+                        medium_density=c.p_0, medium_speed = c.c_0, particle_density = c.p_p, particle_speed = c.c_p, angular_frequency=c.angular_frequency , **params) -> Tensor:
     '''
     Computes the Gorkov potential using analytical derivative of the piston model \n
     :param activation: The transducer activations to use 
@@ -56,7 +56,7 @@ def gorkov_analytical(activations: Tensor, points: Tensor,board:Tensor|None=None
 
     grad  = torch.cat((px,py,pz),dim=2)
 
-    K1, K2 = get_gorkov_constants(V=V, c_0=medium_speed, c_p=particle_speed, p_0=medium_density, p_p=particle_density)
+    K1, K2 = get_gorkov_constants(V=V, c_0=medium_speed, c_p=particle_speed, p_0=medium_density, p_p=particle_density, angular_frequency=angular_frequency)
     g = (torch.sum(torch.abs(grad)**2, dim=2, keepdim=True))
     
     # K1 = 1/4*V*(1/(c.c_0**2*c.p_0) - 1/(c.c_p**2*c.p_p))
@@ -76,15 +76,18 @@ def get_gorkov_constants(V=c.V, p_0 = c.p_0, p_p=c.p_p, c_0=c.c_0, c_p=c.c_p, an
     :param c_p: speed of sound in particle
     :param angular_frequency: The angular frequency
     :returns K1, K2:
-
+1
     '''
     #Derived Bk.3 Pg.91
+
     K1 = 1/4*V*(1/(c_0**2*p_0) - 1/(c_p**2*p_p)) 
     K2 = 3/4 * V * ((p_p - p_0) / (angular_frequency**2 * p_0 * (p_0 + 2*p_p))) 
 
+
+    # exit()
     # K1 = V / (4*p_0*c_0**2)
     # K2 = 3*V / (4*(2*f**2 * p_0))
-
+    # return 1, 1
     return K1, K2
 
 def gorkov_autograd(activations:Tensor, points:Tensor, K1:float|None=None, K2:float|None=None, V:float=c.V, p_ref=c.P_ref, k=c.k, transducer_radius = c.radius,

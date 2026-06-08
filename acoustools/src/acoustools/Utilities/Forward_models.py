@@ -93,7 +93,6 @@ def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P
     if norms is None:
         norms = (torch.zeros_like(transducers) + torch.tensor([0,0,1], device=device)) * torch.sign(transducers[:,2].real).unsqueeze(1).to(DTYPE)
     
-
     # p = torch.permute(points,(0,2,1))
     transducers = torch.unsqueeze(transducers,2)
     transducers = transducers.expand((B,-1,-1,N))
@@ -110,6 +109,7 @@ def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P
     norms = norms.unsqueeze(0).unsqueeze(3).expand(B, M, 3, N)
 
     sine_angle = torch.norm(torch.cross(distance_axis_sub, norms, dim=2),2, dim=2) / distance
+
 
 
 
