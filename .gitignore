@@ -10,3 +10,4 @@ profile_output*
 *.holo
 */dist/*
 *.pdf
+.vscode
