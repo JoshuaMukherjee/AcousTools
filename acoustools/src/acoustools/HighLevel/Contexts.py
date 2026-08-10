@@ -1,5 +1,5 @@
 from acoustools.Solvers import wgs
-from acoustools.Utilities import create_points, TRANSDUCERS, transducers
+from acoustools.Utilities import create_points, TRANSDUCERS, transducers, create_board
 from acoustools.Visualiser import Visualise, ABC
 from acoustools.Levitator import LevitatorController
 
@@ -137,7 +137,7 @@ class TopWithReflectorContext(AcousToolsContext):
         super().__init__(origin)
 
         self.solver = default_solver
-        self.board: Tensor = transducers(16, z=height/2)
+        self.board: Tensor = create_board(16, z=height/2)
 
         self.path: str = path
         self.reflector: Mesh = load_scatterer(path + reflector_path)
@@ -208,7 +208,7 @@ class BottomWithReflectorContext(TopWithReflectorContext):
         '''
         super().__init__(origin, default_solver, path, reflector_path, height)
 
-        self.board: Tensor = transducers(16, z=-1*height/2)
+        self.board: Tensor = create_board(16, z=-1*height/2)
         
         self.reflector: Mesh = load_scatterer(path + reflector_path)
         translate(self.reflector, dz=height/2)
