@@ -2,11 +2,15 @@ from acoustools.linalg.gigmres import global_arnoldi, gi_gmres
 
 import torch
 
-N = 3
-s = 2
+N = 5
+s = 7
 
-A = torch.rand((1,N,N))
-B = torch.rand(1,N,s)
+A = torch.rand((N,N)) * 100 
+B = torch.rand(1,N,s) * 100 
+
+# A = torch.nn.init.sparse(A, sparsity=0.4).unsqueeze(0)
+# B = torch.nn.init.sparse(B, sparsity=0.1)
+
 
 Vs = global_arnoldi(A, 10, s)
 
@@ -20,10 +24,11 @@ for i in range(N):
         if i==j: assert(torch.trace(Vi.T @ Vj).abs() > 0.95 and torch.trace(Vi.T @ Vj).abs() < 1.05)
 
 
-X = gi_gmres(A,B,10)
+X = gi_gmres(A,B,100, restart=None)
 
 Xinv = A.inverse()@B
 
 print(X / Xinv)
 
 print(A@X - B)
+print(A@Xinv - B)

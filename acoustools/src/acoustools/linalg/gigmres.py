@@ -11,8 +11,9 @@ def global_arnoldi(A:Tensor,k:int, s:int, V1=None):
 
     Vs = torch.zeros(N,s,k) #To store for later
 
-    if V1 is  None: V1 = torch.rand((N,s))
-    V1 = V1 / torch.norm(V1, p='fro')
+    if V1 is  None: 
+        V1 = torch.rand((N,s))
+        V1 = V1 / torch.norm(V1, p='fro')
     Vs[:,:,0] = V1
 
     h = torch.zeros(k,k)
@@ -44,6 +45,7 @@ def global_arnoldi(A:Tensor,k:int, s:int, V1=None):
 def star_product(Vs, y):
     '''
     Eq. 2.1 in Global FOM and GMRES algorithms for matrix equations
+    Vectorise this later
     '''
     star_sum = 0
     for i in range(Vs.shape[2]):
@@ -51,7 +53,7 @@ def star_product(Vs, y):
         star_sum += Vi * y[i]
     return star_sum
 
-def gi_gmres_solver(A, B, K):
+def gi_gmres_solver(A, B, K, X0=None):
     '''
     Algo. 4.1 in Global FOM and GMRES algorithms for matrix equations
     '''
@@ -59,15 +61,18 @@ def gi_gmres_solver(A, B, K):
     N = A.shape[1]
     s = B.shape[2]
 
-    X0 = torch.rand(N,s)
+    if X0 is None: X0 = torch.rand(N,s)
     X = X0
 
-    R = B - A@X
+    R0 = B - A@X
+    R = R0
     V1 = R / torch.norm(R, p='fro')
 
     for k in range(1,K):
 
-        Vs = global_arnoldi(A, k, s, V1)
+        Vs = global_arnoldi(A, k, s, V1) 
+        # print(V1[:,:,0])
+        # print(Vs.shape)
 
         e1 = torch.eye(k+1)[0,:]
 
@@ -77,29 +82,21 @@ def gi_gmres_solver(A, B, K):
                 if i+1 >= j:
                     Vi = Vs[:,:,i]
                     Vj = Vs[:,:,j]
-
-                    H_tilde[j,  i] = torch.trace(Vi.T @ A.squeeze(0) @ Vj) #Bottom corner == 0 -> Is it meant to?
+                    H_tilde[i,  j] = torch.trace(Vi.mT @ A.squeeze(0) @ Vj) #Bottom corner == 0 -> Is it meant to?
 
 
         # print(e1)
-        alpha = (torch.norm(R, p='fro') * e1)#.unsqueeze(1)
+        alpha = (torch.norm(R0, p='fro') * e1)#.unsqueeze(1)
         y = torch.linalg.lstsq(H_tilde, alpha).solution
-        # print(H_tilde.shape)
-        # print(alpha.shape)
-        y = (H_tilde.T @ H_tilde).inverse() @ H_tilde.T @ alpha #Is this the right way to do this?
-        # print(y.shape)
+        # y = (H_tilde.T @ H_tilde).inverse() @ H_tilde.T @ alpha #Is this the right way to do this?
+        # y = torch.pinverse(H_tilde) @ alpha
 
-        # exit()
-#       
-        # print(Vs.shape)
-        # Vk = torch.reshape(Vs, (N, s*(k)))
-
-        # Vk = torch.cat(Vs, dim=2)
-        # print(k, X.shape, Vs.shape, y.shape)
-
-        X = X + star_product(Vs, y)
-        print((B - A@X).abs().sum())
-        R = B - A@X
+        X = X0+ star_product(Vs, y)
+        
+        # R = B - A@X
+        # V1 = R / torch.norm(R, p='fro')
+        # print(R.abs().sum())
+        print(k,(B - A@X).norm(p='fro'))
 
     return X
 
@@ -111,5 +108,14 @@ def gi_gmres_solver(A, B, K):
 
 
 
-def gi_gmres(A, B, k):
-    return gi_gmres_solver(A, B, k)
+def gi_gmres(A, B, k, restart=None):
+
+    if restart is not None:
+        x = None
+        for i in range(k//restart):
+            x = gi_gmres_solver(A, B, restart , X0 = x)
+
+        return x
+    else:
+
+        return gi_gmres_solver(A, B, k)
