@@ -229,7 +229,8 @@ def augment_A_CHIEF(A:Tensor, internal_points:Tensor, CHIEF_mode:Literal['square
 
 
 
-def compute_A(scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor = 1, betas:float|Tensor = 0, a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, BM_mode:str='fd') -> Tensor:
+def compute_A(scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor = 1, betas:float|Tensor = 0, a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, 
+              CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, BM_mode:str='fd', areas:Tensor=None, centres:Tensor=None, norms:Tensor=None, m:Tensor=None, m_prime:Tensor=None, is_diag=True) -> Tensor:
     '''
     Computes A for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -249,12 +250,17 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor = 1, bet
     '''
 
     
-    
-    areas = torch.tensor(scatterer.celldata["Area"], dtype=DTYPE, device=device)
-    centres = torch.tensor(scatterer.cell_centers().points, dtype=DTYPE, device=device)
-    norms = get_normals_as_points(scatterer, permute_to_points=False)
+    if areas is None or centres is None or norms is None:
+        areas = torch.tensor(scatterer.celldata["Area"], dtype=DTYPE, device=device)
+        centres = torch.tensor(scatterer.cell_centers().points, dtype=DTYPE, device=device)
+        norms = get_normals_as_points(scatterer, permute_to_points=False)
 
-    M = centres.shape[0]
+    if m is None:
+        M = centres.shape[0]
+        N = M
+    else:
+        M = m.shape[1]
+        N = m.shape[0]
     # if internal_points is not None:
         # M = M + internal_points.shape[2]
 
@@ -272,12 +278,14 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor = 1, bet
 
                 n = norms.permute(0,2,1).unsqueeze(3)
                 A_norm = -1 * torch.sum(A_grad * n , dim=1)
-            
-    m = centres.expand((M, M, 3))
-    m_prime = centres.unsqueeze(1).expand((M, M, 3))
+    
+    if m is None: 
+        m = centres.expand((M, M, 3))
+   
+    
+    if m_prime is None: m_prime = centres.unsqueeze(1).expand((M, M, 3))
 
-
-    partial_greens = compute_green_derivative(m.unsqueeze_(0), m_prime.unsqueeze_(0), norms, 1, M, M, a=a, c=c, k=k,smooth_distance=smooth_distance)
+    partial_greens = compute_green_derivative(m.unsqueeze_(0), m_prime.unsqueeze_(0), norms, 1, N, M, a=a, c=c, k=k,smooth_distance=smooth_distance)
     
 
     if ((type(betas) in [int, float]) and betas != 0) or (isinstance(betas, Tensor) and (betas != 0).any()):
@@ -285,7 +293,7 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor = 1, bet
         partial_greens += green
 
     A = -partial_greens * areas
-    A[:, torch.eye(M, dtype=torch.bool, device=device)] = 0.5
+    if is_diag: A[:, torch.eye(M, dtype=torch.bool, device=device)] = 0.5
     
 
     if internal_points is not None: #CHIEF
