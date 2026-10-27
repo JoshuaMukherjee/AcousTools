@@ -60,3 +60,42 @@ def create_points(N:int=None,B:int=1,x:float|None=None,y:float|None=None,z:float
 
 
     return points.to(DTYPE)
+
+
+def random_points_ring(N=1, origin:Tensor=None, min_r:float=0.01, max_r:float=0.06):
+
+    theta = torch.rand((1,1,N)) * 2 * 3.1415
+    phi = torch.rand((1,1,N)) * 2 * 3.1415
+    
+    sin_theta = torch.sin(theta)
+    cos_theta = torch.cos(theta)
+    
+    sin_phi = torch.sin(phi)
+    cos_phi = torch.cos(phi)
+    
+    min_r_x = min_r_y = min_r_z = min_r
+
+    max_r_x = max_r_y = max_r_z = max_r
+
+    rx = torch.FloatTensor(1, 1, N).uniform_(min_r_x, max_r_x).to(device).to(DTYPE)
+    ry = torch.FloatTensor(1, 1, N).uniform_(min_r_y, max_r_y).to(device).to(DTYPE)
+    rz = torch.FloatTensor(1, 1, N).uniform_(min_r_z, max_r_z).to(device).to(DTYPE)
+    
+    r = (rx**2 + ry**2 + rz**2)**0.5
+    
+    x = r * sin_theta * cos_phi
+    y = r * sin_theta * sin_phi
+    z = r * cos_theta
+    
+    pts = torch.cat([x,y,z], dim=1)
+    
+    if origin is None: origin = create_points(N,1, 0, 0, 0)
+    
+    pts = pts + origin
+    
+    return pts
+
+    
+    
+        
+    
