@@ -75,7 +75,12 @@ def forward_model_unbatched(points, transducers = TRANSDUCERS, p_ref = Constants
     trans_matrix=2*p_ref*torch.multiply(torch.divide(phase,distance),directivity)
     return trans_matrix
 
-def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref,norms:Tensor|None=None, k=Constants.k, transducer_radius=Constants.radius):
+def directivity_function(k, transducer_radius, sine_angle):
+    bessel_arg=k*transducer_radius*sine_angle
+    D=1/2-torch.pow(bessel_arg,2)/16+torch.pow(bessel_arg,4)/384
+    return D
+
+def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P_ref,norms:Tensor|None=None, k=Constants.k, transducer_radius=Constants.radius, only_directivity=False):
 
     '''
     @private
@@ -110,12 +115,9 @@ def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P
 
     sine_angle = torch.norm(torch.cross(distance_axis_sub, norms, dim=2),2, dim=2) / distance
 
+    directivity = directivity_function(k, transducer_radius, sine_angle)
+    if only_directivity: return directivity
 
-
-
-    bessel_arg=k*transducer_radius*sine_angle
-    directivity=1/2-torch.pow(bessel_arg,2)/16+torch.pow(bessel_arg,4)/384
-    
     p = 1j*k*distance
     phase = torch.exp(p)
 
