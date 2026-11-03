@@ -115,13 +115,13 @@ def forward_model_batched(points, transducers = TRANSDUCERS, p_ref = Constants.P
 
     sine_angle = torch.norm(torch.cross(distance_axis_sub, norms, dim=2),2, dim=2) / distance
 
-    directivity = directivity_function(k, transducer_radius, sine_angle)
+    directivity = 2*directivity_function(k, transducer_radius, sine_angle)
     if only_directivity: return directivity
 
     p = 1j*k*distance
     phase = torch.exp(p)
 
-    trans_matrix=2*p_ref*torch.multiply(torch.divide(phase,distance),directivity)
+    trans_matrix=p_ref*torch.multiply(torch.divide(phase,distance),directivity)
 
     return trans_matrix.permute((0,2,1)).to(DTYPE).to(device)
 
