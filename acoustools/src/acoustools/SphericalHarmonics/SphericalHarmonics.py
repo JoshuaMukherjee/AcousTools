@@ -22,8 +22,21 @@ def convert_to_spherical(points, origin):
     theta = torch.acos(vecs_z / distance).to(DTYPE)
     phi = torch.atan2(vecs_y.real, vecs_x.real).to(DTYPE)
     
-    # print(distance, theta, phi)
     
+    
+    theta[theta.isnan()] = -1*c.pi/2
+    
+    # print(theta.real.min(), theta.real.max())
+    # print(phi.real.min(), phi.real.max())
+    # print()
+    
+    
+    # xy_distance = torch.sqrt(vecs_y**2 + vecs_x**2)
+    # phi = torch.sgn(vecs_y.real) * torch.arccos(vecs_x / xy_distance)
+    
+    # print(distance, theta, phi)
+    print('Spherical',phi.shape, theta.shape)
+        
     return distance, theta, phi
     
     
@@ -33,11 +46,14 @@ def associated_legendre_polynomial(z,n,m):
     For now uses SciPy - Later come back and write this in torch so Autograd works. 
     '''
     
-    hash_z = torch.hash_tensor(torch.view_as_real(z)).item()
+    print('zp',z.shape)
+    hash_z = hash(str(torch.hash_tensor(z.real).item()) + str(z.shape))
     # print(hash_z)
     
     if (n,m,hash_z) in _CACHE_Pmn: 
-        return _CACHE_Pmn[(n,m,hash_z)]
+        P = _CACHE_Pmn[(n,m,hash_z)]
+        print('ZP',P.shape,z.shape)
+        return P
     else:
         # print(( (n-1,m,hash_z) in _CACHE_Pmn), ((n-2,m,hash_z) in _CACHE_Pmn))
         if( (n-1,m,hash_z) in _CACHE_Pmn) and ((n-2,m,hash_z) in _CACHE_Pmn):
@@ -53,6 +69,7 @@ def associated_legendre_polynomial(z,n,m):
             P = torch.tensor(P, device=device, dtype=DTYPE)
     
     _CACHE_Pmn[(n,m,hash_z)] = P    
+    print('ZP',P.shape,z.shape)
     return P
 
 @profile
@@ -60,7 +77,9 @@ def spherical_harmonic_Y(theta, phi,n,m):
     
     cos_theta = torch.cos(theta)
     P_n_m = associated_legendre_polynomial(cos_theta, n, m)
+    print('Y',phi.shape, theta.shape, cos_theta.shape, P_n_m.shape)
     exp = torch.exp(1j * m * phi)
+    # exit()
     
     factorial_minus = math.factorial(n - m)
     factorial_plus = math.factorial(n + m)
@@ -76,11 +95,11 @@ def transducer_expansion_coef_Snm(activations, board, centre_of_mass, n, m, tran
         directivity = forward_model_batched(centre_of_mass, board, p_ref=1, norms = transducer_norms, transducer_radius= transducer_radius, k=k, only_directivity=True)  * p_ref
     
     if distance is None and theta is None and phi is None:
+        print('11')
         distance, theta, phi = convert_to_spherical(board.unsqueeze(0).permute(0,2,1), centre_of_mass)
     
-
+    print('Snm',theta.shape, phi.shape)
     Y = spherical_harmonic_Y(theta, phi, n, m).permute(0,2,1)
-
     # print(scipy.special.sph_harm_y(n,m,theta.real, phi.real).squeeze() / Y.squeeze())
     # print(Y.shape)
     

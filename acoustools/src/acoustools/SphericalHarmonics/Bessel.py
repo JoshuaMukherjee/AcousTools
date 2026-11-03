@@ -11,7 +11,7 @@ _CACHE_J = {}
 def bessel_J(x, alpha, M=20):
     
     if type(x) == torch.Tensor:
-        x_key = torch.hash_tensor(x).item()
+        x_key = hash(str(torch.hash_tensor(x.real).item()) + str(x.shape))
     else:
         x_key = x
     
@@ -45,7 +45,7 @@ def bessel_J(x, alpha, M=20):
         _CACHE_J[(x_key, alpha)] = J
 
     
-    # print( J / scipy.special.jv(alpha, x) )
+    # print(alpha, ( J / scipy.special.jv(alpha, x)) )
     # exit()
     return J
     

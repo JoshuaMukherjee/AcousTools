@@ -16,16 +16,19 @@ def spherical_harmonics_propagate(activations: Tensor, points: Tensor,board: Ten
     # p_tran = propagate(activations, points, board, p_ref=p_ref, k=k,transducer_radius=transducer_radius, norms=transducer_norms)
 
     
-    # p_inc = spherical_harmonics_propagate_inc(activations, points, board, centre_of_mass, max_n, p_ref, transducer_norms, k, transducer_radius)
+    p_inc = spherical_harmonics_propagate_inc(activations, points, board, centre_of_mass, max_n, p_ref, transducer_norms, k, transducer_radius)
     p_scat = spherical_harmonics_propagate_scat(activations, points, board, centre_of_mass, max_n, p_ref, transducer_norms, k, transducer_radius, particle_radius, medium_density, medium_speed, particle_density, particle_speed)
     
-    p_inc=0
+    # p_inc=0
     # p_scat = 0
     # print(p_inc.shape, p_scat.shape)
     # exit()
     
     pressure = (p_inc + p_scat).squeeze(1)
+
+    
     pressure[pressure.isnan()] = 0
+    # pressure[pressure.abs() > upper_limit] = 0
     
     return pressure
 
@@ -37,7 +40,7 @@ def spherical_harmonics_propagate_inc(activations: Tensor, points: Tensor,board:
         
     directivity = forward_model_batched(centre_of_mass, board, p_ref=1, norms = transducer_norms, transducer_radius= transducer_radius, k=k, only_directivity=True)  * p_ref
     board_distance, board_theta, board_phi = convert_to_spherical(board.unsqueeze(0).permute(0,2,1), centre_of_mass)
-    
+    # board_distance, board_theta, board_phi = None, None, None
     result = None
     
     for n in range(max_n):
@@ -48,10 +51,13 @@ def spherical_harmonics_propagate_inc(activations: Tensor, points: Tensor,board:
             # print(n,m)
             
             Ynm = spherical_harmonic_Y(theta, phi, n, m)
+            print('inc',board_theta.shape, board_phi.shape)
             Snm = transducer_expansion_coef_Snm(activations, board, centre_of_mass, n, m, transducer_norms=transducer_norms, k=k, transducer_radius=transducer_radius, directivity=directivity, distance=board_distance, theta=board_theta, phi=board_phi) 
             
             # print(scipy.special.sph_harm_y(n,m,theta.real, phi.real).squeeze() / Ynm.squeeze())
+   
             product = jn * Snm * Ynm
+            
             
             
             if result is None: 
@@ -59,7 +65,8 @@ def spherical_harmonics_propagate_inc(activations: Tensor, points: Tensor,board:
             else:
                 result += product
             
-        # print(result)
+    
+
     
     return result
 
@@ -72,7 +79,7 @@ def spherical_harmonics_propagate_scat(activations: Tensor, points: Tensor,board
     
     directivity = forward_model_batched(centre_of_mass, board, p_ref=1, norms = transducer_norms, transducer_radius= transducer_radius, k=k, only_directivity=True)  * p_ref
     board_distance, board_theta, board_phi = convert_to_spherical(board.unsqueeze(0).permute(0,2,1), centre_of_mass)
-    
+    # board_distance, board_theta, board_phi = None, None, None
     result = None
         
     for n in range(max_n):
