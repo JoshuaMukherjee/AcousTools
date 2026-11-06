@@ -11,7 +11,7 @@ _CACHE_Pmn = {}
 hashes = {}
 
 def convert_to_spherical(points, origin):
-    vecs = points - origin
+    vecs = origin-points
     
     distance = torch.norm(vecs, dim=1, p=2)
     
@@ -21,8 +21,6 @@ def convert_to_spherical(points, origin):
 
     theta = torch.acos(vecs_z / distance).to(DTYPE)
     phi = torch.atan2(vecs_y.real, vecs_x.real).to(DTYPE)
-    
-    
     
     theta[theta.isnan()] = -1*c.pi/2
     

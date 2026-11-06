@@ -8,7 +8,10 @@ from line_profiler import profile
 _CACHE_J = {}
 
 @profile
+#Seems like this is wrong? Go over this again
 def bessel_J(x, alpha, M=20):
+    
+    # return scipy.special.jv(alpha, x)
     
     if type(x) == torch.Tensor:
         x_key = hash(str(torch.hash_tensor(x.real).item()) + str(x.shape))
