@@ -5,52 +5,61 @@ import acoustools.Constants as c
 from line_profiler import profile
 
 
-_CACHE_J = {}
+# _CACHE_J = {}
 
 @profile
 #Seems like this is wrong? Go over this again
-def bessel_J(x, alpha, M=20):
+def bessel_J(x, alpha, M=20, depth=0, max_depth=3):
     
-    # return scipy.special.jv(alpha, x)
+    # print(alpha, x)
     
+    return scipy.special.jv(alpha, x)
+    '''
     if type(x) == torch.Tensor:
         x_key = hash(str(torch.hash_tensor(x.real).item()) + str(x.shape))
+        # x_key = hash(tuple(x.reshape(-1).real.tolist()))
+
     else:
         x_key = x
     
+    # print(x_key)
+
+    
     if (x_key, alpha) in _CACHE_J:
-        return _CACHE_J[(x_key, alpha)]
+        J, d =  _CACHE_J[(x_key, alpha)]
     
     if alpha >= -1 and alpha <= 1:
         J =  scipy.special.jv(alpha, x)
-        _CACHE_J[(x_key, alpha)] = J
+        _CACHE_J[(x_key, alpha)] = (J, depth)
         return J
     
     if alpha < 0:
 
-        Jplus = bessel_J(x, alpha+1, M=M)
-        _CACHE_J[(x_key, alpha+1)] = Jplus
+        Jplus = bessel_J(x, alpha+1, M=M, depth=depth+1)
+        _CACHE_J[(x_key, alpha+1)] = (Jplus, depth)
         
-        Jplus_2 = bessel_J(x, alpha+2, M=M)
-        _CACHE_J[(x_key, alpha+2)] = Jplus_2
+        Jplus_2 = bessel_J(x, alpha+2, M=M, depth=depth+1)
+        _CACHE_J[(x_key, alpha+2)] = (Jplus_2, depth)
         
         J = (2*(alpha+1))/x * Jplus - Jplus_2
-        _CACHE_J[(x_key, alpha)] = J
+        _CACHE_J[(x_key, alpha)] = (J, depth)
     
     else:      
-        Jminus = bessel_J(x, alpha-1, M=M)
-        _CACHE_J[(x_key, alpha-1)] = Jminus
+        Jminus = bessel_J(x, alpha-1, M=M, depth=depth+1)
+        _CACHE_J[(x_key, alpha-1)] = (Jminus, depth)
         
-        Jminus_2 = bessel_J(x, alpha-2, M=M)
-        _CACHE_J[(x_key, alpha-2)] = Jminus_2
+        Jminus_2 = bessel_J(x, alpha-2, M=M, depth=depth+1)
+        _CACHE_J[(x_key, alpha-2)] = (Jminus_2, depth)
         
         J = (2*(alpha-1))/x * Jminus - Jminus_2
-        _CACHE_J[(x_key, alpha)] = J
+        _CACHE_J[(x_key, alpha)] = (J, depth)
 
     
     # print(alpha, ( J / scipy.special.jv(alpha, x)) )
+    # print(len(_CACHE_J))
     # exit()
     return J
+    '''
     
     
 def bessel_Y(x, alpha, M=20):
