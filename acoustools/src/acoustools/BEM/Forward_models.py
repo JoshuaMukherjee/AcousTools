@@ -229,7 +229,8 @@ def augment_A_CHIEF(A:Tensor, internal_points:Tensor, CHIEF_mode:Literal['square
 
 
 
-def compute_A(scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor = 1, betas:float|Tensor = 0, a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, BM_mode:str='fd') -> Tensor:
+def compute_A(scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor = 1, betas:float|Tensor = 0, a:Tensor=None, c:Tensor=None, internal_points:Tensor=None, smooth_distance:float=0, 
+              CHIEF_mode:Literal['square', 'rect'] = 'square', h:float=None, BM_alpha:complex=None, BM_mode:str='fd', return_components=False) -> Tensor:
     '''
     Computes A for the computation of H in the BEM model\n
     :param scatterer: The mesh used (as a `vedo` `mesh` object)
@@ -243,8 +244,7 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor = 1, bet
     :param h: finite difference step for Burton-Miller BEM
     :param BM_alpha: constant alpha to use in Burton-Miller BEM
     :param BM_mode: Mode to use for Burton-Miller BEM - should be fd for finite differences
-    
-
+    :param return_components: if True will also return m and m_prime
     :return A: A tensor
     '''
 
@@ -319,6 +319,8 @@ def compute_A(scatterer: Mesh, k:float=Constants.k, alphas:float|Tensor = 1, bet
             A[angle>0] = A[angle>0] * alphas[angle>0]
         else:
             A[angle>0] = A[angle>0] * alphas
+
+    if return_components: return A.to(DTYPE), m, m_prime
     
     return A.to(DTYPE)
 
