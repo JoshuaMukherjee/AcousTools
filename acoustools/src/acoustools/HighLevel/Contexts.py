@@ -1,5 +1,5 @@
 from acoustools.Solvers import wgs
-from acoustools.Utilities import create_points, TRANSDUCERS, transducers, create_board
+from acoustools.Utilities import create_points, TRANSDUCERS, transducers, create_board, add_lev_sig
 from acoustools.Visualiser import Visualise, ABC
 from acoustools.Levitator import LevitatorController
 
@@ -42,6 +42,7 @@ class AcousToolsContext():
 
 
 
+
 class TopBottomContext(AcousToolsContext):
 
 
@@ -66,6 +67,8 @@ class TopBottomContext(AcousToolsContext):
         self.solver = default_solver
         self.board: Tensor = TRANSDUCERS
 
+    def add_lev_sig(self):
+        self.solution = add_lev_sig(self.solution)
 
     def create_focus(self, location:None|Tensor|Iterable = None) -> None:
         '''
@@ -147,7 +150,7 @@ class TopWithReflectorContext(AcousToolsContext):
         self.H: Tensor = get_cache_or_compute_H(self.reflector, self.board, path=path)
 
         
-    def create_focus(self, location:None|Tensor|Iterable = None) -> None:
+    def create_focus(self, location:None|Tensor|Iterable = None, solver_params=None) -> None:
         '''
         Create a focus at `location` using the default solver defined in class creation and stores the result in the object. \n
         The user does not need to know how the focus is created or what the ouput of the computation is \n
@@ -162,7 +165,7 @@ class TopWithReflectorContext(AcousToolsContext):
 
 
         E: Tensor = compute_E(self.reflector, location, self.board, path=self.path, H=self.H)
-        self.solution = self.solver(location, board = self.board, A=E)
+        self.solution = self.solver(location, board = self.board, A=E, **solver_params)
 
     
     def visualise(self, size:float=0.03, origin:Tensor=None, plane:str='xz') -> None:
