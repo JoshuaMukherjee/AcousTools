@@ -3,3 +3,4 @@ torch
 vedo
 matplotlib
 torch-kmeans
+scipy
