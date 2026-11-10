@@ -158,7 +158,13 @@ def target_gorkov_BEM_mse_objective(transducer_phases, points, board, targets, *
         dims = objective_params['dims']
     else:
         dims = 'XYZ'
-    U = BEM_gorkov_analytical(transducer_phases, points, reflector, board, path=root, dims=dims)
+
+    if 'H' in objective_params: 
+        H=objective_params['H']
+    else:
+        H = None
+
+    U = BEM_gorkov_analytical(transducer_phases, points, reflector, board, path=root, dims=dims, H=H)
     loss = torch.mean((targets-U)**2).unsqueeze_(0).real
     return loss
 
