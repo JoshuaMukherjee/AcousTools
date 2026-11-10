@@ -8,4 +8,4 @@ if DTYPE != torch.complex128:
 
 from acoustools.SphericalHarmonics.SphericalHarmonics import *
 from acoustools.SphericalHarmonics.Bessel import *
-from acoustools.SphericalHarmonics.Propagators import n*
+from acoustools.SphericalHarmonics.Propagators import *
