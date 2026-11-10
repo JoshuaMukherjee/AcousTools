@@ -13,7 +13,7 @@ class LevitatorController():
     '''
 
     def __init__(self, bin_path:str|None = None, ids:tuple[int] = (1000,999), matBoardToWorld:list[int]|None=None, 
-                 print_lines:bool=False):
+                 print_lines:bool=False, force_create_pat=False, pat_name=None):
         '''
         Creates the controller - reccomended to use in a `with` block\n
         ```python
@@ -61,12 +61,15 @@ class LevitatorController():
             files = os.listdir()
             
             for id in ids:
-                if 'board_'+str(id)+'.pat' not in files:
+                if force_create_pat or 'board_'+str(id)+'.pat' not in files:
                     data_file = open('board_master.pat','r')
                     data = data_file.read()
 
                     file = open('board_'+str(id)+'.pat','w')
-                    data_id = data.replace('<XXXXXXXX>',str(id))
+                    if pat_name is None:
+                        data_id = data.replace('<XXXXXXXX>',str(id))
+                    else:
+                        data_id = data.replace('<XXXXXXXX>',str(pat_name))
                     file.write(data_id)
                     file.close()
                     data_file.close()
